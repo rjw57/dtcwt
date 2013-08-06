@@ -1,7 +1,8 @@
 import numpy as np
 import logging
 
-from dtcwt import biort as _biort, qshift as _qshift, colfilter, coldfilt, colifilt
+from dtcwt import biort as _biort, qshift as _qshift
+from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 
 BIORT_DEFAULT='near_sym_a'
 QSHIFT_DEFAULT='qshift_a'

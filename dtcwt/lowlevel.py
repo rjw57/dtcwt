@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.signal import convolve2d
 
-def to_vertical_vector(v):
+def _to_vertical_vector(v):
     """Return v as a 2d vertical vector."""
     v = np.atleast_2d(v)
     if v.shape[0] == 1:
@@ -51,7 +51,7 @@ def colfilter(X, h):
     
     # Interpret all inputs as arrays
     X = np.array(X)
-    h = to_vertical_vector(h)
+    h = _to_vertical_vector(h)
 
     r, c = X.shape
     m = h.shape[0]
@@ -116,10 +116,10 @@ def coldfilt(X, ha, hb):
 
     # Select odd and even samples from ha and hb. Note that due to 0-indexing
     # 'odd' and 'even' are not perhaps what you might expect them to be.
-    hao = to_vertical_vector(ha[0:m:2])
-    hae = to_vertical_vector(ha[1:m:2])
-    hbo = to_vertical_vector(hb[0:m:2])
-    hbe = to_vertical_vector(hb[1:m:2])
+    hao = _to_vertical_vector(ha[0:m:2])
+    hae = _to_vertical_vector(ha[1:m:2])
+    hbo = _to_vertical_vector(hb[0:m:2])
+    hbe = _to_vertical_vector(hb[1:m:2])
     t = np.arange(5, r+2*m-2, 4)
     r2 = r/2;
     Y = np.zeros((r2,c))
@@ -200,10 +200,10 @@ def colifilt(X, ha, hb):
        
         # Select odd and even samples from ha and hb. Note that due to 0-indexing
         # 'odd' and 'even' are not perhaps what you might expect them to be.
-        hao = to_vertical_vector(ha[0:m:2])
-        hae = to_vertical_vector(ha[1:m:2])
-        hbo = to_vertical_vector(hb[0:m:2])
-        hbe = to_vertical_vector(hb[1:m:2])
+        hao = _to_vertical_vector(ha[0:m:2])
+        hae = _to_vertical_vector(ha[1:m:2])
+        hbo = _to_vertical_vector(hb[0:m:2])
+        hbe = _to_vertical_vector(hb[1:m:2])
        
         s = np.arange(0,r*2,4)
        
@@ -227,10 +227,10 @@ def colifilt(X, ha, hb):
        
         # Select odd and even samples from ha and hb. Note that due to 0-indexing
         # 'odd' and 'even' are not perhaps what you might expect them to be.
-        hao = to_vertical_vector(ha[0:m:2])
-        hae = to_vertical_vector(ha[1:m:2])
-        hbo = to_vertical_vector(hb[0:m:2])
-        hbe = to_vertical_vector(hb[1:m:2])
+        hao = _to_vertical_vector(ha[0:m:2])
+        hae = _to_vertical_vector(ha[1:m:2])
+        hbo = _to_vertical_vector(hb[0:m:2])
+        hbe = _to_vertical_vector(hb[1:m:2])
        
         s = np.arange(0,r*2,4)
        

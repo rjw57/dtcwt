@@ -1,7 +1,8 @@
 import os
 
 import numpy as np
-from dtcwt import colfilter, biort, qshift
+from dtcwt import biort, qshift
+from dtcwt.lowlevel import colfilter
 
 def setup():
     global lena

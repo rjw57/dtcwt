@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-from dtcwt import coldfilt
+from dtcwt.lowlevel import coldfilt
 
 from nose.tools import raises
 

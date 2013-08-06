@@ -315,16 +315,15 @@ def c2q(w,gain):
     sw = w.shape
     x = np.zeros((w.shape[0]*2, w.shape[1]*2))
 
-    if np.any(w[:] != 0) and np.any(gain[:] != 0):
-        sc = np.sqrt(0.5) * gain
-        P = w[:,:,0]*sc[0] + w[:,:,1]*sc[1]
-        Q = w[:,:,0]*sc[0] - w[:,:,1]*sc[1]
+    sc = np.sqrt(0.5) * gain
+    P = w[:,:,0]*sc[0] + w[:,:,1]*sc[1]
+    Q = w[:,:,0]*sc[0] - w[:,:,1]*sc[1]
 
-        # Recover each of the 4 corners of the quads.
-        x[0::2, 0::2] = np.real(P)  # a = (A+C)*sc
-        x[0::2, 1::2] = np.imag(P)  # b = (B+D)*sc
-        x[1::2, 0::2] = np.imag(Q)  # c = (B-D)*sc
-        x[1::2, 1::2] = -np.real(Q) # d = (C-A)*sc
+    # Recover each of the 4 corners of the quads.
+    x[0::2, 0::2] = np.real(P)  # a = (A+C)*sc
+    x[0::2, 1::2] = np.imag(P)  # b = (B+D)*sc
+    x[1::2, 0::2] = np.imag(Q)  # c = (B-D)*sc
+    x[1::2, 1::2] = -np.real(Q) # d = (C-A)*sc
 
     return x
 

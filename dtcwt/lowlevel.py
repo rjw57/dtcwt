@@ -54,16 +54,13 @@ def colfilter(X, h):
     m = h.shape[0]
     m2 = np.fix(m*0.5)
 
-    if np.any(np.nonzero(X[:])[0]):
-        # Symmetrically extend with repeat of end samples.
-	# Use 'reflect' so r < m2 works OK.
-        xe = reflect(np.arange(-m2, r+m2, dtype=np.int), -0.5, r-0.5)
+    # Symmetrically extend with repeat of end samples.
+    # Use 'reflect' so r < m2 works OK.
+    xe = reflect(np.arange(-m2, r+m2, dtype=np.int), -0.5, r-0.5)
 
-        # Perform filtering on the columns of the extended matrix X(xe,:), keeping
-        # only the 'valid' output samples, so Y is the same size as X if m is odd.
-        Y = convolve2d(X[xe,:], h, 'valid')
-    else:
-        Y = np.zeros((r+1-(m%2), c))
+    # Perform filtering on the columns of the extended matrix X(xe,:), keeping
+    # only the 'valid' output samples, so Y is the same size as X if m is odd.
+    Y = convolve2d(X[xe,:], h, 'valid')
 
     return Y
 

@@ -3,9 +3,17 @@ from scipy.io import loadmat
 
 DATADIR = os.path.join(os.path.dirname(__file__), 'data')
 
+COEFF_CACHE = {}
+
 def _load_from_file(basename, varnames):
     filename = os.path.join(DATADIR, basename + '.mat')
-    mat = loadmat(filename)
+
+    try:
+        mat = COEFF_CACHE[filename]
+    except KeyError:
+        mat = loadmat(filename)
+        COEFF_CACHE[filename] = mat
+
     try:
         return tuple(mat[k] for k in varnames)
     except KeyError:

@@ -24,14 +24,17 @@ def reflect(x, minx, maxx):
     y = np.array(x, copy=True)
 
     # Reflect y in maxx.
-    y[y > maxx] = 2*maxx - y[y > maxx]
+    t = y > maxx
+    y[t] = 2*maxx - y[t]
 
     while np.any(y < minx):
         # Reflect y in minx.
-        y[y < minx] = 2*minx - y[y < minx]
+        t = y < minx
+        y[t] = 2*minx - y[t]
 
         # Reflect y in maxx.
-        y[y > maxx] = 2*maxx - y[y > maxx]
+        t = y > maxx
+        y[t] = 2*maxx - y[t]
 
     return y
 

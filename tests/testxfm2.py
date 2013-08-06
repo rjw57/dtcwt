@@ -1,4 +1,5 @@
 import os
+from nose.tools import raises
 
 import numpy as np
 from dtcwt import dtwavexfm2
@@ -16,8 +17,33 @@ def test_lena_loaded():
 def test_simple():
     Yl, Yh = dtwavexfm2(lena)
 
+def test_1d():
+    Yl, Yh = dtwavexfm2(lena[0,:])
+
+@raises(ValueError)
+def test_3d():
+    Yl, Yh = dtwavexfm2(np.dstack((lena, lena)))
+
 def test_simple_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(lena, include_scale=True)
+
+def test_odd_rows():
+    Yl, Yh = dtwavexfm2(lena[:509,:])
+
+def test_odd_rows_w_scale():
+    Yl, Yh, Yscale = dtwavexfm2(lena[:509,:], include_scale=True)
+
+def test_odd_cols():
+    Yl, Yh = dtwavexfm2(lena[:,:509])
+
+def test_odd_cols_w_scale():
+    Yl, Yh, Yscale = dtwavexfm2(lena[:509,:509], include_scale=True)
+
+def test_odd_rows_and_cols():
+    Yl, Yh = dtwavexfm2(lena[:,:509])
+
+def test_odd_rows_and_cols_w_scale():
+    Yl, Yh, Yscale = dtwavexfm2(lena[:509,:509], include_scale=True)
 
 def test_0_levels():
     Yl, Yh = dtwavexfm2(lena, nlevels=0)

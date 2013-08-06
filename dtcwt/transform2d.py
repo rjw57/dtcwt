@@ -47,6 +47,8 @@ def dtwavexfm2(X, nlevels=3, biort='near_sym_a', qshift='qshift_a', include_scal
 
     """
 
+    X = np.atleast_2d(X)
+
     # Try to load coefficients if biort is a string parameter
     if isinstance(biort, basestring):
         h0o, g0o, h1o, g1o = _biort(biort)
@@ -63,7 +65,7 @@ def dtwavexfm2(X, nlevels=3, biort='near_sym_a', qshift='qshift_a', include_scal
     
     if len(X.shape) >= 3:
         raise ValueError('The entered image is {0}, please enter each image slice separately.'.
-                format('x'.join(X.shape)))
+                format('x'.join(list(str(s) for s in X.shape))))
 
     # The next few lines of code check to see if the image is odd in size, if so an extra ...
     # row/column will be added to the bottom/right of the image
@@ -71,12 +73,12 @@ def dtwavexfm2(X, nlevels=3, biort='near_sym_a', qshift='qshift_a', include_scal
     initial_col_extend = 0
     if original_size[0] % 2 != 0:
         # if X.shape[0] is not divisable by 2 then we need to extend X by adding a row at the bottom
-        X = np.vstack(X, X[-1,:])  # Any further extension will be done in due course.
+        X = np.vstack((X, X[-1,:]))  # Any further extension will be done in due course.
         initial_row_extend = 1;
 
     if original_size[1] % 2 != 0:
         # if X.shape[1] is not divisable by 2 then we need to extend X by adding a col to the left
-        X = np.hstack(X, X[:,-1])
+        X = np.hstack((X, np.atleast_2d(X[:,-1]).T))
         initial_col_extend = 1
     
     extended_size = X.shape
@@ -118,7 +120,7 @@ def dtwavexfm2(X, nlevels=3, biort='near_sym_a', qshift='qshift_a', include_scal
 
             if col_size % 4 != 0:
                 # Extend by 2 cols if no. of cols of LoLo are not divisable by 4
-                LoLo = np.hstack((LoLo[:,0], LoLo, LoLo[:,-1]))
+                LoLo = np.hstack((np.atleast_2d(LoLo[:,0]).T, LoLo, np.atleast_2d(LoLo[:,-1]).T))
          
             # Do even Qshift filters on rows.
             Lo = coldfilt(LoLo,h0b,h0a).T
@@ -139,19 +141,22 @@ def dtwavexfm2(X, nlevels=3, biort='near_sym_a', qshift='qshift_a', include_scal
     
     if initial_row_extend == 1 and initial_col_extend == 1:
         logging.warn('The image entered is now a {0} NOT a {1}.'.format(
-            'x'.join(extended_size), 'x'.join(orginal_size)))
+            'x'.join(list(str(s) for s in extended_size)),
+            'x'.join(list(str(s) for s in original_size))))
         logging.warn(
             'The bottom row and rightmost column have been duplicated, prior to decomposition.')
 
     if initial_row_extend == 1 and initial_col_extend == 0:
         logging.warn('The image entered is now a {0} NOT a {1}.'.format(
-            'x'.join(extended_size), 'x'.join(orginal_size)))
+            'x'.join(list(str(s) for s in extended_size)),
+            'x'.join(list(str(s) for s in original_size))))
         logging.warn(
             'The bottom row has been duplicated, prior to decomposition.')
 
     if initial_row_extend == 0 and initial_col_extend == 1:
         logging.warn('The image entered is now a {0} NOT a {1}.'.format(
-            'x'.join(extended_size), 'x'.join(orginal_size)))
+            'x'.join(list(str(s) for s in extended_size)),
+            'x'.join(list(str(s) for s in original_size))))
         logging.warn(
             'The rightmost column has been duplicated, prior to decomposition.')
 

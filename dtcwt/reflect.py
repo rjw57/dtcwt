@@ -12,7 +12,7 @@ def reflect(x, minx, maxx):
     """
 
     # Copy x to avoid in-place modification
-    y = np.copy(x)
+    y = np.array(x, copy=True)
 
     # Reflect y in maxx.
     y[y > maxx] = 2*maxx - y[y > maxx]

@@ -20,4 +20,13 @@ def test_linear_ramp_values():
     assert np.any(r)
     assert np.all(reflected[r] == ramp[r])
 
+def test_non_array_input():
+    ramp = np.linspace(-100, 100, 500).tolist()
+    reflected = reflect(ramp, 30, 40)
+
+    # Check boundaries
+    assert not np.any(reflected < 30)
+    assert not np.any(reflected > 40)
+
+
 # vim:sw=4:sts=4:et

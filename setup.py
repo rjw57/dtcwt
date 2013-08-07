@@ -36,7 +36,7 @@ setup(
         'sphinx','setuptools','docutils',
     ],
 
-    install_requires=['numpy','scipy',],
+    install_requires=['numpy',],
 
     command_options = {
         'build_sphinx': {

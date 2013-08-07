@@ -4,5 +4,5 @@ python:
 install:
     - pip install .
 script:
-    - nosetests
+    - python setup.py nosetests
 

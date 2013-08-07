@@ -10,20 +10,19 @@ def read(fname):
 
 setup(
     name = "dtcwt",
-    version = "0.0.1",
+    version = "0.1",
     author = "Rich Wareham",
     author_email = "rich.dtcwt@richwareham.com",
-    description = ("An demonstration of how to create, document, and publish "
-                                   "to the cheese shop a5 pypi.org."),
-    license = "BSD",
-    keywords = "example documentation tutorial",
-    url = "http://packages.python.org/an_example_pypi_project",
+    description = ("A port of the Dual-Tree Complex Wavelet Transform MATLAB toolbox."),
+    license = "Free To Use But Restricted",
+    keywords = "numpy, wavelet, complex wavelet, DT-CWT",
+    url = "http://packages.python.org/dtcwt",
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     long_description=read('README.rst'),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Topic :: Utilities",
-        "License :: OSI Approved :: BSD License",
+        "License :: Free To Use But Restricted",
     ],
 
     setup_requires=['nose>=1.0','coverage','sphinx',],

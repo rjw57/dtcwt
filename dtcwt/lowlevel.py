@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.signal import convolve2d
 
-def _to_vertical_vector(v):
-    """Return v as a 2d vertical vector."""
+def as_column_vector(v):
+    """Return v as a column vector with shape (N,1)."""
     v = np.atleast_2d(v)
     if v.shape[0] == 1:
         return v.T
@@ -34,7 +34,7 @@ def _column_convolve(X, h):
 
     # For small arrays, convolving directly is often faster
     if full_size < 32:
-        return convolve2d(X, _to_vertical_vector(h), 'valid')
+        return convolve2d(X, as_column_vector(h), 'valid')
 
     # Always use 2**n-sized FFT
     fsize = 2 ** np.ceil(np.log2(full_size)).astype(int)
@@ -96,7 +96,7 @@ def colfilter(X, h):
     
     # Interpret all inputs as arrays
     X = np.array(X)
-    h = _to_vertical_vector(h)
+    h = as_column_vector(h)
 
     r, c = X.shape
     m = h.shape[0]
@@ -161,10 +161,10 @@ def coldfilt(X, ha, hb):
 
     # Select odd and even samples from ha and hb. Note that due to 0-indexing
     # 'odd' and 'even' are not perhaps what you might expect them to be.
-    hao = _to_vertical_vector(ha[0:m:2])
-    hae = _to_vertical_vector(ha[1:m:2])
-    hbo = _to_vertical_vector(hb[0:m:2])
-    hbe = _to_vertical_vector(hb[1:m:2])
+    hao = as_column_vector(ha[0:m:2])
+    hae = as_column_vector(ha[1:m:2])
+    hbo = as_column_vector(hb[0:m:2])
+    hbe = as_column_vector(hb[1:m:2])
     t = np.arange(5, r+2*m-2, 4)
     r2 = r/2;
     Y = np.zeros((r2,c))
@@ -245,10 +245,10 @@ def colifilt(X, ha, hb):
        
         # Select odd and even samples from ha and hb. Note that due to 0-indexing
         # 'odd' and 'even' are not perhaps what you might expect them to be.
-        hao = _to_vertical_vector(ha[0:m:2])
-        hae = _to_vertical_vector(ha[1:m:2])
-        hbo = _to_vertical_vector(hb[0:m:2])
-        hbe = _to_vertical_vector(hb[1:m:2])
+        hao = as_column_vector(ha[0:m:2])
+        hae = as_column_vector(ha[1:m:2])
+        hbo = as_column_vector(hb[0:m:2])
+        hbe = as_column_vector(hb[1:m:2])
        
         s = np.arange(0,r*2,4)
        
@@ -272,10 +272,10 @@ def colifilt(X, ha, hb):
        
         # Select odd and even samples from ha and hb. Note that due to 0-indexing
         # 'odd' and 'even' are not perhaps what you might expect them to be.
-        hao = _to_vertical_vector(ha[0:m:2])
-        hae = _to_vertical_vector(ha[1:m:2])
-        hbo = _to_vertical_vector(hb[0:m:2])
-        hbe = _to_vertical_vector(hb[1:m:2])
+        hao = as_column_vector(ha[0:m:2])
+        hae = as_column_vector(ha[1:m:2])
+        hbo = as_column_vector(hb[0:m:2])
+        hbe = as_column_vector(hb[1:m:2])
        
         s = np.arange(0,r*2,4)
        

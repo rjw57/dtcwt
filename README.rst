@@ -22,7 +22,9 @@ This will also write test-coverage information to the ``cover/`` directory.
 Further documentation
 `````````````````````
 
-More documentation is available via the Sphinx documentation system::
+There is `more documentation <https://dtcwt.readthedocs.org/en/latest/>`_
+available online and you can build your own copy via the Sphinx documentation
+system::
 
     $ python setup.py build_sphinx
 

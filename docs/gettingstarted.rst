@@ -77,6 +77,8 @@ wavelet coefficients::
         subplot(2, 3, slice_idx)
         imshow(np.angle(Yl[1][:,:,slice_idx]), cmap=cm.hsv, clim=(-np.pi, np.pi))
 
+    show()
+
 If the library is correctly installed and you also have matplotlib installed, you should see these three figures:
 
 .. image:: lena-1.png

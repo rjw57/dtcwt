@@ -16,7 +16,7 @@ setup(
     description = ("A port of the Dual-Tree Complex Wavelet Transform MATLAB toolbox."),
     license = "Free To Use But Restricted",
     keywords = "numpy, wavelet, complex wavelet, DT-CWT",
-    url = "http://packages.python.org/dtcwt",
+    url = "https://github.com/rjw57/dtcwt",
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     long_description=read('README.rst'),
     classifiers=[

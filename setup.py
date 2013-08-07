@@ -9,12 +9,11 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 # IMPORTANT: before release, remove the 'devN' tag from the release name
-name = 'dtcwt'
 version = '0.3'
 release = '0.3.0.dev1'
 
 setup(
-    name = name,
+    name = 'dtcwt',
     version = release,
     author = "Rich Wareham",
     author_email = "rich.dtcwt@richwareham.com",
@@ -38,7 +37,6 @@ setup(
 
     command_options = {
         'build_sphinx': {
-            'project': ( 'setup.py', name ),
             'version': ( 'setup.py', version ),
             'release': ( 'setup.py', release ),
         },

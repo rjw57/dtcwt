@@ -9,6 +9,9 @@ def _to_vertical_vector(v):
     else:
         return v
 
+def _column_convolve(X, h):
+    return convolve2d(X, _to_vertical_vector(h), 'valid')
+
 def reflect(x, minx, maxx):
     """Reflect the values in matrix x about the scalar values minx and maxx.
     Hence a vector x containing a long linearly increasing series is converted
@@ -63,7 +66,7 @@ def colfilter(X, h):
 
     # Perform filtering on the columns of the extended matrix X(xe,:), keeping
     # only the 'valid' output samples, so Y is the same size as X if m is odd.
-    Y = convolve2d(X[xe,:], h, 'valid')
+    Y = _column_convolve(X[xe,:], h)
 
     return Y
 
@@ -132,8 +135,8 @@ def coldfilt(X, ha, hb):
        s1 = s2 + 1
     
     # Perform filtering on columns of extended matrix X(xe,:) in 4 ways. 
-    Y[s1,:] = convolve2d(X[xe[t-1],:],hao,'valid') + convolve2d(X[xe[t-3],:],hae,'valid')
-    Y[s2,:] = convolve2d(X[xe[t],:],hbo,'valid') + convolve2d(X[xe[t-2],:],hbe,'valid')
+    Y[s1,:] = _column_convolve(X[xe[t-1],:],hao) + _column_convolve(X[xe[t-3],:],hae)
+    Y[s2,:] = _column_convolve(X[xe[t],:],hbo) + _column_convolve(X[xe[t-2],:],hbe)
 
     return Y
 
@@ -207,10 +210,10 @@ def colifilt(X, ha, hb):
        
         s = np.arange(0,r*2,4)
        
-        Y[s,:]   = convolve2d(X[xe[tb-2],:],hae,'valid')
-        Y[s+1,:] = convolve2d(X[xe[ta-2],:],hbe,'valid')
-        Y[s+2,:] = convolve2d(X[xe[tb  ],:],hao,'valid')
-        Y[s+3,:] = convolve2d(X[xe[ta  ],:],hbo,'valid')
+        Y[s,:]   = _column_convolve(X[xe[tb-2],:],hae)
+        Y[s+1,:] = _column_convolve(X[xe[ta-2],:],hbe)
+        Y[s+2,:] = _column_convolve(X[xe[tb  ],:],hao)
+        Y[s+3,:] = _column_convolve(X[xe[ta  ],:],hbo)
     else:
         # m/2 is odd, so set up t to start on b samples.
         # Set up vector for symmetric extension of X with repeated end samples.
@@ -234,10 +237,10 @@ def colifilt(X, ha, hb):
        
         s = np.arange(0,r*2,4)
        
-        Y[s,:]   = convolve2d(X[xe[tb],:],hao,'valid')
-        Y[s+1,:] = convolve2d(X[xe[ta],:],hbo,'valid')
-        Y[s+2,:] = convolve2d(X[xe[tb],:],hae,'valid')
-        Y[s+3,:] = convolve2d(X[xe[ta],:],hbe,'valid')
+        Y[s,:]   = _column_convolve(X[xe[tb],:],hao)
+        Y[s+1,:] = _column_convolve(X[xe[ta],:],hbo)
+        Y[s+2,:] = _column_convolve(X[xe[tb],:],hae)
+        Y[s+3,:] = _column_convolve(X[xe[ta],:],hbe)
 
     return Y
 

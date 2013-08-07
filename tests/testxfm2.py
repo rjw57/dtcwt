@@ -3,7 +3,7 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm2
+from dtcwt import dtwavexfm2, biort, qshift
 
 def setup():
     global lena
@@ -19,6 +19,10 @@ def test_lena_loaded():
 def test_simple():
     Yl, Yh = dtwavexfm2(lena)
 
+@attr('transform')
+def test_specific_wavelet():
+    Yl, Yh = dtwavexfm2(lena, biort=biort('antonini'), qshift=qshift('qshift_06'))
+
 def test_1d():
     Yl, Yh = dtwavexfm2(lena[0,:])
 
@@ -28,7 +32,6 @@ def test_3d():
 
 def test_simple_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(lena, include_scale=True)
-
 def test_odd_rows():
     Yl, Yh = dtwavexfm2(lena[:509,:])
 

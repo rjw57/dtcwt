@@ -6,61 +6,46 @@ from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
-    """Function to perform a n-level DTCWT-2D decompostion on a 2D matrix X
+    """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
 
-    Yl, Yh = dtwavexfm2(X, nlevels, biort, qshift)
-    Yl, Yh, Yscale = dtwavexfm2(X, nlevels, biort, qshift, include_scale=True)
+    :param X: 2D real matrix/Image of shape (N, M)
+    :param nlevels: Number of levels of wavelet decomposition
+    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
 
-        X -> 2D real matrix/Image of shape (N, M)
+    :returns Yl: The real lowpass image from the final level
+    :returns Yh: A tuple containing the (N, M, 6) shape complex highpass subimages for each level.
+    :returns Yscale: If *include_scale* is True, a tuple containing real lowpass coefficients for every scale.
 
-        nlevels -> No. of levels of wavelet decomposition
+    If *biort* or *qshift* are strings, they are used as an argument to the
+    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+    interpreted as tuples of vectors giving filter coefficients. In the *biort*
+    case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
+    be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
 
-        biort ->  'antonini'   => Antonini 9,7 tap filters.
-                  'legall'     => LeGall 5,3 tap filters.
-                  'near_sym_a' => Near-Symmetric 5,7 tap filters.
-                  'near_sym_b' => Near-Symmetric 13,19 tap filters.
+    Example::
 
-        qshift -> 'qshift_06' => Quarter Sample Shift Orthogonal (Q-Shift) 10,10 tap filters, 
-                                 (only 6,6 non-zero taps).
-                  'qshift_a' =>  Q-shift 10,10 tap filters,
-                                 (with 10,10 non-zero taps, unlike qshift_06).
-                  'qshift_b' => Q-Shift 14,14 tap filters.
-                  'qshift_c' => Q-Shift 16,16 tap filters.
-                  'qshift_d' => Q-Shift 18,18 tap filters.
+        # Performs a 3-level transform on the real image X using the 13,19-tap
+        # filters for level 1 and the Q-shift 14-tap filters for levels >= 2.
+        Yl, Yh = dtwavexfm2(X, 3, 'near_sym_b', 'qshift_b')
 
-
-        Yl     -> The real lowpass image from the final level
-        Yh     -> A tuple containing the (N, M, 6) shape complex highpass subimages for each level.
-        Yscale -> This is an OPTIONAL output argument, that is a tuple containing 
-                  real lowpass coefficients for every scale. Only returned if include_scale
-                  is True.
-
-    If biort or qshift are not strings, there are interpreted as tuples of
-    vectors giving filter coefficients. In the biort case, this shold be (h0o,
-    g0o, h1o, g1o). In the qshift case, this should be (h0a, h0b, g0a, g0b,
-    h1a, h1b, g1a, g1b).
-
-    Example: Yl,Yh = dtwavexfm2(X,3,'near_sym_b','qshift_b')
-    performs a 3-level transform on the real image X using the 13,19-tap filters 
-    for level 1 and the Q-shift 14-tap filters for levels >= 2.
-
-    Nick Kingsbury and Cian Shaffrey
-    Cambridge University, Sept 2001
+    .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
+    .. codeauthor:: Nick Kingsbury, Cambridge University, Sept 2001
+    .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
 
     """
-
     X = np.atleast_2d(X)
 
     # Try to load coefficients if biort is a string parameter
-    if isinstance(biort, basestring):
+    try:
         h0o, g0o, h1o, g1o = _biort(biort)
-    else:
+    except TypeError:
         h0o, g0o, h1o, g1o = biort
 
     # Try to load coefficients if qshift is a string parameter
-    if isinstance(qshift, basestring):
+    try:
         h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = _qshift(qshift)
-    else:
+    except TypeError:
         h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift
 
     original_size = X.shape
@@ -113,31 +98,30 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         if include_scale:
             Yscale[0] = LoLo
 
-    if nlevels >= 2:
-        for level in xrange(1, nlevels):
-            row_size, col_size = LoLo.shape
-            if row_size % 4 != 0:
-                # Extend by 2 rows if no. of rows of LoLo are not divisable by 4
-                LoLo = np.vstack((LoLo[0,:], LoLo, LoLo[-1,:]))
+    for level in xrange(1, nlevels):
+        row_size, col_size = LoLo.shape
+        if row_size % 4 != 0:
+            # Extend by 2 rows if no. of rows of LoLo are not divisable by 4
+            LoLo = np.vstack((LoLo[0,:], LoLo, LoLo[-1,:]))
 
-            if col_size % 4 != 0:
-                # Extend by 2 cols if no. of cols of LoLo are not divisable by 4
-                LoLo = np.hstack((np.atleast_2d(LoLo[:,0]).T, LoLo, np.atleast_2d(LoLo[:,-1]).T))
+        if col_size % 4 != 0:
+            # Extend by 2 cols if no. of cols of LoLo are not divisable by 4
+            LoLo = np.hstack((np.atleast_2d(LoLo[:,0]).T, LoLo, np.atleast_2d(LoLo[:,-1]).T))
 
-            # Do even Qshift filters on rows.
-            Lo = coldfilt(LoLo,h0b,h0a).T
-            Hi = coldfilt(LoLo,h1b,h1a).T
+        # Do even Qshift filters on rows.
+        Lo = coldfilt(LoLo,h0b,h0a).T
+        Hi = coldfilt(LoLo,h1b,h1a).T
 
-            # Do even Qshift filters on columns.
-            LoLo = coldfilt(Lo,h0b,h0a).T
+        # Do even Qshift filters on columns.
+        LoLo = coldfilt(Lo,h0b,h0a).T
 
-            Yh[level] = np.zeros((LoLo.shape[0]/2, LoLo.shape[1]/2, 6), dtype=np.complex64)
-            Yh[level][:,:,[0, 5]] = q2c(coldfilt(Hi,h0b,h0a).T)  # Horizontal
-            Yh[level][:,:,[2, 3]] = q2c(coldfilt(Lo,h1b,h1a).T)  # Vertical
-            Yh[level][:,:,[1, 4]] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
+        Yh[level] = np.zeros((LoLo.shape[0]/2, LoLo.shape[1]/2, 6), dtype=np.complex64)
+        Yh[level][:,:,[0, 5]] = q2c(coldfilt(Hi,h0b,h0a).T)  # Horizontal
+        Yh[level][:,:,[2, 3]] = q2c(coldfilt(Lo,h1b,h1a).T)  # Vertical
+        Yh[level][:,:,[1, 4]] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
 
-            if include_scale:
-                Yscale[0] = LoLo
+        if include_scale:
+            Yscale[0] = LoLo
 
     Yl = LoLo
 
@@ -169,50 +153,39 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
 
 
 def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
-    """
-    Function to perform an n-level dual-tree complex wavelet (DTCWT) 2-D
+    """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D
     reconstruction.
 
-    Z = dtwaveifm2(Yl,Yh,biort,qshift,gain_mask)
+    :param Yl: The real lowpass subband from the final level
+    :param Yh: A sequence containing the complex highpass subband for each level.
+    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+    :param gain_mask: Gain to be applied to each subband.
 
-        Yl -> The real lowpass image from the final level
-        Yh -> A tuple containing the 6 complex highpass subimages for each level.
+    :returns Z: Reconstructed real image matrix.
 
-        biort ->  'antonini'   => Antonini 9,7 tap filters.
-                  'legall'     => LeGall 5,3 tap filters.
-                  'near_sym_a' => Near-Symmetric 5,7 tap filters.
-                  'near_sym_b' => Near-Symmetric 13,19 tap filters.
+    The (*d*, *l*)-th element of *gain_mask* is gain for subband with direction
+    *d* at level *l*. If gain_mask[d,l] == 0, no computation is performed for
+    band (d,l). Default *gain_mask* is all ones. Note that both *d* and *l* are
+    zero-indexed.
 
-        qshift -> 'qshift_06' => Quarter Sample Shift Orthogonal (Q-Shift) 10,10 tap filters, 
-                                 (only 6,6 non-zero taps).
-                  'qshift_a' =>  Q-shift 10,10 tap filters,
-                                 (with 10,10 non-zero taps, unlike qshift_06).
-                  'qshift_b' => Q-Shift 14,14 tap filters.
-                  'qshift_c' => Q-Shift 16,16 tap filters.
-                  'qshift_d' => Q-Shift 18,18 tap filters.
+    If *biort* or *qshift* are strings, they are used as an argument to the
+    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+    interpreted as tuples of vectors giving filter coefficients. In the *biort*
+    case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
+    be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
 
-        gain_mask -> Gain to be applied to each subband. 
-                     gain_mask(d,l) is gain for subband with direction d at level l.
-                     If gain_mask(d,l) == 0, no computation is performed for band (d,l).
-                     Default gain_mask = ones(6,length(Yh)). Note that both d and l
-                     are zero-indexed in this case.
+    Example::
 
-        Z -> Reconstructed real image matrix
+        # Performs a 3-level reconstruction from Yl,Yh using the 13,19-tap
+        # filters for level 1 and the Q-shift 14-tap filters for levels >= 2.
+        Z = dtwaveifm2(Yl, Yh, 'near_sym_b', 'qshift_b')
 
-    If biort or qshift are not strings, there are interpreted as tuples of
-    vectors giving filter coefficients. In the biort case, this shold be (h0o,
-    g0o, h1o, g1o). In the qshift case, this should be (h0a, h0b, g0a, g0b,
-    h1a, h1b, g1a, g1b).
-
-    For example:  Z = dtwaveifm2(Yl,Yh,'near_sym_b','qshift_b')
-    performs a 3-level reconstruction from Yl,Yh using the 13,19-tap filters 
-    for level 1 and the Q-shift 14-tap filters for levels >= 2.
-
-    Nick Kingsbury and Cian Shaffrey
-    Cambridge University, May 2002
+    .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
+    .. codeauthor:: Nick Kingsbury, Cambridge University, May 2002
+    .. codeauthor:: Cian Shaffrey, Cambridge University, May 2002
 
     """
-
     a = len(Yh) # No of levels.
 
     if gain_mask is None:
@@ -221,15 +194,15 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
     gain_mask = np.array(gain_mask)
 
     # Try to load coefficients if biort is a string parameter
-    if isinstance(biort, basestring):
+    try:
         h0o, g0o, h1o, g1o = _biort(biort)
-    else:
+    except TypeError:
         h0o, g0o, h1o, g1o = biort
 
     # Try to load coefficients if qshift is a string parameter
-    if isinstance(qshift, basestring):
+    try:
         h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = _qshift(qshift)
-    else:
+    except TypeError:
         h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift
 
     current_level = a

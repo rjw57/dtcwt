@@ -20,7 +20,6 @@ def test_non_multiple_of_two():
     vec = np.random.rand(631)
     Yl, Yh = dtwavexfm(vec, 1)
 
-@raises(ValueError)
 def test_2d():
     Yl, Yh = dtwavexfm(np.random.rand(10,10))
 

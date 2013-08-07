@@ -13,4 +13,12 @@ def test_reconstruct():
     vec_recon = dtwaveifm(Yl, Yh)
     assert np.all(np.abs(vec_recon - vec) < 1e-7)
 
+@attr('transform')
+def test_reconstruct_2d():
+    # Reconstruction up to tolerance
+    vec = np.random.rand(630, 20)
+    Yl, Yh = dtwavexfm(vec)
+    vec_recon = dtwaveifm(Yl, Yh)
+    assert np.all(np.abs(vec_recon - vec) < 1e-7)
+
 # vim:sw=4:sts=4:et

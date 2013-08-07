@@ -1,17 +1,17 @@
 import os
-from scipy.io import loadmat
+from numpy import load
 
 DATADIR = os.path.join(os.path.dirname(__file__), 'data')
 
 COEFF_CACHE = {}
 
 def _load_from_file(basename, varnames):
-    filename = os.path.join(DATADIR, basename + '.mat')
+    filename = os.path.join(DATADIR, basename + '.npz')
 
     try:
         mat = COEFF_CACHE[filename]
     except KeyError:
-        mat = loadmat(filename)
+        mat = load(filename)
         COEFF_CACHE[filename] = mat
 
     try:

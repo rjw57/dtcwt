@@ -28,7 +28,7 @@ setup(
         "License :: Free To Use But Restricted",
     ],
     package_data = {
-        'dtcwt': ['data/*.mat',],
+        'dtcwt': ['data/*.npz',],
     },
 
     setup_requires=[

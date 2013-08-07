@@ -21,7 +21,6 @@ setup(
     long_description=read('README.rst'),
     classifiers=[
         "Development Status :: 3 - Alpha",
-        "Topic :: Utilities",
         "License :: Free To Use But Restricted",
     ],
     include_package_data = True,

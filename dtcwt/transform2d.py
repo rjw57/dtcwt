@@ -2,12 +2,10 @@ import numpy as np
 import logging
 
 from dtcwt import biort as _biort, qshift as _qshift
+from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 
-BIORT_DEFAULT='near_sym_a'
-QSHIFT_DEFAULT='qshift_a'
-
-def dtwavexfm2(X, nlevels=3, biort=BIORT_DEFAULT, qshift=QSHIFT_DEFAULT, include_scale=False):
+def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Function to perform a n-level DTCWT-2D decompostion on a 2D matrix X
 
     Yl, Yh = dtwavexfm2(X, nlevels, biort, qshift)
@@ -170,7 +168,7 @@ def dtwavexfm2(X, nlevels=3, biort=BIORT_DEFAULT, qshift=QSHIFT_DEFAULT, include
         return Yl, tuple(Yh)
 
 
-def dtwaveifm2(Yl,Yh,biort=BIORT_DEFAULT,qshift=QSHIFT_DEFAULT,gain_mask=None):
+def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
     """
     Function to perform an n-level dual-tree complex wavelet (DTCWT) 2-D
     reconstruction.

@@ -23,7 +23,9 @@ setup(
         "Development Status :: 3 - Alpha",
         "License :: Free To Use But Restricted",
     ],
-    include_package_data = True,
+    package_data = {
+	'dtcwt': ['data/*.mat',],
+    },
 
     setup_requires=['nose>=1.0','coverage','sphinx','setuptools-git >= 0.3',],
 

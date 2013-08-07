@@ -26,7 +26,7 @@ setup(
         "License :: OSI Approved :: BSD License",
     ],
 
-    setup_requires=['nose>=1.0',],
+    setup_requires=['nose>=1.0','coverage','sphinx',],
 
-    install_requires=['numpy','scipy','reikna',],
+    install_requires=['numpy','scipy',],
 )

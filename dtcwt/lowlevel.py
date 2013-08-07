@@ -9,8 +9,46 @@ def _to_vertical_vector(v):
     else:
         return v
 
+def _centered(arr, newsize):
+    # Return the center newsize portion of the array.
+    # (Shamelessly cribbed from scipy.)
+    newsize = np.asarray(newsize)
+    currsize = np.array(arr.shape)
+    startind = (currsize - newsize) // 2
+    endind = startind + newsize
+    myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
+    return arr[tuple(myslice)]
+
 def _column_convolve(X, h):
-    return convolve2d(X, _to_vertical_vector(h), 'valid')
+    """Convolve the columns of X with h returning only the 'valid' section,
+    i.e. those values unaffected by zero padding.
+
+    """
+    h = h.flatten()
+    h_size = h.shape[0]
+    full_size = X.shape[0] + h_size - 1
+
+    # For small arrays, convolving directly is often faster
+    if full_size < 32:
+        return convolve2d(X, _to_vertical_vector(h), 'valid')
+
+    # Always use 2**n-sized FFT
+    fsize = 2 ** np.ceil(np.log2(full_size)).astype(int)
+
+    # Take FFT down columns
+    Xfft = np.fft.rfft(X, n=fsize, axis=0)
+
+    # Take FFT of input vector
+    hfft = np.fft.rfft(h, n=fsize)
+
+    # Column-wise multiply. I.e. scale rows of Xfft by hfft
+    Xfft = Xfft * hfft[:,np.newaxis]
+
+    # Invert
+    Xconv = np.fft.irfft(Xfft, n=fsize, axis=0)[:full_size,:].real
+    Xvalid = _centered(Xconv, (abs(X.shape[0] - h_size) + 1, X.shape[1]))
+
+    return Xvalid
 
 def reflect(x, minx, maxx):
     """Reflect the values in matrix x about the scalar values minx and maxx.

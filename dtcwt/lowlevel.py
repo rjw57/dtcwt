@@ -73,16 +73,16 @@ def reflect(x, minx, maxx):
 
     # Reflect y in maxx.
     t = y > maxx
-    y[t] = 2*maxx - y[t]
+    y[t] = (2*maxx - y[t]).astype(y.dtype)
 
     while np.any(y < minx):
         # Reflect y in minx.
         t = y < minx
-        y[t] = 2*minx - y[t]
+        y[t] = (2*minx - y[t]).astype(y.dtype)
 
         # Reflect y in maxx.
         t = y > maxx
-        y[t] = 2*maxx - y[t]
+        y[t] = (2*maxx - y[t]).astype(y.dtype)
 
     return y
 

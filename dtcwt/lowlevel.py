@@ -178,11 +178,11 @@ def coldfilt(X, ha, hb):
     Y = np.zeros((r2,c))
 
     if np.sum(ha*hb) > 0:
-       s1 = np.arange(0, r2, 2)
-       s2 = s1 + 1
+       s1 = slice(0, r2, 2)
+       s2 = slice(1, r2, 2)
     else:
-       s2 = np.arange(0, r2, 2)
-       s1 = s2 + 1
+       s2 = slice(0, r2, 2)
+       s1 = slice(1, r2, 2)
     
     # Perform filtering on columns of extended matrix X(xe,:) in 4 ways. 
     Y[s1,:] = _column_convolve(X[xe[t-1],:],hao) + _column_convolve(X[xe[t-3],:],hae)

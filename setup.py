@@ -26,6 +26,8 @@ setup(
     classifiers=[
         "Development Status :: 3 - Alpha",
         "License :: Free To Use But Restricted",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 3",
     ],
     package_data = {
         'dtcwt': ['data/*.npz',],
@@ -33,7 +35,7 @@ setup(
 
     setup_requires=[ 'nose>=1.0', ],
 
-    install_requires=[ 'numpy', ],
+    install_requires=[ 'numpy', 'six', ],
 
     extras_require={
         'docs': [ 'sphinx', 'docutils', ],

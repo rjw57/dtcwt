@@ -2,7 +2,6 @@ language: python
 python:
     - "2.7"
 install:
-    - sudo apt-get install libblas-dev liblapack-dev gfortran
     - pip install .
 script:
     - python setup.py nosetests

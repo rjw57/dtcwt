@@ -1,5 +1,6 @@
 import os
 from nose.tools import raises
+from nose.plugins.attrib import attr
 
 import numpy as np
 from dtcwt import dtwavexfm2
@@ -14,6 +15,7 @@ def test_lena_loaded():
     assert lena.max() <= 1
     assert lena.dtype == np.float32
 
+@attr('transform')
 def test_simple():
     Yl, Yh = dtwavexfm2(lena)
 

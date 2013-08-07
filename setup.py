@@ -31,7 +31,7 @@ setup(
         'dtcwt': ['data/*.mat',],
     },
 
-    setup_requires=['nose>=1.0','coverage','sphinx','setuptools-git >= 0.3',],
+    setup_requires=['nose>=1.0','coverage','sphinx','setuptools','docutils',],
 
     install_requires=['numpy','scipy',],
 

@@ -26,6 +26,8 @@ setup(
     classifiers=[
         "Development Status :: 3 - Alpha",
         "License :: Free To Use But Restricted",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 3",
     ],
     package_data = {
         'dtcwt': ['data/*.npz',],

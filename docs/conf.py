@@ -19,6 +19,11 @@ from six.moves import configparser
 setup_cfg = configparser.ConfigParser()
 setup_cfg.read(os.path.join(os.path.dirname(__file__), '..', 'setup.cfg'))
 
+# Load some data from setup.cfg
+project = setup_cfg.get('metadata', 'name')
+version = setup_cfg.get('metadata', 'version')
+release = setup_cfg.get('metadata', 'version')
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -47,7 +52,6 @@ master_doc = 'index'
 
 # General information about the project.
 copyright = u'2013, Rich Wareham, Nick Kingsbury, Cian Shaffrey'
-project = 'dtcwt'
 
 # Project version and release are set in setup.py
 

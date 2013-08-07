@@ -28,5 +28,5 @@ setup(
 
     setup_requires=['nose>=1.0',],
 
-    install_requires=['numpy','scipy',],
+    install_requires=['numpy','scipy','reikna',],
 )

@@ -19,6 +19,10 @@ def _centered(arr, newsize):
     myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
     return arr[tuple(myslice)]
 
+# This is to allow easy replacement of these later with, possibly, GPU versions
+_rfft = np.fft.rfft
+_irfft = np.fft.irfft
+
 def _column_convolve(X, h):
     """Convolve the columns of X with h returning only the 'valid' section,
     i.e. those values unaffected by zero padding.
@@ -36,16 +40,16 @@ def _column_convolve(X, h):
     fsize = 2 ** np.ceil(np.log2(full_size)).astype(int)
 
     # Take FFT down columns
-    Xfft = np.fft.rfft(X, n=fsize, axis=0)
+    Xfft = _rfft(X, n=fsize, axis=0)
 
     # Take FFT of input vector
-    hfft = np.fft.rfft(h, n=fsize)
+    hfft = _rfft(h, n=fsize, axis=0)
 
     # Column-wise multiply. I.e. scale rows of Xfft by hfft
     Xfft = Xfft * hfft[:,np.newaxis]
 
     # Invert
-    Xconv = np.fft.irfft(Xfft, n=fsize, axis=0)[:full_size,:].real
+    Xconv = _irfft(Xfft, n=fsize, axis=0)[:full_size,:].real
     Xvalid = _centered(Xconv, (abs(X.shape[0] - h_size) + 1, X.shape[1]))
 
     return Xvalid

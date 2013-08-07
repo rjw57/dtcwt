@@ -25,7 +25,7 @@ This will also write test-coverage information to the ``cover/`` directory.
 Further documentation
 `````````````````````
 
-There is `more documentation <https://dtcwt.readthedocs.org/en/latest/>`_
+There is `more documentation <https://dtcwt.readthedocs.org/>`_
 available online and you can build your own copy via the Sphinx documentation
 system::
 

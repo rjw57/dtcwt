@@ -13,6 +13,12 @@
 
 import sys, os
 
+from six.moves import configparser
+
+# Load this project's setup.cfg
+setup_cfg = configparser.ConfigParser()
+setup_cfg.read(os.path.join(os.path.dirname(__file__), '..', 'setup.cfg'))
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.

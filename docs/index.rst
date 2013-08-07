@@ -1,23 +1,23 @@
-.. dtcwt documentation master file, created by
-   sphinx-quickstart2 on Tue Aug  6 17:24:42 2013.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+The dtcwt library
+=================
 
-Welcome to dtcwt's documentation!
-=================================
+This library provides support for computing 1D and 2D dual-tree complex wavelet
+transforms and their inverse in Python.
 
-Contents:
+Table of Contents
+`````````````````
 
 .. toctree::
     :maxdepth: 2
 
+    gettingstarted
     reference
 
-
 Indices and tables
-==================
+``````````````````
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 
+.. vim:sw=4:sts=4:et

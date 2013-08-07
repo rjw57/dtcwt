@@ -31,12 +31,15 @@ setup(
         'dtcwt': ['data/*.npz',],
     },
 
-    setup_requires=[
-        'nose>=1.0','coverage',
-        'sphinx','setuptools','docutils',
-    ],
+    setup_requires=[ 'nose>=1.0', ],
 
-    install_requires=['numpy',],
+    install_requires=[ 'numpy', ],
+
+    extras_require={
+        'docs': [ 'sphinx', 'docutils', ],
+    },
+
+    tests_require=[ 'coverage', ],
 
     command_options = {
         'build_sphinx': {

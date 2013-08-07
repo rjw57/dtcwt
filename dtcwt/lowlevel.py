@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.signal import convolve2d
 
 def as_column_vector(v):
     """Return *v* as a column vector with shape (N,1).
@@ -33,10 +32,6 @@ def _column_convolve(X, h):
     h = h.flatten()
     h_size = h.shape[0]
     full_size = X.shape[0] + h_size - 1
-
-    # For small arrays, convolving directly is often faster
-    if full_size < 32:
-        return convolve2d(X, as_column_vector(h), 'valid')
 
     # Always use 2**n-sized FFT
     fsize = 2 ** np.ceil(np.log2(full_size)).astype(int)

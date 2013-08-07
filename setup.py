@@ -8,9 +8,14 @@ from setuptools import setup, find_packages
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+# IMPORTANT: before release, remove the 'devN' tag from the release name
+name = 'dtcwt'
+version = '0.3'
+release = '0.3.0.dev1'
+
 setup(
-    name = "dtcwt",
-    version = "0.2.1",
+    name = name,
+    version = release,
     author = "Rich Wareham",
     author_email = "rich.dtcwt@richwareham.com",
     description = ("A port of the Dual-Tree Complex Wavelet Transform MATLAB toolbox."),
@@ -24,10 +29,20 @@ setup(
         "License :: Free To Use But Restricted",
     ],
     package_data = {
-	'dtcwt': ['data/*.mat',],
+        'dtcwt': ['data/*.mat',],
     },
 
     setup_requires=['nose>=1.0','coverage','sphinx','setuptools-git >= 0.3',],
 
     install_requires=['numpy','scipy',],
+
+    command_options = {
+        'build_sphinx': {
+            'project': ( 'setup.py', name ),
+            'version': ( 'setup.py', version ),
+            'release': ( 'setup.py', release ),
+        },
+    },
 )
+
+# vim:sw=4:sts=4:et

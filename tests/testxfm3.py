@@ -3,6 +3,7 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
+from dtcwt import dtwavexfm3, dtwaveifm3
 
 def setup():
     global sphere

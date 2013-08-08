@@ -1,8 +1,10 @@
 Example scripts
 ===============
 
-Showing direcional sensitivity of 3D transform
-----------------------------------------------
+.. _3d-directional-example:
+
+Showing 3D Directional Sensitivity
+----------------------------------
 
 The
 :download:`3d_dtcwt_directionality.py<../examples/3d_dtcwt_directionality.py>`

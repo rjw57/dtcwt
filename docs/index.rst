@@ -1,7 +1,7 @@
 The dtcwt library
 =================
 
-This library provides support for computing 1D and 2D dual-tree complex wavelet
+This library provides support for computing 1D, 2D and 3D dual-tree complex wavelet
 transforms and their inverse in Python.
 
 The interface is intentionally similar to the existing MATLAB dual-tree complex

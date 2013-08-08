@@ -190,13 +190,18 @@ directional sensitivity of the transform::
     nplts = Yh[-1].shape[3]
     nrows = np.ceil(np.sqrt(nplts))
     ncols = np.ceil(nplts / nrows)
+    W = np.max(Yh[-1].shape[:3])
     for idx in xrange(Yh[-1].shape[3]):
         C = np.abs(Yh[-1][:,:,:,idx])
         ax = gcf().add_subplot(nrows, ncols, idx+1, projection='3d')
         ax.set_aspect('equal')
-        x,y,z = np.nonzero(C > 2e-1)
-        ax.scatter(x, y, z, c=C[C > 2e-1].ravel())
+        good = C > 0.2*C.max()
+        x,y,z = np.nonzero(good)
+        ax.scatter(x, y, z, c=C[good].ravel())
+        ax.auto_scale_xyz((0,W), (0,W), (0,W))
         
+    tight_layout()
+            
 For a further directional sensitivity example, see :ref:`3d-directional-example`.
 
 .. figure:: 3d-complex-coeffs.png

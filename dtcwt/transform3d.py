@@ -38,11 +38,6 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mod
     2nd level onwards, the coeffs can be divided by 8. If any dimension size is
     not a multiple of 8, append extra coeffs by repeating the edges twice.
 
-    .. note::
-
-        The *ext_mode* == 8 behaviour has not yet been implemented in
-        :py:func:`dtwaveifm3`.
-
     Example::
 
         # Performs a 3-level transform on the real 3D array X using the 13,19-tap
@@ -243,7 +238,12 @@ def _level2_xfm(X, h0a, h0b, h1a, h1b, ext_mode):
         if X.shape[2] % 4 != 0:
             X = np.concatenate((X[:,:,0], X, X[:,:,-1]), 2)
     elif ext_mode == 8:
-        raise NotImplementedError('')
+        if X.shape[0] % 8 != 0:
+            X = np.concatenate((X[(0,0),:,:], X, X[(-1,-1),:,:]), 0)
+        if X.shape[1] % 8 != 0:
+            X = np.concatenate((X[:,(0,0),:], X, X[:,(-1,-1),:]), 1)
+        if X.shape[2] % 8 != 0:
+            X = np.concatenate((X[:,:,(0,0)], X, X[:,:,(-1,-1)]), 2)
 
     # Create work area
     work_shape = np.asarray(X.shape)
@@ -387,12 +387,15 @@ def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, ext_mode, prev_level_size):
         y = work[:, f, :].T
         work[:, f, :] = (colifilt(y[s2a, :], g0b, g0a) + colifilt(y[s2b, :], g1b, g1a)).T
 
-    # Now check if the size of the previous level is exactly twice the size of
-    # the current level. If YES, this means we have not done the extension in
-    # the previous level. If NO, then we have to remove the appended row /
-    # column / frame from the previous level DTCWT coefs.
+    # FIXME: Original dtcwt3dC_xa.m has a comment to this effect but,
+    # unfortunately, I can't trigger the need for this behaviour:
+    #
+    #   Now check if the size of the previous level is exactly twice the size
+    #   of the current level. If YES, this means we have not done the extension
+    #   in the previous level. If NO, then we have to remove the appended row /
+    #   column / frame from the previous level DTCWT coefs.
 
-    return work#[-prev_level_size[0]:, -prev_level_size[1]:, -prev_level_size[2]:]
+    return work
 
 #==========================================================================================
 #                       **********    INTERNAL FUNCTIONS    **********

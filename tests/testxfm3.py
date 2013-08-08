@@ -3,7 +3,7 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm3, dtwaveifm3
+from dtcwt import dtwavexfm3, dtwaveifm3, biort, qshift
 
 GRID_SIZE=32
 SPHERE_RAD=0.4 * GRID_SIZE
@@ -84,5 +84,42 @@ def test_simple_level_4_recon():
     ellipsoid_recon = dtwaveifm3(Yl, Yh)
     assert ellipsoid.size == ellipsoid_recon.size
     assert np.max(np.abs(ellipsoid - ellipsoid_recon)) < TOLERANCE
+
+def test_simple_level_4_recon_custom_wavelets():
+    # Test for perfect reconstruction with 3 levels
+    b = biort('legall')
+    q = qshift('qshift_06')
+    Yl, Yh = dtwavexfm3(ellipsoid, 4, biort=b, qshift=q)
+    ellipsoid_recon = dtwaveifm3(Yl, Yh, biort=b, qshift=q)
+    assert ellipsoid.size == ellipsoid_recon.size
+    assert np.max(np.abs(ellipsoid - ellipsoid_recon)) < TOLERANCE
+
+def test_simple_level_4_xfm_ext_mode_8():
+    # Just tests that the transform broadly works and gives expected size output
+    crop_ellipsoid = ellipsoid[:62,:58,:54]
+    Yl, Yh = dtwavexfm3(crop_ellipsoid, 4, ext_mode=8)
+    assert len(Yh) == 4
+
+def test_simple_level_4_recon_ext_mode_8():
+    # Test for perfect reconstruction with 3 levels
+    crop_ellipsoid = ellipsoid[:62,:58,:54]
+    Yl, Yh = dtwavexfm3(crop_ellipsoid, 4, ext_mode=8)
+    ellipsoid_recon = dtwaveifm3(Yl, Yh)
+    assert crop_ellipsoid.size == ellipsoid_recon.size
+    assert np.max(np.abs(crop_ellipsoid - ellipsoid_recon)) < TOLERANCE
+
+def test_simple_level_4_xfm_ext_mode_4():
+    # Just tests that the transform broadly works and gives expected size output
+    crop_ellipsoid = ellipsoid[:62,:54,:58]
+    Yl, Yh = dtwavexfm3(crop_ellipsoid, 4, ext_mode=4)
+    assert len(Yh) == 4
+
+def test_simple_level_4_recon_ext_mode_4():
+    # Test for perfect reconstruction with 3 levels
+    crop_ellipsoid = ellipsoid[:62,:54,:58]
+    Yl, Yh = dtwavexfm3(crop_ellipsoid, 4, ext_mode=4)
+    ellipsoid_recon = dtwaveifm3(Yl, Yh)
+    assert crop_ellipsoid.size == ellipsoid_recon.size
+    assert np.max(np.abs(crop_ellipsoid - ellipsoid_recon)) < TOLERANCE
 
 # vim:sw=4:sts=4:et

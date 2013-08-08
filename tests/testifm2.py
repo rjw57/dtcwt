@@ -3,14 +3,12 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm2, dtwaveifm2
+from dtcwt import dtwavexfm2, dtwaveifm2, biort, qshift
 
 def setup():
-    global lena, lena_crop, Yl, Yh, Yl_crop, Yh_crop
+    global lena, lena_crop
     lena = np.load(os.path.join(os.path.dirname(__file__), 'lena.npz'))['lena']
     lena_crop = lena[:233, :301]
-    Yl, Yh = dtwavexfm2(lena)
-    Yl_crop, Yh_crop = dtwavexfm2(lena_crop)
 
 def test_lena_loaded():
     assert lena.shape == (512, 512)
@@ -21,13 +19,23 @@ def test_lena_loaded():
 @attr('transform')
 def test_reconstruct():
     # Reconstruction up to tolerance
+    Yl, Yh = dtwavexfm2(lena)
     lena_recon = dtwaveifm2(Yl, Yh)
     assert np.all(np.abs(lena_recon - lena) < 1e-3)
 
 @attr('transform')
-def test_reconstruct_ctop():
+def test_reconstruct_crop():
     # Reconstruction up to tolerance
+    Yl_crop, Yh_crop = dtwavexfm2(lena_crop)
     lena_recon = dtwaveifm2(Yl_crop, Yh_crop)[:lena_crop.shape[0], :lena_crop.shape[1]]
     assert np.all(np.abs(lena_recon - lena_crop) < 1e-3)
+
+@attr('transform')
+def test_reconstruct_custom_filter():
+    # Reconstruction up to tolerance
+    Yl, Yh = dtwavexfm2(lena, 4, biort('legall'), qshift('qshift_06'))
+    lena_recon = dtwaveifm2(Yl, Yh, biort('legall'), qshift('qshift_06'))
+    assert np.all(np.abs(lena_recon - lena) < 1e-3)
+
 
 # vim:sw=4:sts=4:et

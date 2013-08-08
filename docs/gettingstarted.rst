@@ -123,9 +123,11 @@ wavelet coefficients::
 
 If the library is correctly installed and you also have matplotlib installed, you should see these three figures:
 
-.. image:: lena-1.png
-.. image:: lena-2.png
-.. image:: lena-3.png
+.. figure:: lena-1.png
+
+.. figure:: lena-2.png
+
+.. figure:: lena-3.png
 
 .. vim:sw=4:sts=4:et
 

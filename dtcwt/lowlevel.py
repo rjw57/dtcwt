@@ -32,8 +32,8 @@ def _column_convolve(X, h):
 
     # This function should give the same result as:
     #
-    from scipy.signal import convolve2d
-    return convolve2d(X, as_column_vector(h), 'valid')
+    # from scipy.signal import convolve2d
+    # return convolve2d(X, as_column_vector(h), 'valid')
 
     h = h.flatten()
     h_size = h.shape[0]

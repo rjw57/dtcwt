@@ -69,10 +69,12 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mod
         # Transform
         if level == 0:
             Yl, Yh[level] = _level1_xfm(Yl, h0o, h1o, ext_mode)
+        else:
+            Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b, ext_mode)
 
     return Yl, tuple(Yh)
 
-def dtwaveifm3(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT):
+def dtwaveifm3(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
     """Perform an *n*-level dual-tree complex wavelet (DTCWT) 3D
     reconstruction.
 
@@ -112,14 +114,16 @@ def dtwaveifm3(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT):
 
     X = Yl
 
-    # level is 0-indexed
     nlevels = len(Yh)
+    # level is 0-indexed but interpreted starting from the *last* level
     for level in xrange(nlevels):
         # Transform
-        if level == 0:
-            X = _level1_ifm(Yl, Yh[level], g0o, g1o)
+        if level == nlevels-1: # non-obviously this is the 'first' level
+            Yl = _level1_ifm(Yl, Yh[-level-1], g0o, g1o)
+        else:
+            Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, ext_mode, Yh[-level][0].shape[:3])
 
-    return X
+    return Yl
 
 def _level1_xfm(X, h0o, h1o, ext_mode):
     """Perform level 1 of the 3d transform.
@@ -133,7 +137,13 @@ def _level1_xfm(X, h0o, h1o, ext_mode):
         raise ValueError('Input shape should be a multiple of 4 in each direction when ext_mode == 8')
 
     # Create work area
-    work = np.zeros(np.asarray(X.shape) * 2, dtype=X.dtype)
+    work_shape = np.asarray(X.shape) * 2
+
+    # We need one extra row per octant if filter length is even
+    if h0o.shape[0] % 2 == 0:
+        work_shape += 2
+
+    work = np.zeros(work_shape, dtype=X.dtype)
 
     # Form some useful slices
     s0a = slice(None, work.shape[0] >> 1)
@@ -143,13 +153,29 @@ def _level1_xfm(X, h0o, h1o, ext_mode):
     s1b = slice(work.shape[1] >> 1, None)
     s2b = slice(work.shape[2] >> 1, None)
 
+    x0a = slice(None, X.shape[0])
+    x1a = slice(None, X.shape[1])
+    x2a = slice(None, X.shape[2])
+    x0b = slice(work.shape[0] >> 1, (work.shape[0] >> 1) + X.shape[0])
+    x1b = slice(work.shape[1] >> 1, (work.shape[1] >> 1) + X.shape[1])
+    x2b = slice(work.shape[2] >> 1, (work.shape[2] >> 1) + X.shape[2])
+
     # Assign input
-    work[s0a, s1a, s2a] = X
+    if h0o.shape[0] % 2 == 0:
+        work[:X.shape[0], :X.shape[1], :X.shape[2]] = X
+        
+        # Copy last rows/cols/slices
+        work[ X.shape[0], :X.shape[1], :X.shape[2]] = X[-1, :, :]
+        work[:X.shape[0],  X.shape[1], :X.shape[2]] = X[:, -1, :]
+        work[:X.shape[0], :X.shape[1],  X.shape[2]] = X[:, :, -1]
+        work[X.shape[0], X.shape[1], X.shape[2]] = X[-1,-1,-1]
+    else:
+        work[s0a, s1a, s2a] = X
 
     # Loop over 2nd dimension extracting 2D slice from first and 3rd dimensions
     for f in xrange(work.shape[1] >> 1):
         # extract slice
-        y = work[s0a, f, s2a].T
+        y = work[s0a, f, x2a].T
 
         # Do odd top-level filters on 3rd dim. The order here is important
         # since the second filtering will modify the elements of y as well
@@ -160,7 +186,7 @@ def _level1_xfm(X, h0o, h1o, ext_mode):
     # Loop over 3rd dimension extracting 2D slice from first and 2nd dimensions
     for f in xrange(work.shape[2]):
         # Do odd top-level filters on rows.
-        y1 = work[s0a, s1a, f].T
+        y1 = work[x0a, x1a, f].T
         y2 = np.vstack((colfilter(y1, h0o), colfilter(y1, h1o))).T
 
         # Do odd top-level filters on columns.
@@ -168,16 +194,81 @@ def _level1_xfm(X, h0o, h1o, ext_mode):
         work[s0b, :, f] = colfilter(y2, h1o)
 
     # Return appropriate slices of output
-    return (work[s0a, s1a, s2a],                # LLL
+    return (
+        work[s0a, s1a, s2a],                # LLL
         np.concatenate((
-            work[s0a, s1b, s2a, np.newaxis],    # HLL
-            work[s0b, s1a, s2a, np.newaxis],    # LHL
-            work[s0b, s1b, s2a, np.newaxis],    # HHL
-            work[s0a, s1a, s2b, np.newaxis],    # LLH
-            work[s0a, s1b, s2b, np.newaxis],    # HLH
-            work[s0b, s1a, s2b, np.newaxis],    # LHH
-            work[s0b, s1b, s2b, np.newaxis],    # HLH
-        ), axis=3))
+            cube2c(work[x0a, x1b, x2a]),    # HLL
+            cube2c(work[x0b, x1a, x2a]),    # LHL
+            cube2c(work[x0b, x1b, x2a]),    # HHL
+            cube2c(work[x0a, x1a, x2b]),    # LLH
+            cube2c(work[x0a, x1b, x2b]),    # HLH
+            cube2c(work[x0b, x1a, x2b]),    # LHH
+            cube2c(work[x0b, x1b, x2b]),    # HLH
+        ), axis=3)
+    )
+
+def _level2_xfm(X, h0a, h0b, h1a, h1b, ext_mode):
+    """Perform level 2 or greater of the 3d transform.
+
+    """
+
+    if ext_mode == 4:
+        if X.shape[0] % 4 != 0:
+            X = np.concatenate((X[0,:,:], X, X[-1,:,:]), 0)
+        if X.shape[1] % 4 != 0:
+            X = np.concatenate((X[:,0,:], X, X[:,-1,:]), 1)
+        if X.shape[2] % 4 != 0:
+            X = np.concatenate((X[:,:,0], X, X[:,:,-1]), 2)
+    elif ext_mode == 8:
+        raise NotImplementedError('')
+
+    # Create work area
+    work_shape = np.asarray(X.shape)
+    work = np.zeros(work_shape, dtype=X.dtype)
+
+    # Form some useful slices
+    s0a = slice(None, work.shape[0] >> 1)
+    s1a = slice(None, work.shape[1] >> 1)
+    s2a = slice(None, work.shape[2] >> 1)
+    s0b = slice(work.shape[0] >> 1, None)
+    s1b = slice(work.shape[1] >> 1, None)
+    s2b = slice(work.shape[2] >> 1, None)
+
+    # Assign input
+    work = X
+
+    # Loop over 2nd dimension extracting 2D slice from first and 3rd dimensions
+    for f in xrange(work.shape[1]):
+        # extract slice (copy required because we overwrite the work array)
+        y = work[:, f, :].T.copy()
+
+        # Do even Qshift filters on 3rd dim.
+        work[:, f, s2b] = coldfilt(y, h1b, h1a).T
+        work[:, f, s2a] = coldfilt(y, h0b, h0a).T
+
+    # Loop over 3rd dimension extracting 2D slice from first and 2nd dimensions
+    for f in xrange(work.shape[2]):
+        # Do even Qshift filters on rows.
+        y1 = work[:, :, f].T
+        y2 = np.vstack((coldfilt(y1, h0b, h0a), coldfilt(y1, h1b, h1a))).T
+
+        # Do even Qshift filters on columns.
+        work[s0a, :, f] = coldfilt(y2, h0b, h0a)
+        work[s0b, :, f] = coldfilt(y2, h1b, h1a)
+
+    # Return appropriate slices of output
+    return (
+        work[s0a, s1a, s2a],                # LLL
+        np.concatenate((
+            cube2c(work[s0a, s1b, s2a]),    # HLL
+            cube2c(work[s0b, s1a, s2a]),    # LHL
+            cube2c(work[s0b, s1b, s2a]),    # HHL
+            cube2c(work[s0a, s1a, s2b]),    # LLH
+            cube2c(work[s0a, s1b, s2b]),    # HLH
+            cube2c(work[s0b, s1a, s2b]),    # LHH
+            cube2c(work[s0b, s1b, s2b]),    # HLH
+        ), axis=3)
+    )
 
 def _level1_ifm(Yl, Yh, g0o, g1o):
     """Perform level 1 of the inverse 3d transform.
@@ -185,6 +276,63 @@ def _level1_ifm(Yl, Yh, g0o, g1o):
     """
     # Create work area
     work = np.zeros(np.asarray(Yl.shape) * 2, dtype=Yl.dtype)
+
+    # Work out shape of output
+    Xshape = np.asarray(work.shape) >> 1
+    if g0o.shape[0] % 2 == 0:
+        # if we have an even length filter, we need to shrink the output by 1
+        # to compensate for the addition of an extra row/column/slice in 
+        # the forward transform
+        Xshape -= 1
+
+    # Form some useful slices
+    s0a = slice(None, work.shape[0] >> 1)
+    s1a = slice(None, work.shape[1] >> 1)
+    s2a = slice(None, work.shape[2] >> 1)
+    s0b = slice(work.shape[0] >> 1, None)
+    s1b = slice(work.shape[1] >> 1, None)
+    s2b = slice(work.shape[2] >> 1, None)
+
+    x0a = slice(None, Xshape[0])
+    x1a = slice(None, Xshape[1])
+    x2a = slice(None, Xshape[2])
+    x0b = slice(work.shape[0] >> 1, (work.shape[0] >> 1) + Xshape[0])
+    x1b = slice(work.shape[1] >> 1, (work.shape[1] >> 1) + Xshape[1])
+    x2b = slice(work.shape[2] >> 1, (work.shape[2] >> 1) + Xshape[2])
+
+    # Assign regions of work area
+    work[s0a, s1a, s2a] = Yl
+    work[x0a, x1b, x2a] = c2cube(Yh[:,:,:, 0:4 ])
+    work[x0b, x1a, x2a] = c2cube(Yh[:,:,:, 4:8 ])
+    work[x0b, x1b, x2a] = c2cube(Yh[:,:,:, 8:12])
+    work[x0a, x1a, x2b] = c2cube(Yh[:,:,:,12:16])
+    work[x0a, x1b, x2b] = c2cube(Yh[:,:,:,16:20])
+    work[x0b, x1a, x2b] = c2cube(Yh[:,:,:,20:24])
+    work[x0b, x1b, x2b] = c2cube(Yh[:,:,:,24:28])
+
+    for f in xrange(work.shape[2]):
+        # Do odd top-level filters on rows.
+        y = colfilter(work[:, x1a, f].T, g0o) + colfilter(work[:, x1b, f].T, g1o)
+
+        # Do odd top-level filters on columns.
+        work[s0a, s1a, f] = colfilter(y[:, x0a].T, g0o) + colfilter(y[:, x0b].T, g1o)
+
+    for f in xrange(work.shape[1]>>1):
+        # Do odd top-level filters on 3rd dim.
+        y = work[s0a, f, :].T
+        work[s0a, f, s2a] = (colfilter(y[x2a, :], g0o) + colfilter(y[x2b, :], g1o)).T
+
+    if g0o.shape[0] % 2 == 0:
+        return work[1:(work.shape[0]>>1), 1:(work.shape[1]>>1), 1:(work.shape[2]>>1)]
+    else:
+        return work[s0a, s1a, s2a]
+
+def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, ext_mode, prev_level_size):
+    """Perform level 2 or greater of the 3d inverse transform.
+
+    """
+    # Create work area
+    work = np.zeros(np.asarray(Yl.shape)*2, dtype=Yl.dtype)
 
     # Form some useful slices
     s0a = slice(None, work.shape[0] >> 1)
@@ -196,26 +344,134 @@ def _level1_ifm(Yl, Yh, g0o, g1o):
 
     # Assign regions of work area
     work[s0a, s1a, s2a] = Yl
-    work[s0a, s1b, s2a] = Yh[:,:,:,0]
-    work[s0b, s1a, s2a] = Yh[:,:,:,1]
-    work[s0b, s1b, s2a] = Yh[:,:,:,2]
-    work[s0a, s1a, s2b] = Yh[:,:,:,3]
-    work[s0a, s1b, s2b] = Yh[:,:,:,4]
-    work[s0b, s1a, s2b] = Yh[:,:,:,5]
-    work[s0b, s1b, s2b] = Yh[:,:,:,6]
+    work[s0a, s1b, s2a] = c2cube(Yh[:,:,:, 0:4 ])
+    work[s0b, s1a, s2a] = c2cube(Yh[:,:,:, 4:8 ])
+    work[s0b, s1b, s2a] = c2cube(Yh[:,:,:, 8:12])
+    work[s0a, s1a, s2b] = c2cube(Yh[:,:,:,12:16])
+    work[s0a, s1b, s2b] = c2cube(Yh[:,:,:,16:20])
+    work[s0b, s1a, s2b] = c2cube(Yh[:,:,:,20:24])
+    work[s0b, s1b, s2b] = c2cube(Yh[:,:,:,24:28])
 
     for f in xrange(work.shape[2]):
-        # Do odd top-level filters on rows.
-        y = colfilter(work[:, s1a, f].T, g0o) + colfilter(work[:, s1b, f].T, g1o)
+        # Do even Qshift filters on rows.
+        y = colifilt(work[:, s1a, f].T, g0b, g0a) + colifilt(work[:, s1b, f].T, g1b, g1a)
 
-        # Do odd top-level filters on columns.
-        work[s0a, s1a, f] = colfilter(y[:, s0a].T, g0o) + colfilter(y[:, s0b].T, g1o)
+        # Do even Qshift filters on columns.
+        work[:, :, f] = colifilt(y[:, s0a].T, g0b, g0a) + colifilt(y[:,s0b].T, g1b, g1a)
 
-    for f in xrange(work.shape[1]>>1):
-        # Do odd top-level filters on 3rd dim.
-        y = work[s0a, f, :].T
-        work[s0a, f, s2a] = (colfilter(y[s2a, :], g0o) + colfilter(y[s2b, :], g1o)).T
+    for f in xrange(work.shape[1]):
+        # Do even Qshift filters on 3rd dim.
+        y = work[:, f, :].T
+        work[:, f, :] = (colifilt(y[s2a, :], g0b, g0a) + colifilt(y[s2b, :], g1b, g1a)).T
 
-    return work[s0a, s1a, s2a]
+    # Now check if the size of the previous level is exactly twice the size of
+    # the current level. If YES, this means we have not done the extension in
+    # the previous level. If NO, then we have to remove the appended row /
+    # column / frame from the previous level DTCWT coefs.
+
+    return work#[-prev_level_size[0]:, -prev_level_size[1]:, -prev_level_size[2]:]
+
+#==========================================================================================
+#                       **********    INTERNAL FUNCTIONS    **********
+#==========================================================================================
+
+def cube2c(y):
+    """Convert from octets in y to complex numbers in z.
+
+    Arrange pixels from the corners of the quads into
+    2 subimages of alternate real and imag pixels.
+
+        e----f
+       /|   /|
+      a----b |
+      | g- | h
+      |/   |/
+      c----d
+
+    """
+
+    # TODO: check this scaling
+    j2 = 0.5 * np.array([1, 1j])
+
+    # This is taken from:
+    # Efficient Registration of Nonrigid 3-D Bodies, Huizhong Chen, and Nick Kingsbury, 2012
+    # IEEE TRANSACTIONS ON IMAGE PROCESSING, VOL. 21, NO. 1, JANUARY 2012
+    # eqs. (6) to (9)
+
+    A = y[1::2, 1::2, 1::2]
+    B = y[1::2, 1::2, 0::2]
+    C = y[1::2, 0::2, 1::2]
+    D = y[1::2, 0::2, 0::2]
+    E = y[0::2, 1::2, 1::2]
+    F = y[0::2, 1::2, 0::2]
+    G = y[0::2, 0::2, 1::2]
+    H = y[0::2, 0::2, 0::2]
+
+    # TODO: check if the above should be the below and, if so, fix c2cube
+    #
+    # A = y[0::2, 0::2, 0::2]
+    # B = y[0::2, 0::2, 1::2]
+    # C = y[0::2, 1::2, 0::2]
+    # D = y[0::2, 1::2, 1::2]
+    # E = y[1::2, 0::2, 0::2]
+    # F = y[1::2, 0::2, 1::2]
+    # G = y[1::2, 1::2, 0::2]
+    # H = y[1::2, 1::2, 1::2]
+
+    # Combine to form subbands
+    p = ( A-G-D-F) * j2[0] + ( B-H+C+E) * j2[1]
+    q = ( A-G+D+F) * j2[0] + (-B+H+C+E) * j2[1]
+    r = ( A+G+D-F) * j2[0] + ( B+H-C+E) * j2[1]
+    s = ( A+G-D+F) * j2[0] + (-B-H-C+E) * j2[1]
+
+    # Form the 2 subbands in z.
+    z = np.concatenate((
+        p[:,:,:,np.newaxis],
+        q[:,:,:,np.newaxis],
+        r[:,:,:,np.newaxis],
+        s[:,:,:,np.newaxis],
+    ), axis=3)
+
+    return z
+
+def c2cube(z):
+    """Convert from complex numbers octets in z to octets in y.
+
+    Undoes cube2c().
+
+        e----f
+       /|   /|
+      a----b |
+      | g- | h
+      |/   |/
+      c----d
+
+    """
+
+    scale = 0.5
+
+    p = z[:,:,:,0]
+    q = z[:,:,:,1]
+    r = z[:,:,:,2]
+    s = z[:,:,:,3]
+
+    pr, pi = p.real, p.imag
+    qr, qi = q.real, q.imag
+    rr, ri = r.real, r.imag
+    sr, si = s.real, s.imag
+
+    y = np.zeros(np.asarray(z.shape[:3])*2, dtype=z.real.dtype)
+
+    y[1::2, 1::2, 1::2] = ( pr+qr+rr+sr)
+    y[0::2, 0::2, 1::2] = (-pr-qr+rr+sr)
+    y[1::2, 0::2, 0::2] = (-pr+qr+rr-sr)
+    y[0::2, 1::2, 0::2] = (-pr+qr-rr+sr)
+
+    y[1::2, 1::2, 0::2] = ( pi-qi+ri-si)
+    y[0::2, 0::2, 0::2] = (-pi+qi+ri-si)
+    y[1::2, 0::2, 1::2] = ( pi+qi-ri-si)
+    y[0::2, 1::2, 1::2] = ( pi+qi+ri+si)
+
+    return y * scale
 
 # vim:sw=4:sts=4:et

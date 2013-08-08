@@ -25,6 +25,7 @@ Table of Contents
     :maxdepth: 2
 
     gettingstarted
+    examples
     reference
 
 Indices and tables

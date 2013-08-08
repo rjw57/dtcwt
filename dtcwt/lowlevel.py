@@ -1,4 +1,5 @@
 import numpy as np
+from six.moves import xrange
 
 def as_column_vector(v):
     """Return *v* as a column vector with shape (N,1).
@@ -28,34 +29,23 @@ def _column_convolve(X, h):
     """Convolve the columns of *X* with *h* returning only the 'valid' section,
     i.e. those values unaffected by zero padding.
 
+    We assume that h is small and so direct convolution is the most efficient.
+
     """
-
-    # This function should give the same result as:
-    #
-    # from scipy.signal import convolve2d
-    # return convolve2d(X, as_column_vector(h), 'valid')
-
+    Xshape = np.asarray(X.shape)
     h = h.flatten()
     h_size = h.shape[0]
+
     full_size = X.shape[0] + h_size - 1
+    Xshape[0] = full_size
 
-    # Always use 2**n-sized FFT
-    fsize = 2 ** np.ceil(np.log2(full_size)).astype(int)
+    out = np.zeros(Xshape, dtype=X.dtype)
+    for idx in xrange(h_size):
+        out[idx:(idx+X.shape[0]),...] += X * h[idx]
 
-    # Take FFT down columns
-    Xfft = _rfft(X, n=fsize, axis=0)
-
-    # Take FFT of input vector
-    hfft = _rfft(h, n=fsize, axis=0)
-
-    # Column-wise multiply. I.e. scale rows of Xfft by hfft
-    Xfft = Xfft * hfft[:,np.newaxis]
-
-    # Invert
-    Xconv = _irfft(Xfft, n=fsize, axis=0)[:full_size,:].real
-    Xvalid = _centered(Xconv, (abs(X.shape[0] - h_size) + 1, X.shape[1]))
-
-    return Xvalid
+    outShape = Xshape.copy()
+    outShape[0] = abs(X.shape[0] - h_size) + 1
+    return _centered(out, outShape)
 
 def reflect(x, minx, maxx):
     """Reflect the values in matrix *x* about the scalar values *minx* and

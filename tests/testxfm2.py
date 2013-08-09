@@ -5,6 +5,8 @@ from nose.plugins.attrib import attr
 import numpy as np
 from dtcwt import dtwavexfm2, dtwaveifm2, biort, qshift
 
+TOLERANCE = 1e-12
+
 def setup():
     global lena
     lena = np.load(os.path.join(os.path.dirname(__file__), 'lena.npz'))['lena']
@@ -52,12 +54,12 @@ def test_odd_rows_and_cols_w_scale():
 
 def test_0_levels():
     Yl, Yh = dtwavexfm2(lena, nlevels=0)
-    assert np.all(np.abs(Yl - lena) < 1e-5)
+    assert np.all(np.abs(Yl - lena) < TOLERANCE)
     assert len(Yh) == 0
 
 def test_0_levels_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(lena, nlevels=0, include_scale=True)
-    assert np.all(np.abs(Yl - lena) < 1e-5)
+    assert np.all(np.abs(Yl - lena) < TOLERANCE)
     assert len(Yh) == 0
     assert len(Yscale) == 0
 

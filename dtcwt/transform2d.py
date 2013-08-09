@@ -5,7 +5,7 @@ from six.moves import xrange
 
 from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.lowlevel import colfilter, coldfilt, colifilt
+from dtcwt.lowlevel import colfilter, coldfilt, colifilt, appropriate_complex_type_for
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
@@ -62,12 +62,12 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     initial_col_extend = 0
     if original_size[0] % 2 != 0:
         # if X.shape[0] is not divisable by 2 then we need to extend X by adding a row at the bottom
-        X = np.vstack((X, X[-1,:]))  # Any further extension will be done in due course.
+        X = np.vstack((X, X[[-1],:]))  # Any further extension will be done in due course.
         initial_row_extend = 1
 
     if original_size[1] % 2 != 0:
         # if X.shape[1] is not divisable by 2 then we need to extend X by adding a col to the left
-        X = np.hstack((X, np.atleast_2d(X[:,-1]).T))
+        X = np.hstack((X, X[:,[-1]]))
         initial_col_extend = 1
 
     extended_size = X.shape
@@ -84,6 +84,8 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         # this is only required if the user specifies a third output component.
         Yscale = [None,] * nlevels
 
+    complex_dtype = appropriate_complex_type_for(X)
+
     if nlevels >= 1:
         # Do odd top-level filters on cols.
         Lo = colfilter(X,h0o).T
@@ -91,8 +93,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
 
         # Do odd top-level filters on rows.
         LoLo = colfilter(Lo,h0o).T
-        Yh[0] = np.zeros((LoLo.shape[0]/2, LoLo.shape[1]/2, 6), dtype=np.complex64)
-
+        Yh[0] = np.zeros((LoLo.shape[0] >> 1, LoLo.shape[1] >> 1, 6), dtype=complex_dtype)
         Yh[0][:,:,[0, 5]] = q2c(colfilter(Hi,h0o).T)     # Horizontal pair
         Yh[0][:,:,[2, 3]] = q2c(colfilter(Lo,h1o).T)     # Vertical pair
         Yh[0][:,:,[1, 4]] = q2c(colfilter(Hi,h1o).T)     # Diagonal pair
@@ -104,11 +105,11 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         row_size, col_size = LoLo.shape
         if row_size % 4 != 0:
             # Extend by 2 rows if no. of rows of LoLo are not divisable by 4
-            LoLo = np.vstack((LoLo[0,:], LoLo, LoLo[-1,:]))
+            LoLo = np.vstack((LoLo[[0],:], LoLo, LoLo[[-1],:]))
 
         if col_size % 4 != 0:
             # Extend by 2 cols if no. of cols of LoLo are not divisable by 4
-            LoLo = np.hstack((np.atleast_2d(LoLo[:,0]).T, LoLo, np.atleast_2d(LoLo[:,-1]).T))
+            LoLo = np.hstack((LoLo[:,[0]], LoLo, LoLo[:,[-1]]))
 
         # Do even Qshift filters on rows.
         Lo = coldfilt(LoLo,h0b,h0a).T
@@ -117,7 +118,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         # Do even Qshift filters on columns.
         LoLo = coldfilt(Lo,h0b,h0a).T
 
-        Yh[level] = np.zeros((LoLo.shape[0]/2, LoLo.shape[1]/2, 6), dtype=np.complex64)
+        Yh[level] = np.zeros((LoLo.shape[0]>>1, LoLo.shape[1]>>1, 6), dtype=complex_dtype)
         Yh[level][:,:,[0, 5]] = q2c(coldfilt(Hi,h0b,h0a).T)  # Horizontal
         Yh[level][:,:,[2, 3]] = q2c(coldfilt(Lo,h1b,h1a).T)  # Vertical
         Yh[level][:,:,[1, 4]] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
@@ -210,14 +211,15 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
     current_level = a
     Z = Yl
 
-    while current_level >= 2: # this ensures that for level -1 we never do the following
-        lh = c2q(Yh[current_level-1][:,:,[0, 5]],gain_mask[[0, 5],current_level-1])
-        hl = c2q(Yh[current_level-1][:,:,[2, 3]],gain_mask[[2, 3],current_level-1])
-        hh = c2q(Yh[current_level-1][:,:,[1, 4]],gain_mask[[1, 4],current_level-1])
+    while current_level >= 2: # this ensures that for level 1 we never do the following
+        lh = c2q(Yh[current_level-1][:,:,[0, 5]], gain_mask[[0, 5], current_level-1])
+        hl = c2q(Yh[current_level-1][:,:,[2, 3]], gain_mask[[2, 3], current_level-1])
+        hh = c2q(Yh[current_level-1][:,:,[1, 4]], gain_mask[[1, 4], current_level-1])
 
         # Do even Qshift filters on columns.
         y1 = colifilt(Z,g0b,g0a) + colifilt(lh,g1b,g1a)
         y2 = colifilt(hl,g0b,g0a) + colifilt(hh,g1b,g1a)
+
         # Do even Qshift filters on rows.
         Z = (colifilt(y1.T,g0b,g0a) + colifilt(y2.T,g1b,g1a)).T
 
@@ -242,6 +244,7 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
         # Do odd top-level filters on columns.
         y1 = colfilter(Z,g0o) + colfilter(lh,g1o)
         y2 = colfilter(hl,g0o) + colfilter(hh,g1o)
+
         # Do odd top-level filters on rows.
         Z = (colfilter(y1.T,g0o) + colfilter(y2.T,g1o)).T
 
@@ -255,7 +258,7 @@ def q2c(y):
     """Convert from quads in y to complex numbers in z.
 
     """
-    j2 = np.sqrt(0.5) * np.array([1, 1j])
+    j2 = (np.sqrt(0.5) * np.array([1, 1j])).astype(appropriate_complex_type_for(y))
 
     # Arrange pixels from the corners of the quads into
     # 2 subimages of alternate real and imag pixels.
@@ -265,7 +268,7 @@ def q2c(y):
     #  c----d
 
     # Combine (a,b) and (d,c) to form two complex subimages. 
-    p = y[0::2, 0::2]*j2[0] + y[0::2, 1::2]*j2[1]     # p = (a + jb) / sqrt(2)
+    p = y[0::2, 0::2]*j2[0] + y[0::2, 1::2]*j2[1] # p = (a + jb) / sqrt(2)
     q = y[1::2, 1::2]*j2[0] - y[1::2, 0::2]*j2[1] # q = (d - jc) / sqrt(2)
 
     # Form the 2 subbands in z.
@@ -286,18 +289,17 @@ def c2q(w,gain):
 
     """
 
-    sw = w.shape
-    x = np.zeros((w.shape[0]*2, w.shape[1]*2))
+    x = np.zeros((w.shape[0] << 1, w.shape[1] << 1))
 
     sc = np.sqrt(0.5) * gain
     P = w[:,:,0]*sc[0] + w[:,:,1]*sc[1]
     Q = w[:,:,0]*sc[0] - w[:,:,1]*sc[1]
 
     # Recover each of the 4 corners of the quads.
-    x[0::2, 0::2] = np.real(P)  # a = (A+C)*sc
-    x[0::2, 1::2] = np.imag(P)  # b = (B+D)*sc
-    x[1::2, 0::2] = np.imag(Q)  # c = (B-D)*sc
-    x[1::2, 1::2] = -np.real(Q) # d = (C-A)*sc
+    x[0::2, 0::2] = P.real  # a = (A+C)*sc
+    x[0::2, 1::2] = P.imag  # b = (B+D)*sc
+    x[1::2, 0::2] = Q.imag  # c = (B-D)*sc
+    x[1::2, 1::2] = -Q.real # d = (C-A)*sc
 
     return x
 

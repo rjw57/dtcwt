@@ -1,6 +1,25 @@
 import numpy as np
 from six.moves import xrange
 
+def appropriate_complex_type_for(X):
+    """Return an appropriate complex data type depending on the type of X. If X
+    is already complex, return that, if it is floating point return a complex
+    type of the appropriate size and if it is integer, choose an complex
+    floating point type depending on the result of :py:func:`numpy.asfarray`.
+
+    """
+    X = np.asfarray(X)
+    
+    if X.dtype is np.complex64 or X.dtype is np.complex128:
+        return X.dtype
+    elif X.dtype is np.float32:
+        return np.complex64
+    elif X.dtype is np.float64:
+        return np.complex128
+
+    # God knows, err on the side of caution
+    return np.complex128
+
 def as_column_vector(v):
     """Return *v* as a column vector with shape (N,1).
     

@@ -9,14 +9,14 @@ TOLERANCE = 1e-12
 
 def setup():
     global lena, lena_crop
-    lena = np.load(os.path.join(os.path.dirname(__file__), 'lena.npz'))['lena']
+    lena = np.load(os.path.join(os.path.dirname(__file__), 'lena.npz'))['lena'].astype(np.float64)
     lena_crop = lena[:233, :301]
 
 def test_lena_loaded():
     assert lena.shape == (512, 512)
     assert lena.min() >= 0
     assert lena.max() <= 1
-    assert lena.dtype == np.float32
+    assert lena.dtype == np.float64
 
 @attr('transform')
 def test_reconstruct():

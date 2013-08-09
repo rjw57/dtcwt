@@ -150,4 +150,22 @@ def test_float32_recon():
     recon = dtwaveifm3(Yl, Yh)
     assert np.issubsctype(recon.dtype, np.float32)
 
+def test_level_4_recon_discarding_level_1():
+    # Test for non-perfect but reasonable reconstruction
+    Yl, Yh = dtwavexfm3(ellipsoid, 4, discard_level_1=True)
+    ellipsoid_recon = dtwaveifm3(Yl, Yh)
+    assert ellipsoid.size == ellipsoid_recon.size
+
+    # Check that we mostly reconstruct correctly
+    assert np.median(np.abs(ellipsoid - ellipsoid_recon)[:]) < 1e-3
+
+def test_level_4_discarding_level_1():
+    # Test that level >= 2 subbands are identical
+    Yl1, Yh1 = dtwavexfm3(ellipsoid, 4, discard_level_1=True)
+    Yl2, Yh2 = dtwavexfm3(ellipsoid, 4, discard_level_1=False)
+
+    assert np.abs(Yl1-Yl2).max() < TOLERANCE
+    for a, b in zip(Yh1[1:], Yh2[1:]):
+        assert np.abs(a-b).max() < TOLERANCE
+
 # vim:sw=4:sts=4:et

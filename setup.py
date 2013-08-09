@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name = 'dtcwt',
-    version = '0.5dev1',
+    version = '0.5',
     author = "Rich Wareham",
     author_email = "rich.dtcwt@richwareham.com",
     description = ("A port of the Dual-Tree Complex Wavelet Transform MATLAB toolbox."),

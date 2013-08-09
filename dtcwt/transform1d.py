@@ -11,7 +11,7 @@ def dtwavexfm(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_
     """Perform a *n*-level DTCWT decompostion on a 1D column vector *X* (or on
     the columns of a matrix *X*).
 
-    :param X: 1D real matrix/Image or matrix of 1D columns of shape (N, M)
+    :param X: 1D real array or 2D real array whose columns are to be transformed
     :param nlevels: Number of levels of wavelet decomposition
     :param biort: Level 1 wavelets to use. See :py:func:`biort`.
     :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
@@ -109,7 +109,7 @@ def dtwaveifm(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, gain_mask=None
     :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
     :param gain_mask: Gain to be applied to each subband.
 
-    :returns Z: Reconstructed real signal vector (or matrix).
+    :returns Z: Reconstructed real array.
     
     The *l*-th element of *gain_mask* is gain for wavelet subband at level l.
     If gain_mask[l] == 0, no computation is performed for band *l*. Default

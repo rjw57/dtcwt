@@ -10,13 +10,13 @@ from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
 
-    :param X: 2D real matrix/Image of shape (N, M)
+    :param X: 2D real array
     :param nlevels: Number of levels of wavelet decomposition
     :param biort: Level 1 wavelets to use. See :py:func:`biort`.
     :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
 
     :returns Yl: The real lowpass image from the final level
-    :returns Yh: A tuple containing the (N, M, 6) shape complex highpass subimages for each level.
+    :returns Yh: A tuple containing the complex highpass subimages for each level.
     :returns Yscale: If *include_scale* is True, a tuple containing real lowpass coefficients for every scale.
 
     If *biort* or *qshift* are strings, they are used as an argument to the
@@ -164,7 +164,7 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
     :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
     :param gain_mask: Gain to be applied to each subband.
 
-    :returns Z: Reconstructed real image matrix.
+    :returns Z: Reconstructed real array
 
     The (*d*, *l*)-th element of *gain_mask* is gain for subband with direction
     *d* at level *l*. If gain_mask[d,l] == 0, no computation is performed for

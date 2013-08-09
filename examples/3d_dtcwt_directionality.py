@@ -15,6 +15,7 @@ directions in which the 3D DT-CWT transform is selective.
 from matplotlib.pyplot import *
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from dtcwt import dtwavexfm3, dtwaveifm3, biort, qshift
 
 # Specify details about sphere and grid size
@@ -40,6 +41,31 @@ figure(figsize=(8,8))
 
 ax = gcf().add_subplot(1,1,1, projection='3d')
 ax.set_aspect('equal')
+ax.view_init(35, 75)
+
+# Plot unit sphere +ve octant
+thetas = np.linspace(0, np.pi/2, 10)
+phis = np.linspace(0, np.pi/2, 10)
+
+def sphere_to_xyz(r, theta, phi):
+    st, ct = np.sin(theta), np.cos(theta)
+    sp, cp = np.sin(phi), np.cos(phi)
+    return r * np.asarray((st*cp, st*sp, ct))
+
+tris = []
+rad = 0.99 # so that points plotted latter are not z-clipped
+for t1, t2 in zip(thetas[:-1], thetas[1:]):
+    for p1, p2 in zip(phis[:-1], phis[1:]):
+        tris.append([
+            sphere_to_xyz(rad, t1, p1),
+            sphere_to_xyz(rad, t1, p2),
+            sphere_to_xyz(rad, t2, p2),
+            sphere_to_xyz(rad, t2, p1),
+        ])
+
+sphere = Poly3DCollection(tris, facecolor='w', edgecolor=(0.6,0.6,0.6))
+ax.add_collection3d(sphere)
+
 locs = []
 scale = 1.1
 for idx in xrange(Yh[-1].shape[3]):
@@ -47,20 +73,25 @@ for idx in xrange(Yh[-1].shape[3]):
     C = np.abs(Z)
     max_loc = np.asarray(np.unravel_index(np.argmax(C), C.shape)) - np.asarray(C.shape)*0.5
     max_loc /= np.sqrt(np.sum(max_loc * max_loc))
-    locs.append(max_loc)
 
-    ax.text(max_loc[0] * scale, max_loc[1] * scale, max_loc[2] * scale, str(idx+1))
-    ax.text(-max_loc[0] * scale, -max_loc[1] * scale, -max_loc[2] * scale, str(idx+1))
-                        
+    # Only record directions in the +ve octant (or those from the -ve quadrant
+    # which can be flipped).
+    if np.all(np.sign(max_loc) == 1):
+        locs.append(max_loc)
+        ax.text(max_loc[0] * scale, max_loc[1] * scale, max_loc[2] * scale, str(idx+1))
+    elif np.all(np.sign(max_loc) == -1):
+        locs.append(-max_loc)
+        ax.text(-max_loc[0] * scale, -max_loc[1] * scale, -max_loc[2] * scale, str(idx+1))
+ 
+# Plot all directions as a scatter plot
 locs = np.asarray(locs)
 ax.scatter(locs[:,0], locs[:,1], locs[:,2], c=np.arange(locs.shape[0]))
-ax.scatter(-locs[:,0], -locs[:,1], -locs[:,2], c=np.arange(locs.shape[0]))
 
-w = scale * 1.2
-ax.auto_scale_xyz([-w, w], [-w, w], [-w, w])
+w = 1.1
+ax.auto_scale_xyz([0, w], [0, w], [0, w])
 
 legend()
-title('Subband directional selectivity for 3D DT-CWT')
+title('3D DT-CWT subband directions for +ve hemisphere quadrant')
 tight_layout()
 
 show()

@@ -15,7 +15,7 @@ The easiest way to install ``dtcwt`` is via ``easy_install`` or ``pip``::
     $ pip install dtcwt
 
 If you want to check out the latest in-development version, look at
-`thee project's GitHub page <https://github.com/rjw57/dtcwt>`_. Once checked out,
+`the project's GitHub page <https://github.com/rjw57/dtcwt>`_. Once checked out,
 installation is based on setuptools and follows the usual conventions for a
 Python project::
 

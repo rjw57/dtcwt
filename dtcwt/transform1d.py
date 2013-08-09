@@ -38,7 +38,7 @@ def dtwavexfm(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_
 
     """
     # Need this because colfilter and friends assumes input is 2d
-    X = np.asarray(X)
+    X = np.asfarray(X)
     if len(X.shape) == 1:
        X = np.atleast_2d(X).T
 

@@ -36,7 +36,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
 
     """
-    X = np.atleast_2d(X)
+    X = np.atleast_2d(np.asfarray(X))
 
     # Try to load coefficients if biort is a string parameter
     try:

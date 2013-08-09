@@ -122,4 +122,10 @@ def test_simple_level_4_recon_ext_mode_4():
     assert crop_ellipsoid.size == ellipsoid_recon.size
     assert np.max(np.abs(crop_ellipsoid - ellipsoid_recon)) < TOLERANCE
 
+def test_integer_input():
+    # Check that an integer input is correctly coerced into a floating point
+    # array
+    Yl, Yh = dtwavexfm3(np.ones((4,4,4), dtype=np.int))
+    assert np.any(Yl != 0)
+
 # vim:sw=4:sts=4:et

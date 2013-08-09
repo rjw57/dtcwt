@@ -61,4 +61,10 @@ def test_0_levels_w_scale():
     assert len(Yh) == 0
     assert len(Yscale) == 0
 
+def test_integer_input():
+    # Check that an integer input is correctly coerced into a floating point
+    # array
+    Yl, Yh = dtwavexfm2([[1,2,3,4], [1,2,3,4]])
+    assert np.any(Yl != 0)
+
 # vim:sw=4:sts=4:et

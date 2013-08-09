@@ -51,4 +51,10 @@ def test_non_multiple_of_two():
 def test_2d():
     Yl, Yh = dtwavexfm(np.random.rand(10,10))
 
+def test_integer_input():
+    # Check that an integer input is correctly coerced into a floating point
+    # array
+    Yl, Yh = dtwavexfm([1,2,3,4])
+    assert np.any(Yl != 0)
+
 # vim:sw=4:sts=4:et

@@ -1,31 +1,8 @@
 Getting Started
 ===============
 
-This section will guide you through installing and using the ``dtcwt`` library.
-
-Installation
-````````````
-
-Installation is based on setuptools and follows the usual conventions for a
-Python project
-
-.. code-block:: console
-
-    $ python setup.py install
-
-A minimal test suite is provided so that you may verify the code works on your
-system
-
-.. code-block:: console
-
-    $ python setup.py nosetests
-
-This will also write test-coverage information to the ``cover/`` directory.
-
-Simple usage
-````````````
-
-Once installed, you are most likely to use one of these functions:
+This section will guide you through using the ``dtcwt`` library.  Once
+installed, you are most likely to use one of these functions:
 
 * :py:func:`dtcwt.dtwavexfm` -- 1D DT-CWT transform.
 * :py:func:`dtcwt.dtwaveifm` -- Inverse 1D DT-CWT transform.

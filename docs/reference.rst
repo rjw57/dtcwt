@@ -1,5 +1,8 @@
-Reference
-=========
+API Reference
+=============
+
+Computing the DT-CWT
+````````````````````
 
 .. automodule:: dtcwt
     :members:

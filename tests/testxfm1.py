@@ -5,6 +5,8 @@ from nose.plugins.attrib import attr
 import numpy as np
 from dtcwt import dtwavexfm, dtwaveifm, biort, qshift
 
+TOLERANCE = 1e-12
+
 @attr('transform')
 def test_simple():
     vec = np.random.rand(630)
@@ -32,11 +34,18 @@ def test_simple_with_scale_and_no_levels():
     assert len(Yscale) == 0
 
 @attr('transform')
+def test_perfect_recon():
+    vec = np.random.rand(630)
+    Yl, Yh = dtwavexfm(vec)
+    vec_recon = dtwaveifm(Yl, Yh)
+    assert np.max(np.abs(vec_recon - vec)) < TOLERANCE
+
+@attr('transform')
 def test_simple_custom_filter():
     vec = np.random.rand(630)
     Yl, Yh = dtwavexfm(vec, 4, biort('legall'), qshift('qshift_06'))
     vec_recon = dtwaveifm(Yl, Yh, biort('legall'), qshift('qshift_06'))
-    assert np.max(np.abs(vec_recon - vec)) < 1e-8
+    assert np.max(np.abs(vec_recon - vec)) < TOLERANCE
 
 @attr('transform')
 def test_single_level():

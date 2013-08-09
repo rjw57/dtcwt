@@ -49,7 +49,7 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mod
     .. codeauthor:: Nick Kingsbury, Cambridge University, July 1999.
 
     """
-    X = np.atleast_3d(X)
+    X = np.atleast_3d(np.asfarray(X))
 
     # Try to load coefficients if biort is a string parameter
     try:

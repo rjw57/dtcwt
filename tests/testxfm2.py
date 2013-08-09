@@ -3,7 +3,7 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm2, biort, qshift
+from dtcwt import dtwavexfm2, dtwaveifm2, biort, qshift
 
 def setup():
     global lena
@@ -66,5 +66,13 @@ def test_integer_input():
     # array
     Yl, Yh = dtwavexfm2([[1,2,3,4], [1,2,3,4]])
     assert np.any(Yl != 0)
+
+def test_integer_perfect_recon():
+    # Check that an integer input is correctly coerced into a floating point
+    # array and reconstructed
+    A = np.array([[1,2,3,4], [5,6,7,8]], dtype=np.int32)
+    Yl, Yh = dtwavexfm2(A)
+    B = dtwaveifm2(Yl, Yh)
+    assert np.max(np.abs(A-B)) < 1e-5
 
 # vim:sw=4:sts=4:et

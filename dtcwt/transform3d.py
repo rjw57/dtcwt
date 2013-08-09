@@ -139,7 +139,7 @@ def dtwaveifm3(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
         if level == nlevels-1: # non-obviously this is the 'first' level
             Yl = _level1_ifm(Yl, Yh[-level-1], g0o, g1o)
         else:
-            Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, ext_mode, Yh[-level][0].shape[:3])
+            Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, ext_mode, Yh[-level-2].shape)
 
     return Yl
 
@@ -387,13 +387,34 @@ def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, ext_mode, prev_level_size):
         y = work[:, f, :].T
         work[:, f, :] = (colifilt(y[s2a, :], g0b, g0a) + colifilt(y[s2b, :], g1b, g1a)).T
 
-    # FIXME: Original dtcwt3dC_xa.m has a comment to this effect but,
-    # unfortunately, I can't trigger the need for this behaviour:
-    #
-    #   Now check if the size of the previous level is exactly twice the size
-    #   of the current level. If YES, this means we have not done the extension
-    #   in the previous level. If NO, then we have to remove the appended row /
-    #   column / frame from the previous level DTCWT coefs.
+    # Now check if the size of the previous level is exactly twice the size of
+    # the current level. If YES, this means we have not done the extension in
+    # the previous level. If NO, then we have to remove the appended row /
+    # column / frame from the previous level DTCWT coefs.
+
+    prev_level_size = np.asarray(prev_level_size)
+    curr_level_size = np.asarray(Yh.shape)
+
+    if ext_mode == 4:
+        if curr_level_size[0] * 2 != prev_level_size[0]:
+            # Discard the top and bottom rows
+            work = work[1:-1,:,:]
+        if curr_level_size[1] * 2 != prev_level_size[1]:
+            # Discard the top and bottom rows
+            work = work[:,1:-1,:]
+        if curr_level_size[2] * 2 != prev_level_size[2]:
+            # Discard the top and bottom rows
+            work = work[:,:,1:-1]
+    elif ext_mode == 8:
+        if curr_level_size[0] * 2 != prev_level_size[0]:
+            # Discard the top and bottom rows
+            work = work[2:-2,:,:]
+        if curr_level_size[1] * 2 != prev_level_size[1]:
+            # Discard the top and bottom rows
+            work = work[:,2:-2,:]
+        if curr_level_size[2] * 2 != prev_level_size[2]:
+            # Discard the top and bottom rows
+            work = work[:,:,2:-2]
 
     return work
 

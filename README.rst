@@ -10,13 +10,20 @@ transforms and their inverse in Python.
 Installation
 ````````````
 
-Installation is based on setuptools and follows the usual conventions for a
+The easiest way to install ``dtcwt`` is via ``easy_install`` or ``pip``::
+
+    $ pip install dtcwt
+
+If you want to check out the latest in-development version, look at
+`thee project's GitHub page <https://github.com/rjw57/dtcwt>`_. Once checked out,
+installation is based on setuptools and follows the usual conventions for a
 Python project::
 
     $ python setup.py install
 
-A minimal test suite is provided so that you may verify the code works on your
-system::
+(Although the `develop` command may be more useful if you intend to perform any
+significant modification to the library.) A test suite is provided so that you
+may verify the code works on your system::
 
     $ python setup.py nosetests
 

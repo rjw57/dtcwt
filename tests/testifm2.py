@@ -39,5 +39,14 @@ def test_reconstruct_custom_filter():
     lena_recon = dtwaveifm2(Yl, Yh, biort('legall'), qshift('qshift_06'))
     assert np.all(np.abs(lena_recon - lena) < TOLERANCE)
 
+def test_float32_input():
+    # Check that an float32 input is correctly output as float32
+    Yl, Yh = dtwavexfm2(lena.astype(np.float32))
+    assert np.issubsctype(Yl.dtype, np.float32)
+    assert np.all(list(np.issubsctype(x.dtype, np.complex64) for x in Yh))
+
+    lena_recon = dtwaveifm2(Yl, Yh)
+    assert np.issubsctype(lena_recon.dtype, np.float32)
+
 
 # vim:sw=4:sts=4:et

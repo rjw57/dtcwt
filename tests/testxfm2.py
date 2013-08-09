@@ -77,4 +77,10 @@ def test_integer_perfect_recon():
     B = dtwaveifm2(Yl, Yh)
     assert np.max(np.abs(A-B)) < 1e-5
 
+def test_float32_input():
+    # Check that an float32 input is correctly output as float32
+    Yl, Yh = dtwavexfm2(lena.astype(np.float32))
+    assert np.issubsctype(Yl.dtype, np.float32)
+    assert np.all(list(np.issubsctype(x.dtype, np.complex64) for x in Yh))
+
 # vim:sw=4:sts=4:et

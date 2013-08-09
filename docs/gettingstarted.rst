@@ -25,7 +25,7 @@ This will also write test-coverage information to the ``cover/`` directory.
 Simple usage
 ````````````
 
-Once installed, you are most likely to use one of four functions:
+Once installed, you are most likely to use one of these functions:
 
 * :py:func:`dtcwt.dtwavexfm` -- 1D DT-CWT transform.
 * :py:func:`dtcwt.dtwaveifm` -- Inverse 1D DT-CWT transform.

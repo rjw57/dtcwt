@@ -7,7 +7,7 @@ transforms and their inverse in Python.
 The interface is intentionally similar to the existing MATLAB dual-tree complex
 wavelet transform toolbox provided by `Prof. Nick Kingsbury
 <http://www-sigproc.eng.cam.ac.uk/~ngk/>`_. This library is intended to ease
-the porting of algorithms written in using this toolbox from MATLAB to Python.
+the porting of algorithms written using this toolbox from MATLAB to Python.
 
 The original toolbox is copyrighted and there are some restrictions on use
 which are outlined in the file

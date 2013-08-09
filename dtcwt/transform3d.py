@@ -232,11 +232,11 @@ def _level2_xfm(X, h0a, h0b, h1a, h1b, ext_mode):
 
     if ext_mode == 4:
         if X.shape[0] % 4 != 0:
-            X = np.concatenate((X[0,:,:], X, X[-1,:,:]), 0)
+            X = np.concatenate((X[[0],:,:], X, X[[-1],:,:]), 0)
         if X.shape[1] % 4 != 0:
-            X = np.concatenate((X[:,0,:], X, X[:,-1,:]), 1)
+            X = np.concatenate((X[:,[0],:], X, X[:,[-1],:]), 1)
         if X.shape[2] % 4 != 0:
-            X = np.concatenate((X[:,:,0], X, X[:,:,-1]), 2)
+            X = np.concatenate((X[:,:,[0]], X, X[:,:,[-1]]), 2)
     elif ext_mode == 8:
         if X.shape[0] % 8 != 0:
             X = np.concatenate((X[(0,0),:,:], X, X[(-1,-1),:,:]), 0)

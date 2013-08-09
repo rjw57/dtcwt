@@ -5,7 +5,7 @@ from six.moves import xrange
 
 from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.lowlevel import colfilter, coldfilt, colifilt, as_column_vector
+from dtcwt.lowlevel import colfilter, coldfilt, colifilt, as_column_vector, asfarray
 
 def dtwavexfm(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT decompostion on a 1D column vector *X* (or on
@@ -38,7 +38,7 @@ def dtwavexfm(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_
 
     """
     # Need this because colfilter and friends assumes input is 2d
-    X = np.asfarray(X)
+    X = asfarray(X)
     if len(X.shape) == 1:
        X = np.atleast_2d(X).T
 
@@ -54,7 +54,7 @@ def dtwavexfm(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_
     except TypeError:
         h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift
 
-    L = np.asarray(X.shape)
+    L = np.asanyarray(X.shape)
 
     # ensure that X is an even length, thus enabling it to be extended if needs be.
     if X.shape[0] % 2 != 0:
@@ -162,7 +162,7 @@ def dtwaveifm(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, gain_mask=None
        if Lo.shape[0] != 2*Yh[level-1].shape[0]:  # If Lo is not the same length as the next Yh => t1 was extended.
           Lo = Lo[1:-1,...]                       # Therefore we have to clip Lo so it is the same height as the next Yh.
 
-       if np.any(np.asarray(Lo.shape) != np.asarray(Yh[level-1].shape * np.array((2,1)))):
+       if np.any(np.asanyarray(Lo.shape) != np.asanyarray(Yh[level-1].shape * np.array((2,1)))):
           raise ValueError('Yh sizes are not valid for DTWAVEIFM')
        
        level -= 1
@@ -187,7 +187,7 @@ def c2q1d(x):
 
     """
     a, b = x.shape
-    z = np.zeros((a*2, b))
+    z = np.zeros((a*2, b), dtype=x.real.dtype)
     z[::2, :] = np.real(x)
     z[1::2, :] = np.imag(x)
 

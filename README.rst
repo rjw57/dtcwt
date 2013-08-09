@@ -3,6 +3,7 @@ Dual-Tree Complex Wavelet Transform library for Python
 
 This library provides support for computing 1D, 2D and 3D dual-tree complex wavelet
 transforms and their inverse in Python.
+`Full documentation <https://dtcwt.readthedocs.org/>`_ is available online.
 
 .. image:: https://travis-ci.org/rjw57/dtcwt.png?branch=master
     :target: https://travis-ci.org/rjw57/dtcwt

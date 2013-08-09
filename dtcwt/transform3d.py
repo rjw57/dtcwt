@@ -7,7 +7,7 @@ from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import colfilter, coldfilt, colifilt, asfarray
 
-def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
+def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4, discard_level_1=False):
     """Perform a *n*-level DTCWT-3D decompostion on a 3D matrix *X*.
 
     :param X: 3D real array-like object
@@ -15,6 +15,7 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mod
     :param biort: Level 1 wavelets to use. See :py:func:`biort`.
     :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
     :param ext_mode: Extension mode. See below.
+    :param discard_level_1: True if level 1 high-pass bands are to be discarded.
 
     :returns Yl: The real lowpass image from the final level
     :returns Yh: A tuple containing the complex highpass subimages for each level.
@@ -37,6 +38,13 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mod
     divisible by 4 (if not we raise a ``ValueError``). Also check whether from
     2nd level onwards, the coeffs can be divided by 8. If any dimension size is
     not a multiple of 8, append extra coeffs by repeating the edges twice.
+
+    If *discard_level_1* is True the highpass coefficients at level 1 will be
+    discarded. (And, in fact, will never be calculated.) This turns the
+    transform from being 8:1 redundant to being 1:1 redundant at the cost of
+    no-longer allowing perfect reconstruction. If this option is selected then
+    `Yh[0]` will be `None`. Note that :py:func:`dtwaveifm3` will accepts
+    `Yh[0]` being `None` and will treat it as being zero.
 
     Example::
 
@@ -73,7 +81,9 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mod
     # level is 0-indexed
     for level in xrange(nlevels):
         # Transform
-        if level == 0:
+        if level == 0 and discard_level_1:
+            Yl = _level1_xfm_no_highpass(Yl, h0o, h1o, ext_mode)
+        elif level == 0 and not discard_level_1:
             Yl, Yh[level] = _level1_xfm(Yl, h0o, h1o, ext_mode)
         else:
             Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b, ext_mode)
@@ -137,9 +147,18 @@ def dtwaveifm3(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
     for level in xrange(nlevels):
         # Transform
         if level == nlevels-1: # non-obviously this is the 'first' level
-            Yl = _level1_ifm(Yl, Yh[-level-1], g0o, g1o)
+            if Yh[-level-1] is None:
+                Yl = _level1_ifm_no_highpass(Yl, g0o, g1o)
+            else:
+                Yl = _level1_ifm(Yl, Yh[-level-1], g0o, g1o)
         else:
-            Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, ext_mode, Yh[-level-2].shape)
+            # Gracefully handle the Yh[0] is None case.
+            if Yh[-level-2] is not None:
+                prev_shape = Yh[-level-2].shape
+            else:
+                prev_shape = np.array(Yh[-level-1].shape) * 2
+
+            Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, ext_mode, prev_shape)
 
     return Yl
 
@@ -224,6 +243,32 @@ def _level1_xfm(X, h0o, h1o, ext_mode):
             cube2c(work[x0b, x1b, x2b]),    # HLH
         ), axis=3)
     )
+
+def _level1_xfm_no_highpass(X, h0o, h1o, ext_mode):
+    """Perform level 1 of the 3d transform discarding highpass subbands.
+
+    """
+    # Check shape of input according to ext_mode. Note that shape of X is
+    # double original input in each direction.
+    if ext_mode == 4 and np.any(np.fmod(X.shape, 2) != 0):
+        raise ValueError('Input shape should be a multiple of 2 in each direction when ext_mode == 4')
+    elif ext_mode == 8 and np.any(np.fmod(X.shape, 4) != 0):
+        raise ValueError('Input shape should be a multiple of 4 in each direction when ext_mode == 8')
+
+    out = np.zeros_like(X)
+
+    # Loop over 2nd dimension extracting 2D slice from first and 3rd dimensions
+    for f in xrange(X.shape[1]):
+        # extract slice
+        y = X[:, f, :].T
+        out[:, f, :] = colfilter(y, h0o).T
+
+    # Loop over 3rd dimension extracting 2D slice from first and 2nd dimensions
+    for f in xrange(X.shape[2]):
+        y = colfilter(out[:, :, f].T, h0o).T
+        out[:, :, f] = colfilter(y, h0o)
+
+    return out
 
 def _level2_xfm(X, h0a, h0b, h1a, h1b, ext_mode):
     """Perform level 2 or greater of the 3d transform.
@@ -349,6 +394,24 @@ def _level1_ifm(Yl, Yh, g0o, g1o):
         return work[1:(work.shape[0]>>1), 1:(work.shape[1]>>1), 1:(work.shape[2]>>1)]
     else:
         return work[s0a, s1a, s2a]
+
+def _level1_ifm_no_highpass(Yl, g0o, g1o):
+    """Perform level 1 of the inverse 3d transform assuming highpass
+    coefficients are zero.
+
+    """
+    # Create work area
+    output = np.zeros_like(Yl)
+
+    for f in xrange(Yl.shape[2]):
+        y = colfilter(Yl[:, :, f].T, g0o)
+        output[:, :, f] = colfilter(y.T, g0o)
+
+    for f in xrange(Yl.shape[1]):
+        y = output[:, f, :].T.copy()
+        output[:, f, :] = colfilter(y, g0o)
+
+    return output
 
 def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, ext_mode, prev_level_size):
     """Perform level 2 or greater of the 3d inverse transform.

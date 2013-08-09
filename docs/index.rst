@@ -21,7 +21,7 @@ The features of the ``dtcwt`` library are:
 
 * 1D, 2D and 3D forward and inverse Dual-tree Complex Wavelet Transform
   implementations.
-* API similarity with the DTCW MATLAB toolbox.
+* API similarity with the DTCWT MATLAB toolbox.
 * Automatic selection of single versus double precision calculation.
 * Built-in support for the most common complex wavelet families.
 

@@ -57,4 +57,12 @@ def test_integer_input():
     Yl, Yh = dtwavexfm([1,2,3,4])
     assert np.any(Yl != 0)
 
+def test_integer_perfect_recon():
+    # Check that an integer input is correctly coerced into a floating point
+    # array and reconstructed
+    A = np.array([1,2,3,4], dtype=np.int32)
+    Yl, Yh = dtwavexfm(A)
+    B = dtwaveifm(Yl, Yh)
+    assert np.max(np.abs(A-B)) < 1e-12
+
 # vim:sw=4:sts=4:et

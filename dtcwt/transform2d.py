@@ -5,7 +5,7 @@ from six.moves import xrange
 
 from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.lowlevel import colfilter, coldfilt, colifilt, appropriate_complex_type_for
+from dtcwt.lowlevel import colfilter, coldfilt, colifilt, appropriate_complex_type_for, asfarray
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
@@ -36,7 +36,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
 
     """
-    X = np.atleast_2d(np.asfarray(X))
+    X = np.atleast_2d(asfarray(X))
 
     # Try to load coefficients if biort is a string parameter
     try:
@@ -289,7 +289,7 @@ def c2q(w,gain):
 
     """
 
-    x = np.zeros((w.shape[0] << 1, w.shape[1] << 1))
+    x = np.zeros((w.shape[0] << 1, w.shape[1] << 1), dtype=w.real.dtype)
 
     sc = np.sqrt(0.5) * gain
     P = w[:,:,0]*sc[0] + w[:,:,1]*sc[1]

@@ -56,7 +56,6 @@ def test_simple_level_1_recon_haar():
     Yl, Yh = dtwavexfm3(ellipsoid, 1, biort=haar)
     ellipsoid_recon = dtwaveifm3(Yl, Yh, biort=haar)
     assert ellipsoid.size == ellipsoid_recon.size
-    print(np.max(np.abs(ellipsoid - ellipsoid_recon)))
     assert np.max(np.abs(ellipsoid - ellipsoid_recon)) < TOLERANCE
 
 def test_simple_level_2_xfm():
@@ -135,5 +134,20 @@ def test_integer_perfect_recon():
     Yl, Yh = dtwavexfm3(A)
     B = dtwaveifm3(Yl, Yh)
     assert np.max(np.abs(A-B)) < 1e-12
+
+def test_float32_input():
+    # Check that an float32 input is correctly output as float32
+    Yl, Yh = dtwavexfm3(ellipsoid.astype(np.float32))
+    assert np.issubsctype(Yl.dtype, np.float32)
+    assert np.all(list(np.issubsctype(x.dtype, np.complex64) for x in Yh))
+
+def test_float32_recon():
+    # Check that an float32 input is correctly output as float32
+    Yl, Yh = dtwavexfm3(ellipsoid.astype(np.float32))
+    assert np.issubsctype(Yl.dtype, np.float32)
+    assert np.all(list(np.issubsctype(x.dtype, np.complex64) for x in Yh))
+
+    recon = dtwaveifm3(Yl, Yh)
+    assert np.issubsctype(recon.dtype, np.float32)
 
 # vim:sw=4:sts=4:et

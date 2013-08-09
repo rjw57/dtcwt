@@ -1,6 +1,15 @@
 import numpy as np
 from six.moves import xrange
 
+def asfarray(X):
+    """Similar to :py:func:`numpy.asfarray` except that this function tries to
+    preserve the original datatype of X if it is already a floating point type
+    and will pass floating point arrays through directly without copying.
+
+    """
+    X = np.asanyarray(X)
+    return np.asfarray(X, dtype=X.dtype)
+
 def appropriate_complex_type_for(X):
     """Return an appropriate complex data type depending on the type of X. If X
     is already complex, return that, if it is floating point return a complex
@@ -8,13 +17,13 @@ def appropriate_complex_type_for(X):
     floating point type depending on the result of :py:func:`numpy.asfarray`.
 
     """
-    X = np.asfarray(X)
+    X = asfarray(X)
     
-    if X.dtype is np.complex64 or X.dtype is np.complex128:
+    if np.issubsctype(X.dtype, np.complex64) or np.issubsctype(X.dtype, np.complex128):
         return X.dtype
-    elif X.dtype is np.float32:
+    elif np.issubsctype(X.dtype, np.float32):
         return np.complex64
-    elif X.dtype is np.float64:
+    elif np.issubsctype(X.dtype, np.float64):
         return np.complex128
 
     # God knows, err on the side of caution
@@ -33,7 +42,7 @@ def as_column_vector(v):
 def _centered(arr, newsize):
     # Return the center newsize portion of the array.
     # (Shamelessly cribbed from scipy.)
-    newsize = np.asarray(newsize)
+    newsize = np.asanyarray(newsize)
     currsize = np.array(arr.shape)
     startind = (currsize - newsize) // 2
     endind = startind + newsize
@@ -46,13 +55,15 @@ _irfft = np.fft.irfft
 
 def _column_convolve(X, h):
     """Convolve the columns of *X* with *h* returning only the 'valid' section,
-    i.e. those values unaffected by zero padding.
+    i.e. those values unaffected by zero padding. Irrespective of the ftype of
+    *h*, the output will have the dtype of *X* appropriately expanded to a
+    floating point type if necessary.
 
     We assume that h is small and so direct convolution is the most efficient.
 
     """
-    Xshape = np.asarray(X.shape)
-    h = h.flatten()
+    Xshape = np.asanyarray(X.shape)
+    h = h.flatten().astype(X.dtype)
     h_size = h.shape[0]
 
     full_size = X.shape[0] + h_size - 1
@@ -114,7 +125,7 @@ def colfilter(X, h):
     """
     
     # Interpret all inputs as arrays
-    X = np.array(X)
+    X = asfarray(X)
     h = as_column_vector(h)
 
     r, c = X.shape
@@ -162,9 +173,9 @@ def coldfilt(X, ha, hb):
 
     """
     # Make sure all inputs are arrays
-    X = np.array(X)
-    ha = np.array(ha)
-    hb = np.array(hb)
+    X = asfarray(X)
+    ha = asfarray(ha)
+    hb = asfarray(hb)
 
     r, c = X.shape
     if r % 4 != 0:
@@ -190,7 +201,7 @@ def coldfilt(X, ha, hb):
     hbe = as_column_vector(hb[1:m:2])
     t = np.arange(5, r+2*m-2, 4)
     r2 = r/2;
-    Y = np.zeros((r2,c))
+    Y = np.zeros((r2,c), dtype=X.dtype)
 
     if np.sum(ha*hb) > 0:
        s1 = slice(0, r2, 2)
@@ -233,9 +244,9 @@ def colifilt(X, ha, hb):
 
     """
     # Make sure all inputs are arrays
-    X = np.array(X)
-    ha = np.array(ha)
-    hb = np.array(hb)
+    X = asfarray(X)
+    ha = asfarray(ha)
+    hb = asfarray(hb)
 
     r, c = X.shape
     if r % 2 != 0:
@@ -250,7 +261,7 @@ def colifilt(X, ha, hb):
     m = ha.shape[0]
     m2 = np.fix(m*0.5)
 
-    Y = np.zeros((r*2,c))
+    Y = np.zeros((r*2,c), dtype=X.dtype)
     if not np.any(np.nonzero(X[:])[0]):
         return Y
 

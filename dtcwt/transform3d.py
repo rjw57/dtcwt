@@ -5,7 +5,7 @@ from six.moves import xrange
 
 from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.lowlevel import colfilter, coldfilt, colifilt
+from dtcwt.lowlevel import colfilter, coldfilt, colifilt, asfarray
 
 def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
     """Perform a *n*-level DTCWT-3D decompostion on a 3D matrix *X*.
@@ -49,7 +49,7 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mod
     .. codeauthor:: Nick Kingsbury, Cambridge University, July 1999.
 
     """
-    X = np.atleast_3d(np.asfarray(X))
+    X = np.atleast_3d(asfarray(X))
 
     # Try to load coefficients if biort is a string parameter
     try:
@@ -155,7 +155,7 @@ def _level1_xfm(X, h0o, h1o, ext_mode):
         raise ValueError('Input shape should be a multiple of 4 in each direction when ext_mode == 8')
 
     # Create work area
-    work_shape = np.asarray(X.shape) * 2
+    work_shape = np.asanyarray(X.shape) * 2
 
     # We need one extra row per octant if filter length is even
     if h0o.shape[0] % 2 == 0:
@@ -246,7 +246,7 @@ def _level2_xfm(X, h0a, h0b, h1a, h1b, ext_mode):
             X = np.concatenate((X[:,:,(0,0)], X, X[:,:,(-1,-1)]), 2)
 
     # Create work area
-    work_shape = np.asarray(X.shape)
+    work_shape = np.asanyarray(X.shape)
     work = np.zeros(work_shape, dtype=X.dtype)
 
     # Form some useful slices
@@ -298,10 +298,10 @@ def _level1_ifm(Yl, Yh, g0o, g1o):
 
     """
     # Create work area
-    work = np.zeros(np.asarray(Yl.shape) * 2, dtype=Yl.dtype)
+    work = np.zeros(np.asanyarray(Yl.shape) * 2, dtype=Yl.dtype)
 
     # Work out shape of output
-    Xshape = np.asarray(work.shape) >> 1
+    Xshape = np.asanyarray(work.shape) >> 1
     if g0o.shape[0] % 2 == 0:
         # if we have an even length filter, we need to shrink the output by 1
         # to compensate for the addition of an extra row/column/slice in 
@@ -355,7 +355,7 @@ def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, ext_mode, prev_level_size):
 
     """
     # Create work area
-    work = np.zeros(np.asarray(Yl.shape)*2, dtype=Yl.dtype)
+    work = np.zeros(np.asanyarray(Yl.shape)*2, dtype=Yl.dtype)
 
     # Form some useful slices
     s0a = slice(None, work.shape[0] >> 1)
@@ -507,7 +507,7 @@ def c2cube(z):
     rr, ri = r.real, r.imag
     sr, si = s.real, s.imag
 
-    y = np.zeros(np.asarray(z.shape[:3])*2, dtype=z.real.dtype)
+    y = np.zeros(np.asanyarray(z.shape[:3])*2, dtype=z.real.dtype)
 
     y[1::2, 1::2, 1::2] = ( pr+qr+rr+sr)
     y[0::2, 0::2, 1::2] = (-pr-qr+rr+sr)

@@ -25,44 +25,16 @@ The features of the ``dtcwt`` library are:
 * Automatic selection of single versus double precision calculation.
 * Built-in support for the most common complex wavelet families.
 
-Installation
-````````````
+Contents
+````````
 
-The easiest way to install ``dtcwt`` is via ``easy_install`` or ``pip``:
+.. toctree::
+    :maxdepth: 1
 
-.. code-block:: console
+    gettingstarted
+    examples
+    reference
 
-    $ pip install dtcwt
-
-If you want to check out the latest in-development version, look at
-`the project's GitHub page <https://github.com/rjw57/dtcwt>`_. Once checked out,
-installation is based on setuptools and follows the usual conventions for a
-Python project:
-
-.. code-block:: console
-
-    $ python setup.py install
-
-(Although the `develop` command may be more useful if you intend to perform any
-significant modification to the library.) A test suite is provided so that you
-may verify the code works on your system:
-
-.. code-block:: console
-
-    $ python setup.py nosetests
-
-This will also write test-coverage information to the ``cover/`` directory.
-
-Further documentation
-`````````````````````
-
-There is `more documentation <https://dtcwt.readthedocs.org/>`_
-available online and you can build your own copy via the Sphinx documentation
-system::
-
-    $ python setup.py build_sphinx
-
-Compiled documentation may be found in ``build/docs/html/``.
 
 Licence
 ```````
@@ -74,15 +46,5 @@ Aside from portions directly derived from the original MATLAB toolbox, any
 additions in this library and this documentation are licensed under the
 2-clause BSD licence as documented in the file
 :download:`COPYING.txt<../COPYING.txt>`.
-
-Contents
-`````````````````
-
-.. toctree::
-    :maxdepth: 1
-
-    gettingstarted
-    examples
-    reference
 
 .. vim:sw=4:sts=4:et

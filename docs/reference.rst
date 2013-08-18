@@ -7,6 +7,12 @@ Computing the DT-CWT
 .. automodule:: dtcwt
     :members:
 
+Image sampling
+``````````````
+
+.. automodule:: dtcwt.sampling
+    :members:
+
 Low-level support functions
 ```````````````````````````
 

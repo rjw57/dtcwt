@@ -4,7 +4,8 @@ from dtcwt.sampling import upsample_highpass, upsample
 
 __all__ = [ 'find_keypoints' ]
 
-def find_keypoints(highpass_subbands, method=None, alpha=1.0, beta=0.4,
+def find_keypoints(highpass_subbands, method=None,
+        alpha=1.0, beta=0.4, kappa=1.0/6.0,
         threshold=None, max_points=None,
         upsample_keypoint_energy=None, upsample_subbands=None,
         refine_positions=True, skip_levels=1):
@@ -13,6 +14,7 @@ def find_keypoints(highpass_subbands, method=None, alpha=1.0, beta=0.4,
     :param method: *(optional)* string specifying which keypoint energy method to use
     :param alpha: *(optional)* scale parameter for ``'fauqueur'`` method
     :param beta: *(optional)* shape parameter for ``'fauqueur'`` method
+    :param kappa: *(optiona)* suppression parameter for ``'kingsbury'`` method
     :param threshold: *(optional)* minimum keypoint energy of returned keypoints
     :param max_points: *(optional)* maximum number of keypoints to return
     :param upsample_keypoint_energy: is non-None, a string specifying a method used to upscale the keypoint energy map before finding keypoints
@@ -54,7 +56,7 @@ def find_keypoints(highpass_subbands, method=None, alpha=1.0, beta=0.4,
     =========== ======================================= ======================
     fauqueur    Geometric mean of absolute values[1]    *alpha*, *beta*
     bendale     Minimum absolute value[2]               none
-    kingsbury   Cross-product of orthogonal subbands    none
+    kingsbury   Cross-product of orthogonal subbands    *kappa*
     gale        Gradient of subbands                    none
     =========== ======================================= ======================
 
@@ -94,7 +96,7 @@ def find_keypoints(highpass_subbands, method=None, alpha=1.0, beta=0.4,
         elif method == 'bendale':
             kp_energies.append(_keypoint_energy_bendale(subband))
         elif method == 'kingsbury':
-            kp_energies.append(_keypoint_energy_kingsbury(subband))
+            kp_energies.append(_keypoint_energy_kingsbury(subband, kappa))
         elif method == 'gale':
             kp_energies.append(_keypoint_energy_gale(subband))
         else:
@@ -140,8 +142,14 @@ def _keypoint_energy_fauqueur(subband, alpha, beta):
 def _keypoint_energy_bendale(subband):
     return np.min(np.abs(subband), axis=2)
 
-def _keypoint_energy_kingsbury(subband):
-    raise NotImplementedError('not implemented yet')
+def _keypoint_energy_kingsbury(subband, kappa=1.0/6.0, epsilon=1e-8):
+    abs_Y = np.abs(subband)
+    A = np.sqrt(np.sum(abs_Y*abs_Y, axis=2))
+    B = np.sum(abs_Y[:,:,:3] * abs_Y[:,:,3:], axis=2)
+
+    # The max(0, ...) is not part of the original energy calculation but we use
+    # it to avoid finding false maxima in no-threshold cases.
+    return np.maximum(0, B/np.maximum(epsilon, A) - kappa*A)
 
 def _keypoint_energy_gale(subband):
     raise NotImplementedError('not implemented yet')

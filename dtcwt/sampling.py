@@ -3,8 +3,11 @@
 """
 
 __all__ = (
-    'sample', 'sample_highpass', 'scale', 'scale_highpass'
+    'sample', 'sample_highpass', 'scale', 'scale_highpass',
+    'upsample', 'upsample_highpass',
 )
+
+from dtcwt.lowlevel import reflect, asfarray
 
 import numpy as np
 
@@ -205,6 +208,119 @@ def scale_highpass(im, shape, method=DEFAULT_SAMPLE_METHOD):
     
     # sample
     im_sampled = sample(im_unwrap, sxs, sys, method)
+    
+    # re-wrap
+    return im_sampled * _phase_image(sxs, sys, False)
+
+def _upsample_columns(X, method=None):
+    """
+    The centre of columns of X, an M-columned matrix, are assumed to have co-ordinates
+    { 0, 1, 2, ... , M-1 } which means that the up-sampled matrix's columns should sample
+    from { -0.25, 0.25, 0.75, ... , M-1.25 }. We can view that as an interleaved set of teo
+    *convolutions* of X. The first, A, using a kernel equivalent to sampling the { -0.25, 0.75,
+    1.75, 2.75, ... M-1.25 } columns and the second, B, sampling the { 0.25, 1.25, ... , M-0.75 }
+    columns.
+    """
+    if method is None:
+        method = 'lanczos'
+    
+    X = np.atleast_2d(asfarray(X))
+    
+    out_shape = list(X.shape)
+    out_shape[1] *= 2
+    output = np.zeros(out_shape, dtype=X.dtype)
+    
+    # Centres of sampling for A and B convolutions
+    M = X.shape[1]
+    A_columns = np.linspace(-0.25, M-1.25, M)
+    B_columns = A_columns + 0.5
+    
+    # For A columns sample at x = ceil(x) - 0.25 with ceil(x) = { 0, 1, 2, ..., M-1 }
+    # For B columns sample at x = floor(x) + 0.25 with floor(x) = { 0, 1, 2, ..., M-1 }
+    int_columns = np.linspace(0, M-1, M)
+    
+    if method == 'lanczos':
+        # Lanczos kernel width
+        a = 3.0
+        sample_offsets = np.arange(-a, a+1)
+       
+        # For A: if i = ceil(x) + di, => ceil(x) - i = -0.25 - di
+        # For B: if i = floor(x) + di, => floor(x) - i = 0.25 - di
+        l_as = np.sinc(-0.25-sample_offsets)*np.sinc((-0.25-sample_offsets)/a)   
+        l_bs = np.sinc(0.25-sample_offsets)*np.sinc((0.25-sample_offsets)/a)
+    elif method == 'nearest':
+        # Nearest neighbour kernel width is 1
+        sample_offsets = [0,]
+        l_as = l_bs = [1,]
+    elif method == 'bilinear':
+        # Bilinear kernel width is technically 2 but we need to offset the kernels differently
+        # for A and B columns:
+        sample_offsets = [-1,0,1]
+        l_as = [0.25, 0.75, 0]
+        l_bs = [0, 0.75, 0.25]
+    else:
+        raise ValueError('Unknown interpolation mode: {0}'.format(mode))
+    
+    # Convolve
+    for di, l_a, l_b in zip(sample_offsets, l_as, l_bs):
+        columns = reflect(int_columns + di, -0.5, M-0.5).astype(np.int)
+        
+        output[:,0::2,...] += l_a * X[:,columns,...]
+        output[:,1::2,...] += l_b * X[:,columns,...]
+    
+    return output
+    
+def upsample(image, method=None):
+    """Specialised function to upsample an image by a factor of two using
+    a specified sampling method. If *image* is an array of shape (NxMx...) then
+    the output will have shape (2Nx2Mx...). Only rows and columns are
+    upsampled, depth axes and greater are interpolated but are not upsampled.
+
+    :param image: an array containing the image to upsample
+    :param method: if non-None, a string specifying the sampling method to use.
+
+    If *method* is ``None``, the default sampling method ``'lanczos'`` is used.
+    The following sampling methods are supported:
+
+    =========== ===========
+    Name        Description 
+    =========== ===========
+    nearest     Nearest-neighbour sampling
+    bilinear    Bilinear sampling
+    lanczos     Lanczos sampling with window radius of 3
+    =========== ===========
+    """
+    image = np.atleast_2d(asfarray(image))
+
+    # The default '.T' operator doesn't quite do what we want since it
+    # reverses the axes rather than only swapping the first two
+    def _t(X):
+        axes = np.arange(len(X.shape))
+        axes[:2] = (1,0)
+        return np.transpose(X, axes)
+
+    return _upsample_columns(_t(_upsample_columns(_t(image), method)), method)
+
+def upsample_highpass(im, method=None):
+    """As :py:func:`upsample` except that the highpass image is first phase
+    rolled so that the filter has approximate DC centre frequency. The upshot
+    is that this is the function to use when re-sampling complex subband
+    images.
+
+    """
+    im = np.atleast_2d(asfarray(im))
+
+    # Sampled co-ordinates
+    dxs, dys = np.meshgrid(np.arange(im.shape[1]*2), np.arange(im.shape[0]*2))
+    sxs = 0.5 * (dxs + 0.5) - 0.5
+    sys = 0.5 * (dys + 0.5) - 0.5
+
+    # phase unwrap
+    X, Y = np.meshgrid(np.arange(im.shape[1]), np.arange(im.shape[0]))
+    im_unwrap = im * _phase_image(X, Y, True)
+    
+    # sample
+    im_sampled = upsample(im_unwrap, method)
     
     # re-wrap
     return im_sampled * _phase_image(sxs, sys, False)

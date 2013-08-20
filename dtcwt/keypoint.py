@@ -24,6 +24,12 @@ def find_keypoints(highpass_subbands, method=None,
 
     :returns: (Px4) array of P keypoints in image co-ordinates
 
+    .. warning::
+
+        The interface and behaviour of this function is the subject of an open
+        research project. It is provided in this release as a preview of
+        forthcoming functionality but it is subject to change between releases.
+
     The rows of the returned keypoint array give the x co-ordinate, y
     co-ordinate, scale and keypoint energy. The rows are sorted in order of
     decreasing keypoint energy.
@@ -57,7 +63,6 @@ def find_keypoints(highpass_subbands, method=None,
     fauqueur    Geometric mean of absolute values[1]    *alpha*, *beta*
     bendale     Minimum absolute value[2]               none
     kingsbury   Cross-product of orthogonal subbands    *kappa*
-    gale        Gradient of subbands                    none
     =========== ======================================= ======================
 
     [1] Julien Fauqueur, Nick Kingsbury, and Ryan Anderson. *Multiscale

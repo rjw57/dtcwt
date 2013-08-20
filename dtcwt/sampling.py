@@ -3,7 +3,8 @@
 """
 
 __all__ = (
-    'sample', 'sample_highpass', 'scale', 'scale_highpass',
+    'sample', 'sample_highpass',
+    'rescale', 'rescale_highpass',
     'upsample', 'upsample_highpass',
 )
 
@@ -115,7 +116,7 @@ def sample(im, xs, ys, method=None):
     
     raise NotImplementedError('Sampling method "{0}" is not implemented.'.format(method))
 
-def scale(im, shape, method=None):
+def rescale(im, shape, method=None):
     """Return a resampled version of *im* scaled to *shape*.
 
     Since the centre of pixel (x,y) has co-ordinate (x,y) the extent of *im* is
@@ -176,8 +177,8 @@ def sample_highpass(im, xs, ys, method=None):
     # re-wrap
     return _phase_image(xs, ys, False) * im_sampled
 
-def scale_highpass(im, shape, method=None):
-    """As :py:func:`sample` except that the highpass image is first phase
+def rescale_highpass(im, shape, method=None):
+    """As :py:func:`rescale` except that the highpass image is first phase
     shifted to be centred on approximately DC.
 
     """

@@ -7,6 +7,12 @@ Computing the DT-CWT
 .. automodule:: dtcwt
     :members:
 
+Keypoint analysis
+`````````````````
+
+.. automodule:: dtcwt.keypoint
+    :members:
+
 Image sampling
 ``````````````
 

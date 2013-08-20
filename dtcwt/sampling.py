@@ -14,8 +14,6 @@ import numpy as np
 _W0 = -3*np.pi/2.0
 _W1 = -np.pi/2.0
 
-DEFAULT_SAMPLE_METHOD = 'lanczos'
-
 #: The expected phase advances in the x-direction for each subband of the 2D transform
 DTHETA_DX_2D = np.array((_W1, _W0, _W0, _W0, _W0, _W1))
 
@@ -23,8 +21,10 @@ DTHETA_DX_2D = np.array((_W1, _W0, _W0, _W0, _W0, _W1))
 DTHETA_DY_2D = np.array((_W0, _W0, _W1, -_W1, -_W0, -_W0))
 
 def _sample_clipped(im, xs, ys):
-    """Truncated and clipped sampling."""
-    return im[np.clip(ys.astype(np.int64), 0, im.shape[0]-1), np.clip(xs.astype(np.int64), 0, im.shape[1]-1),...]
+    """Truncated and symmatric sampling."""
+    sym_xs = reflect(xs, -0.5, im.shape[1]-0.5).astype(np.int)
+    sym_ys = reflect(ys, -0.5, im.shape[0]-0.5).astype(np.int)
+    return im[sym_ys, sym_xs, ...]
 
 def _sample_nearest(im, xs, ys):
     return _sample_clipped(im, np.round(xs), np.round(ys))
@@ -89,11 +89,12 @@ def _sample_lanczos(im, xs, ys):
 
     return S
 
-def sample(im, xs, ys, method=DEFAULT_SAMPLE_METHOD):
+def sample(im, xs, ys, method=None):
     """Sample image at (x,y) given by elements of *xs* and *ys*. Both *xs* and *ys*
     must have identical shape and output will have this same shape. The
     location (x,y) refers to the *centre* of ``im[y,x]``. Samples at fractional
-    locations are calculated using the method specified by *method*
+    locations are calculated using the method specified by *method* (or
+    ``'lanczos'`` if *method* is ``None``.)
 
     :param im: array to sample from
     :param xs: x co-ordinates to sample
@@ -102,6 +103,9 @@ def sample(im, xs, ys, method=DEFAULT_SAMPLE_METHOD):
 
     :raise ValueError: if ``xs`` and ``ys`` have differing shapes
     """
+    if method is None:
+        method = 'lanczos'
+
     if method == 'bilinear':
         return _sample_bilinear(im, xs, ys)
     elif method == 'lanczos':
@@ -111,7 +115,7 @@ def sample(im, xs, ys, method=DEFAULT_SAMPLE_METHOD):
     
     raise NotImplementedError('Sampling method "{0}" is not implemented.'.format(method))
 
-def scale(im, shape, method=DEFAULT_SAMPLE_METHOD):
+def scale(im, shape, method=None):
     """Return a resampled version of *im* scaled to *shape*.
 
     Since the centre of pixel (x,y) has co-ordinate (x,y) the extent of *im* is
@@ -157,7 +161,7 @@ def _phase_image(xs, ys, unwrap=True):
             slices.append(np.exp(1j * slice_phase))
     return np.dstack(slices)
 
-def sample_highpass(im, xs, ys, method=DEFAULT_SAMPLE_METHOD):
+def sample_highpass(im, xs, ys, method=None):
     """As :py:func:`sample` except that the highpass image is first phase
     shifted to be centred on approximately DC.
 
@@ -172,7 +176,7 @@ def sample_highpass(im, xs, ys, method=DEFAULT_SAMPLE_METHOD):
     # re-wrap
     return _phase_image(xs, ys, False) * im_sampled
 
-def scale_highpass(im, shape, method=DEFAULT_SAMPLE_METHOD):
+def scale_highpass(im, shape, method=None):
     """As :py:func:`sample` except that the highpass image is first phase
     shifted to be centred on approximately DC.
 

@@ -1,6 +1,6 @@
 import numpy as np
 
-TOLERANCE = 1e-12
+TOLERANCE = 1e-6
 
 def assert_almost_equal(a, b, tolerance=TOLERANCE):
     md = np.abs(a-b).max()

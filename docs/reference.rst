@@ -19,6 +19,12 @@ Image sampling
 .. automodule:: dtcwt.sampling
     :members:
 
+Miscellaneous utility functions
+```````````````````````````````
+
+.. automodule:: dtcwt.utils
+    :members:
+
 Low-level support functions
 ```````````````````````````
 

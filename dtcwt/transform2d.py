@@ -154,7 +154,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     else:
         return Yl, tuple(Yh)
 
-def dtwavexfm2b(X, nlevels=3, biort='near_sym_b_bp', qshift='qshift_b_bp', include_scale=False):		# For now, will force the use of these parameters as defaults as only these actually make a difference
+def dtwavexfm2b(X, nlevels=3, biort='near_sym_b_bp', qshift='qshift_b_bp', include_scale=False):                # For now, will force the use of these parameters as defaults as only these actually make a difference
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
 
     :param X: 2D real array
@@ -199,22 +199,22 @@ def dtwavexfm2b(X, nlevels=3, biort='near_sym_b_bp', qshift='qshift_b_bp', inclu
 
     # Probably not the best way to do this, but I'm a noob.
     try:
-	h2a, h2b
-	bp_qsh = 1
+        h2a, h2b
+        bp_qsh = 1
     except:
-	bp_qsh = 0
-	
+        bp_qsh = 0
+        
     try:
-	h2o
-	bp_lev1 = 1
+        h2o
+        bp_lev1 = 1
     except:
-	bp_lev1 = 0
-	  
+        bp_lev1 = 0
+          
     try:
-	h1o
-	hi_lev1 = 1
+        h1o
+        hi_lev1 = 1
     except:
-	hi_lev1 = 0
+        hi_lev1 = 0
 
 
     original_size = X.shape
@@ -257,9 +257,9 @@ def dtwavexfm2b(X, nlevels=3, biort='near_sym_b_bp', qshift='qshift_b_bp', inclu
         # Do odd top-level filters on cols.
         Lo = colfilter(X,h0o).T
         if hi_lev1:
-	     Hi = colfilter(X,h1o).T
-	if bp_lev1:
-	     Ba = colfilter(X,h2o).T
+             Hi = colfilter(X,h1o).T
+        if bp_lev1:
+             Ba = colfilter(X,h2o).T
 
 
         # Do odd top-level filters on rows.
@@ -267,10 +267,10 @@ def dtwavexfm2b(X, nlevels=3, biort='near_sym_b_bp', qshift='qshift_b_bp', inclu
         Yh[0] = np.zeros((LoLo.shape[0] >> 1, LoLo.shape[1] >> 1, 6), dtype=complex_dtype)
         Yh[0][:,:,[0, 5]] = q2c(colfilter(Hi,h0o).T)     # Horizontal pair
         Yh[0][:,:,[2, 3]] = q2c(colfilter(Lo,h1o).T)     # Vertical pair
-        if bp_lev1:					 # Diagonal pair
-	    Yh[0][:,:,[1, 4]] = q2c(colfilter(Ba,h2o).T)
-	else:
-	    Yh[0][:,:,[1, 4]] = q2c(colfilter(Hi,h1o).T)     
+        if bp_lev1:                                      # Diagonal pair
+            Yh[0][:,:,[1, 4]] = q2c(colfilter(Ba,h2o).T)
+        else:
+            Yh[0][:,:,[1, 4]] = q2c(colfilter(Hi,h1o).T)     
 
         if include_scale:
             Yscale[0] = LoLo
@@ -288,9 +288,9 @@ def dtwavexfm2b(X, nlevels=3, biort='near_sym_b_bp', qshift='qshift_b_bp', inclu
         # Do even Qshift filters on rows.
         Lo = coldfilt(LoLo,h0b,h0a).T
         Hi = coldfilt(LoLo,h1b,h1a).T
-	if bp_qsh:
-	    Ba = coldfilt(LoLo,h2b,h2a).T
-	    
+        if bp_qsh:
+            Ba = coldfilt(LoLo,h2b,h2a).T
+            
         # Do even Qshift filters on columns.
         LoLo = coldfilt(Lo,h0b,h0a).T
 
@@ -299,9 +299,9 @@ def dtwavexfm2b(X, nlevels=3, biort='near_sym_b_bp', qshift='qshift_b_bp', inclu
         Yh[level][:,:,[2, 3]] = q2c(coldfilt(Lo,h1b,h1a).T)  # Vertical
 
         if bp_qsh:
-	    Yh[level][:,:,[1, 4]] = q2c(coldfilt(Ba,h2b,h2a).T) # Diagonal bandpass
-	else:
-	    Yh[level][:,:,[1, 4]] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal highpass
+            Yh[level][:,:,[1, 4]] = q2c(coldfilt(Ba,h2b,h2a).T) # Diagonal bandpass
+        else:
+            Yh[level][:,:,[1, 4]] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal highpass
 
         if include_scale:
             Yscale[0] = LoLo
@@ -485,16 +485,16 @@ def dtwaveifm2b(Yl,Yh,biort='near_sym_b_bp',qshift='qshift_b_bp',gain_mask=None)
 
     # Probably not the best way to do this, but I'm a noob.
     try:
-	h2a, h2b
-	bp_qsh = 1
+        h2a, h2b
+        bp_qsh = 1
     except:
-	bp_qsh = 0
-	
+        bp_qsh = 0
+        
     try:
-	h2o
-	bp_lev1 = 1
+        h2o
+        bp_lev1 = 1
     except:
-	bp_lev1 = 0
+        bp_lev1 = 0
 
     current_level = a
     Z = Yl
@@ -532,14 +532,14 @@ def dtwaveifm2b(Yl,Yh,biort='near_sym_b_bp',qshift='qshift_b_bp',gain_mask=None)
         # Do odd top-level filters on columns.
         y1 = colfilter(Z,g0o) + colfilter(lh,g1o)
         if bp_lev1:
-	    y2 = colfilter(hl,g0o)
-	    y2bp = colfilter(hh,g2o)
-	    # Do odd top-level filters on rows.
-	    Z = (colfilter(y1.T,g0o) + colfilter(y2.T,g1o)).T + colfilter(y2bp.T,g2o)
-	else:
-	    y2 = colfilter(hl,g0o) + colfilter(hh,g1o)
-	    # Do odd top-level filters on rows.
-	    Z = (colfilter(y1.T,g0o) + colfilter(y2.T,g1o)).T
+            y2 = colfilter(hl,g0o)
+            y2bp = colfilter(hh,g2o)
+            # Do odd top-level filters on rows.
+            Z = (colfilter(y1.T,g0o) + colfilter(y2.T,g1o)).T + colfilter(y2bp.T,g2o)
+        else:
+            y2 = colfilter(hl,g0o) + colfilter(hh,g1o)
+            # Do odd top-level filters on rows.
+            Z = (colfilter(y1.T,g0o) + colfilter(y2.T,g1o)).T
 
     return Z
 

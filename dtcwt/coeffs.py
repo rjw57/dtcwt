@@ -43,9 +43,9 @@ def biort(name):
 
     """
     if name == 'near_sym_b_bp':
-	return _load_from_file(name, ('h0o', 'g0o', 'h1o', 'g1o', 'h2o', 'g2o'))
+        return _load_from_file(name, ('h0o', 'g0o', 'h1o', 'g1o', 'h2o', 'g2o'))
     else:
-	return _load_from_file(name, ('h0o', 'g0o', 'h1o', 'g1o'))
+        return _load_from_file(name, ('h0o', 'g0o', 'h1o', 'g1o'))
 
 def qshift(name):
     """Load level >=2 wavelet by name,
@@ -74,8 +74,8 @@ def qshift(name):
 
     """
     if name == 'qshift_b_bp':
-	return _load_from_file(name, ('h0a', 'h0b', 'g0a', 'g0b', 'h1a', 'h1b', 'g1a', 'g1b','h2a', 'h2b'))
+        return _load_from_file(name, ('h0a', 'h0b', 'g0a', 'g0b', 'h1a', 'h1b', 'g1a', 'g1b','h2a', 'h2b'))
     else:
-	return _load_from_file(name, ('h0a', 'h0b', 'g0a', 'g0b', 'h1a', 'h1b', 'g1a', 'g1b'))
+        return _load_from_file(name, ('h0a', 'h0b', 'g0a', 'g0b', 'h1a', 'h1b', 'g1a', 'g1b'))
 
 # vim:sw=4:sts=4:et

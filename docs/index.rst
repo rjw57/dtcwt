@@ -33,6 +33,7 @@ Contents
 
     gettingstarted
     examples
+    variant
     reference
 
 

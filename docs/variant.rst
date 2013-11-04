@@ -11,9 +11,9 @@ For some applications, one may prefer the subband responses to be more rotationa
 
 In the original DTCWT, the 45 and 135 degree subbands have passbands whose centre frequencies 
 are somewhat furtherfrom the origin than those of the other four subbands. This results from 
-the combination of two highpass 1-D wavelet filters. The remaining subbands combine highpass
-and lowpass 1-D filters, and their centre frequencies are a factor of approximately sqrt(1.8) 
-closer to the origin of the frequency plane.
+the combination of two highpass 1-D wavelet filters to produce 2-D wavelets. The remaining 
+subbands combine highpass and lowpass 1-D filters, and their centre frequencies are a 
+factor of approximately sqrt(1.8) closer to the origin of the frequency plane.
 
 The dtwavexfm2b() function, when used with 'near_sym_b_bp' and 'qshift_b_bp' parameters, employs 
 an alternative bandpass 1-D filter in place of the highpass filter for the appropriate subbands.

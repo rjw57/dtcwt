@@ -23,7 +23,7 @@ def drawedge(theta,r,w,N):
     
     # Calculate values to subtract from the plane
     r = np.array([np.cos(thetar), np.sin(thetar)])*(-1) * (r - imCentre) 
-    print(r)
+
     # check width of raised cosine section
     w = np.maximum(1,w)
     

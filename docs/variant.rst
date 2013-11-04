@@ -18,6 +18,14 @@ factor of approximately sqrt(1.8) closer to the origin of the frequency plane.
 The dtwavexfm2b() function, when used with 'near_sym_b_bp' and 'qshift_b_bp' parameters, employs 
 an alternative bandpass 1-D filter in place of the highpass filter for the appropriate subbands.
 
+.. figure:: modified_wavelets.png
+
+
+.. code-block:: console
+
+    Yl, Yh = dtcwt.dtwavexfm2b(image, tfmlevel, 'near_sym_b_bp', 'qshift_b_bp')
+
+
 While the Hilbert transform property of the DTCWT is preserved, perfect reconstruction is lost.
 However, in applications such as machine vision, where all subsequent operations on the image
 take place in the transform domain, this is of relatively minor importance.

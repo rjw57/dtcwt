@@ -44,12 +44,10 @@ def test_dtwavexfm2():
     Yl, Yh, Yscale = dtwavexfm2(lena, 4, 'near_sym_a', 'qshift_a', include_scale=True)
     assert_almost_equal(Yl, verif['lena_Yl'], tolerance=TOLERANCE)
 
-    assert len(Yh) == verif['lena_Yh'].shape[0]
     for idx, a in enumerate(Yh):
-        assert_almost_equal(a, verif['lena_Yh'][idx, 0], tolerance=TOLERANCE)
+        assert_almost_equal(a, verif['lena_Yh_{0}'.format(idx)], tolerance=TOLERANCE)
 
-    assert len(Yscale) == verif['lena_Yscale'].shape[0]
     for idx, a in enumerate(Yscale):
-        assert_almost_equal(a, verif['lena_Yscale'][idx, 0], tolerance=TOLERANCE)
+        assert_almost_equal(a, verif['lena_Yscale_{0}'.format(idx)], tolerance=TOLERANCE)
 
 # vim:sw=4:sts=4:et

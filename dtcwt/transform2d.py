@@ -124,7 +124,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         Yh[level][:,:,[1, 4]] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
 
         if include_scale:
-            Yscale[0] = LoLo
+            Yscale[level] = LoLo
 
     Yl = LoLo
 

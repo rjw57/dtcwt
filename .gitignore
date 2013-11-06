@@ -6,3 +6,4 @@ build/
 cover/
 .coverage
 dist/
+*~

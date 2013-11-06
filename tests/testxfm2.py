@@ -34,6 +34,11 @@ def test_3d():
 
 def test_simple_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(lena, include_scale=True)
+
+    assert len(Yscale) > 0
+    for x in Yscale:
+        assert x is not None
+
 def test_odd_rows():
     Yl, Yh = dtwavexfm2(lena[:509,:])
 

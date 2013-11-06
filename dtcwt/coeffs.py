@@ -25,15 +25,15 @@ def biort(name):
     :param name: a string specifying the wavelet family name
     :returns: a tuple of vectors giving filter coefficients
 
-    ============ ============================================
-    Name         Wavelet
-    ============ ============================================
-    antonini     Antonini 9,7 tap filters.
-    legall       LeGall 5,3 tap filters.
-    near_sym_a   Near-Symmetric 5,7 tap filters.
-    near_sym_b   Near-Symmetric 13,19 tap filters.
-    near_sym_b_bp Near-Symmetric 13,19 tap filters + BP filter
-    ============ ============================================
+    =============  ============================================
+    Name           Wavelet
+    =============  ============================================
+    antonini       Antonini 9,7 tap filters.
+    legall         LeGall 5,3 tap filters.
+    near_sym_a     Near-Symmetric 5,7 tap filters.
+    near_sym_b     Near-Symmetric 13,19 tap filters.
+    near_sym_b_bp  Near-Symmetric 13,19 tap filters + BP filter
+    =============  ============================================
 
     Return a tuple whose elements are a vector specifying the h0o, g0o, h1o and
     g1o coefficients.

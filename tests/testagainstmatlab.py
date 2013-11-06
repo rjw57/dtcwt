@@ -6,7 +6,10 @@ import numpy as np
 from dtcwt import dtwavexfm2, dtwaveifm2, biort, qshift
 from dtcwt.lowlevel import coldfilt
 
-TOLERANCE = 1e-12
+from .util import assert_almost_equal
+
+# We allow a little more tolerance for comparison with MATLAB
+TOLERANCE = 1e-5
 
 def setup():
     global lena
@@ -29,18 +32,18 @@ def test_coldfilt():
     h0o, g0o, h1o, g1o = biort('near_sym_b')
     h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift('qshift_d')
     A = coldfilt(lena, h1b, h1a)
-    assert np.abs(A - verif['lena_coldfilt']).max() < TOLERANCE
+    assert_almost_equal(A, verif['lena_coldfilt'])
 
 def test_dtwavexfm2():
     Yl, Yh, Yscale = dtwavexfm2(lena, 4, 'near_sym_a', 'qshift_a', include_scale=True)
-    assert np.abs(Yl - verif['lena_Yl']).max() < TOLERANCE
+    assert_almost_equal(Yl, verif['lena_Yl'], tolerance=TOLERANCE)
 
     assert len(Yh) == verif['lena_Yh'].shape[0]
-    for a, b in zip(Yh, verif['lena_Yh']):
-        assert np.abs(a-b).max() < TOLERANCE
+    for idx, a in enumerate(Yh):
+        assert_almost_equal(a, verif['lena_Yh'][idx, 0], tolerance=TOLERANCE)
 
     assert len(Yscale) == verif['lena_Yscale'].shape[0]
-    for a, b in zip(Yscale, verif['lena_Yscale']):
-        assert np.abs(a-b).max() < TOLERANCE
+    for idx, a in enumerate(Yscale):
+        assert_almost_equal(a, verif['lena_Yscale'][idx, 0], tolerance=TOLERANCE)
 
 # vim:sw=4:sts=4:et

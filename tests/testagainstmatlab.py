@@ -4,7 +4,7 @@ from nose.plugins.attrib import attr
 
 import numpy as np
 from dtcwt import dtwavexfm2, dtwaveifm2, biort, qshift
-from dtcwt.lowlevel import coldfilt
+from dtcwt.lowlevel import coldfilt, colifilt
 
 from .util import assert_almost_equal
 
@@ -33,6 +33,12 @@ def test_coldfilt():
     h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift('qshift_d')
     A = coldfilt(lena, h1b, h1a)
     assert_almost_equal(A, verif['lena_coldfilt'])
+
+def test_coldfilt():
+    h0o, g0o, h1o, g1o = biort('near_sym_b')
+    h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift('qshift_d')
+    A = colifilt(lena, g0b, g0a)
+    assert_almost_equal(A, verif['lena_colifilt'])
 
 def test_dtwavexfm2():
     Yl, Yh, Yscale = dtwavexfm2(lena, 4, 'near_sym_a', 'qshift_a', include_scale=True)

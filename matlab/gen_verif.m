@@ -18,8 +18,13 @@ h1b = flipud(h1a);
 
 lena_coldfilt = coldfilt(lena, h1b, h1a);
 
+g0a = qshift_d.g0a;
+g0b = flipud(g0a);
+
+lena_colifilt = colifilt(lena, g0b, g0a);
+
 [lena_Yl, lena_Yh, lena_Yscale] = dtwavexfm2(lena, 4, 'near_sym_a', 'qshift_a');
 
-save('verification.mat', 'lena_coldfilt', 'lena_Yl', 'lena_Yh', 'lena_Yscale');
+save('verification.mat', 'lena_coldfilt', 'lena_colifilt', 'lena_Yl', 'lena_Yh', 'lena_Yscale');
 
 %% 

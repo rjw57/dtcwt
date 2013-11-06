@@ -14,17 +14,19 @@ for idx, v in enumerate(verif['lena_Yscale']):
     verif['lena_Yscale_{0}'.format(idx)] = v[0]
 del verif['lena_Yscale']
 
-savez('../tests/verification.npz', **verif)
+#savez('../tests/verification.npz', **verif)
 
 verifb = loadmat('verificationb.mat')
-verifb = dict((k,v) for k, v in verif.iteritems() if not k.startswith('_'))
+verifb = dict((k,v) for k, v in verifb.iteritems() if not k.startswith('_'))
 
-for idx, v in enumerate(verif['lena_Yh']):
-    verif['lena_Yhb_{0}'.format(idx)] = v[0]
-del verif['lena_Yhb']
+for idx, v in enumerate(verifb['lena_Yhb']):
+    verifb['lena_Yhb_{0}'.format(idx)] = v[0]
+del verifb['lena_Yhb']
 
-for idx, v in enumerate(verif['lena_Yscaleb']):
-    verif['lena_Yscaleb_{0}'.format(idx)] = v[0]
-del verif['lena_Yscaleb']
+for idx, v in enumerate(verifb['lena_Yscaleb']):
+    verifb['lena_Yscaleb_{0}'.format(idx)] = v[0]
+del verifb['lena_Yscaleb']
 
-savez('../tests/verificationb.npz', **verif)
+allverif = dict(verif.items() + verifb.items())
+
+savez('../tests/verification.npz', **allverif)

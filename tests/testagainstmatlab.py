@@ -18,9 +18,6 @@ def setup():
     global verif
     verif = np.load(os.path.join(os.path.dirname(__file__), 'verification.npz'))
     
-    global verifb
-    verifb = np.load(os.path.join(os.path.dirname(__file__), 'verificationb.npz'))
-
 def test_lena_loaded():
     assert lena.shape == (512, 512)
     assert lena.min() >= 0
@@ -55,12 +52,12 @@ def test_dtwavexfm2():
 
 def test_dtwavexfm2b():
     Yl, Yh, Yscale = dtwavexfm2b(lena, 4, 'near_sym_b_bp', 'qshift_b_bp', include_scale=True)
-    assert_almost_equal(Yl, verifb['lena_Ylb'], tolerance=TOLERANCE)
+    assert_almost_equal(Yl, verif['lena_Ylb'], tolerance=TOLERANCE)
 
     for idx, a in enumerate(Yh):
-        assert_almost_equal(a, verifb['lena_Yhb_{0}'.format(idx)], tolerance=TOLERANCE)
+        assert_almost_equal(a, verif['lena_Yhb_{0}'.format(idx)], tolerance=TOLERANCE)
 
     for idx, a in enumerate(Yscale):
-        assert_almost_equal(a, verifb['lena_Yscaleb_{0}'.format(idx)], tolerance=TOLERANCE)
+        assert_almost_equal(a, verif['lena_Yscaleb_{0}'.format(idx)], tolerance=TOLERANCE)
 
 # vim:sw=4:sts=4:et

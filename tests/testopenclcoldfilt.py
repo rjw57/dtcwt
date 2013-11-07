@@ -6,7 +6,6 @@ from dtcwt.opencl.lowlevel import coldfilt, NoCLPresentError
 from dtcwt.coeffs import biort, qshift
 
 from nose.tools import raises
-from nose import SkipTest
 
 from .util import assert_almost_equal, skip_if_no_cl
 

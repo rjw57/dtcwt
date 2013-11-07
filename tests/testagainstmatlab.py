@@ -3,7 +3,7 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm2, dtwaveifm2, biort, qshift
+from dtcwt import dtwavexfm2, dtwaveifm2, dtwavexfm2b, dtwaveifm2b, biort, qshift
 from dtcwt.lowlevel import coldfilt, colifilt
 
 from .util import assert_almost_equal, summarise_mat
@@ -30,6 +30,8 @@ from .util import assert_almost_equal, summarise_mat
 # matrix greatly reduces the amount of storage required.
 
 # Summary matching requires greater tolerance
+
+# We allow a little more tolerance for comparison with MATLAB
 TOLERANCE = 1e-5
 
 def assert_almost_equal_to_summary(a, summary, *args, **kwargs):
@@ -41,7 +43,7 @@ def setup():
 
     global verif
     verif = np.load(os.path.join(os.path.dirname(__file__), 'verification.npz'))
-
+    
 def test_lena_loaded():
     assert lena.shape == (512, 512)
     assert lena.min() >= 0
@@ -73,5 +75,15 @@ def test_dtwavexfm2():
 
     for idx, a in enumerate(Yscale):
         assert_almost_equal_to_summary(a, verif['lena_Yscale_{0}'.format(idx)], tolerance=TOLERANCE)
+
+def test_dtwavexfm2b():
+    Yl, Yh, Yscale = dtwavexfm2b(lena, 4, 'near_sym_b_bp', 'qshift_b_bp', include_scale=True)
+    assert_almost_equal_to_summary(Yl, verif['lena_Ylb'], tolerance=TOLERANCE)
+
+    for idx, a in enumerate(Yh):
+        assert_almost_equal_to_summary(a, verif['lena_Yhb_{0}'.format(idx)], tolerance=TOLERANCE)
+
+    for idx, a in enumerate(Yscale):
+        assert_almost_equal_to_summary(a, verif['lena_Yscaleb_{0}'.format(idx)], tolerance=TOLERANCE)
 
 # vim:sw=4:sts=4:et

@@ -28,6 +28,14 @@ for idx, v in enumerate(verif['lena_Yscale']):
     verif['lena_Yscale_{0}'.format(idx)] = v[0]
 del verif['lena_Yscale']
 
+for idx, v in enumerate(verif['lena_Yhb']):
+    verif['lena_Yhb_{0}'.format(idx)] = v[0]
+del verif['lena_Yhb']
+
+for idx, v in enumerate(verif['lena_Yscaleb']):
+    verif['lena_Yscaleb_{0}'.format(idx)] = v[0]
+del verif['lena_Yscaleb']
+
 summaries = dict((k, summarise_mat(v)) for k, v in verif.iteritems())
 
 savez('../tests/verification.npz', **summaries)

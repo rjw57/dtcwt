@@ -22,7 +22,7 @@ DTHETA_DX_2D = np.array((_W1, _W0, _W0, _W0, _W0, _W1))
 DTHETA_DY_2D = np.array((_W0, _W0, _W1, -_W1, -_W0, -_W0))
 
 def _sample_clipped(im, xs, ys):
-    """Truncated and symmatric sampling."""
+    """Truncated and symmetric sampling."""
     sym_xs = reflect(xs, -0.5, im.shape[1]-0.5).astype(np.int)
     sym_ys = reflect(ys, -0.5, im.shape[0]-0.5).astype(np.int)
     return im[sym_ys, sym_xs, ...]

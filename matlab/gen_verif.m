@@ -25,6 +25,9 @@ lena_colifilt = colifilt(lena, g0b, g0a);
 
 [lena_Yl, lena_Yh, lena_Yscale] = dtwavexfm2(lena, 4, 'near_sym_a', 'qshift_a');
 
-save('verification.mat', 'lena_coldfilt', 'lena_colifilt', 'lena_Yl', 'lena_Yh', 'lena_Yscale');
+near_sym_b_bp = load('near_sym_b_bp');
+qshift_b_bp = load('qshift_b_bp');
 
-%% 
+[lena_Ylb, lena_Yhb, lena_Yscaleb] = dtwavexfm2b(lena, 4, 'near_sym_b_bp', 'qshift_b_bp');
+
+save('verification.mat', 'lena_coldfilt', 'lena_colifilt', 'lena_Yl', 'lena_Yh', 'lena_Yscale', 'lena_Ylb', 'lena_Yhb', 'lena_Yscaleb');

@@ -11,6 +11,7 @@ env:
     - PIP_SPECIFIER=.
     - PIP_SPECIFIER=.[opencl]
 install:
+    - pip install numpy
     - pip install -e $PIP_SPECIFIER
 script:
     - python setup.py nosetests

@@ -1,5 +1,15 @@
-import pyopencl as cl
-import pyopencl.array as cl_array
+# Wrap importing of pyopencl in a try/except block since it is not an error to
+# not have OpenCL installed when using dtcwt.
+try:
+    import pyopencl as cl
+    import pyopencl.array as cl_array
+    _HAVE_CL = True
+except ImportError:
+    _HAVE_CL = False
+
+class NoCLPresentError(RuntimeError):
+    pass
+
 import numpy as np
 from six.moves import xrange
 import struct
@@ -202,12 +212,17 @@ def colifilt(X, ha, hb):
 
     return Y
 
+def _check_cl():
+    if not _HAVE_CL:
+        raise NoCLPresentError('PyOpenCL must be installed to use OpenCL routines')
+
 @memoize
 def get_default_queue():
     """Return the default queue used for computation if one is not specified.
 
     This function is memoized and so only one queue is created after multiple invocations.
     """
+    _check_cl()
     ctx = cl.create_some_context()
     return cl.CommandQueue(ctx)
 
@@ -291,6 +306,7 @@ def axis_convolve(X, h, axis=0, queue=None, output=None):
     created.
     """
 
+    _check_cl()
     queue = _to_queue(queue)
     kern = _convolve_kernel_for_queue(queue.context)
 
@@ -304,6 +320,7 @@ def axis_convolve(X, h, axis=0, queue=None, output=None):
     return _apply_kernel(X, h, kern, output, axis=axis)
 
 def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
+    _check_cl()
     queue = _to_queue(queue)
     kern = _dfilter_kernel_for_queue(queue.context)
 

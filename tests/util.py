@@ -1,4 +1,7 @@
+import functools
 import numpy as np
+
+from dtcwt.opencl.lowlevel import NoCLPresentError
 
 TOLERANCE = 1e-6
 
@@ -36,3 +39,12 @@ def summarise_mat(M, apron=8):
         np.hstack((_mean(M[apron:-apron,:apron,...], axis=0), centre_sum, _mean(M[apron:-apron,-apron:,...], axis=0))),
         np.hstack((M[-apron:,:apron,...], _mean(M[-apron:,apron:-apron,...], axis=1), M[-apron:,-apron:,...])),
     ))
+
+def skip_if_no_cl(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except NoCLPresentError:
+            raise SkipTest('Skipping due to no CL library being present')
+    return wrapper

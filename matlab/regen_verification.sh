@@ -3,13 +3,13 @@
 ## CONFIGURATION
 
 # Path to dtcwt toolbox
-DTCWT_TOOLBOX=$HOME/Downloads/dtcwt_toolbox4_3
+DTCWT_TOOLBOX=/media/Data/MATLAB\ Toolboxes/dtcwt_toolbox4_3
 
 # Path to dtcwt keypoints toolbox
-DTCWT_KEYPOINTS=$HOME/Downloads/DTCWTkeypoints
+DTCWT_KEYPOINTS=/media/Data/MATLAB\ Toolboxes/DTCWTkeypoints
 
 # Path to MATLAB
-MATLAB=/opt/MATLAB/R2013b/bin/matlab
+MATLAB=/usr/local/MATLAB/R2013a/bin/matlab
 
 ## END OF CONFIGURATION
 

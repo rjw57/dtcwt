@@ -24,7 +24,7 @@ and frequency responses[1].
 
 Usage is very similar to the standard 2-D transform function, but the only supported parameters are 
 'near_sym_b_bp', 'qshift_b_bp'. These arguments are optional, but it is best practice to include them
-so that your intentions are clear (and becuase it is easier for others to spot than the difference 
+so that your intentions are clear (and because it is easier for others to spot than the difference 
 between 2() and 2b().
 
 .. code-block:: console
@@ -42,5 +42,41 @@ For full details, refer to:
 wavelets. *In Proc. European Conference on Signal Processing (EUSIPCO)*,
 pages 901–904, 2006. 2, 18, 21
 
+-------
+Example
+-------
+
+Working on the Lena image, the standard 2-D DTCWT achieves perfect reconstruction:
+
+.. codeblock:: console
+
+	# Perform the standard 2-D DTCWT
+	Yl, Yh = dtcwt.dtwavexfm2(image, tfmlevel, 'near_sym_b', 'qshift_b')
+	
+	# Perform the inverse transform
+	Z = dtcwt.dtwaveifm2(Yl, Yh, biort='near_sym_b', qshift='qshift_b')
+	
+	# Show the error
+	imshow(Z-image, cmap=cm.gray)
+
+.. figure:: lena_no_error.png
+
+The error signal appears to be just noise, which we can attribute to floating-point precision.
 
 
+Using the modified wavelets yields the following result:
+
+.. codeblock:: console
+
+	# Perform the symmetry-modified 2-D DTCWT
+	Yl, Yh = dtcwt.dtwavexfm2b(image, tfmlevel, 'near_sym_b_bp', 'qshift_b_bp')
+	
+	# Perform the inverse transform
+	Z = dtcwt.dtwaveifm2b(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
+	
+	# Show the error
+	imshow(Z-image, cmap=cm.gray)
+
+..figure:: lena_error.png
+
+As we would expect, the error is more significant, but only near 45 and 135 degree edge features.

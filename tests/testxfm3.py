@@ -12,8 +12,8 @@ TOLERANCE = 1e-12
 def setup():
     global ellipsoid
 
-    grid = np.arange(-(GRID_SIZE>>1), (GRID_SIZE>>1))
-    X, Y, Z = np.meshgrid(grid, grid, grid)
+    grid = slice(-(GRID_SIZE>>1), (GRID_SIZE>>1))
+    X, Y, Z = np.mgrid[grid,grid,grid]
 
     Y *= 1.2
     Z *= 1.4

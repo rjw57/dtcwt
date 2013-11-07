@@ -31,7 +31,7 @@ setup(
 
     setup_requires=[ 'nose>=1.0', ],
 
-    install_requires=[ 'numpy', 'six', 'memoized', ],
+    install_requires=[ 'numpy', 'six', ],
 
     extras_require={
         'docs': [ 'sphinx', 'docutils', ],

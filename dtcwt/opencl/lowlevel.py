@@ -1,11 +1,23 @@
 import pyopencl as cl
 import pyopencl.array as cl_array
 import numpy as np
-from memoized import memoized
 from six.moves import xrange
 import struct
+import functools
 
 from dtcwt.lowlevel import asfarray, as_column_vector, reflect, _column_convolve
+
+# note that this decorator ignores **kwargs
+# From https://wiki.python.org/moin/PythonDecoratorLibrary#Alternate_memoize_as_nested_functions
+def memoize(obj):
+    cache = obj.cache = {}
+
+    @functools.wraps(obj)
+    def memoizer(*args, **kwargs):
+        if args not in cache:
+            cache[args] = obj(*args, **kwargs)
+        return cache[args]
+    return memoizer
 
 def colfilter(X, h):
     """Filter the columns of image *X* using filter vector *h*, without decimation.
@@ -190,7 +202,7 @@ def colifilt(X, ha, hb):
 
     return Y
 
-@memoized
+@memoize
 def get_default_queue():
     """Return the default queue used for computation if one is not specified.
 
@@ -305,7 +317,7 @@ def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
 
     return _apply_kernel(X, h, kern, output, axis=axis, elementstep=2, extra_kernel_args=[np.int32(flip_output),])
 
-@memoized
+@memoize
 def _convolve_kernel_for_queue(context):
     """Return a kernel for convolution suitable for use with *context*. The
     return values are memoized.
@@ -315,7 +327,7 @@ def _convolve_kernel_for_queue(context):
     kern_prog.build()
     return kern_prog.convolve_kernel
 
-@memoized
+@memoize
 def _dfilter_kernel_for_queue(context):
     """Return a kernel for convolution suitable for use with *context*. The
     return values are memoized.

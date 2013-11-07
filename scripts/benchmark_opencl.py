@@ -40,7 +40,7 @@ def benchmark(statement='pass', setup='pass'):
             min_time = min(times)
     except NoCLPresentError:
         print('Skipping benchmark since OpenCL is not present')
-        return 0
+        return 1
 
     t = min_time / number
     print('{0} loops, best of {1}: {2}'.format(number, repeat, format_time(t)))

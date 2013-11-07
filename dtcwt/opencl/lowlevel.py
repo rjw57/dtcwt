@@ -1,3 +1,5 @@
+from __future__ import division
+
 # Wrap importing of pyopencl in a try/except block since it is not an error to
 # not have OpenCL installed when using dtcwt.
 try:
@@ -262,11 +264,11 @@ def _apply_kernel(X, h, kern, output, axis=0, elementstep=1, extra_kernel_args=N
 
     global_shape = list(int(np.ceil(x/float(y))*y) for x, y in zip(work_shape, local_shape))
 
-    X_strides = struct.pack('iiii', *(tuple(s/X_device.dtype.itemsize for s in X_device.strides) + (0,0,0,0))[:4])
+    X_strides = struct.pack('iiii', *(tuple(s//X_device.dtype.itemsize for s in X_device.strides) + (0,0,0,0))[:4])
     X_shape = struct.pack('iiii', *(tuple(X_device.shape) + (1,1,1,1))[:4])
     X_offset = np.int32(X_device.offset)
 
-    Y_strides = struct.pack('iiii', *(tuple(s/output.dtype.itemsize for s in output.strides) + (0,0,0,0))[:4])
+    Y_strides = struct.pack('iiii', *(tuple(s//output.dtype.itemsize for s in output.strides) + (0,0,0,0))[:4])
     Y_shape = struct.pack('iiii', *(tuple(output.shape) + (1,1,1,1))[:4])
     Y_offset = np.int32(output.offset)
 

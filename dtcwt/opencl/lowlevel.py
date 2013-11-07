@@ -301,7 +301,7 @@ def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
         output_shape[axis] >>= 1
         output = cl_array.zeros(queue, output_shape, np.float32)
 
-    flip_output = np.dot(h, h[::-1]) > 0
+    flip_output = np.dot(h.flat, h.flat[::-1]) > 0
 
     return _apply_kernel(X, h, kern, output, axis=axis, elementstep=2, extra_kernel_args=[np.int32(flip_output),])
 

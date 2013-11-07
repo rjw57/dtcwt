@@ -3,6 +3,7 @@ import os
 import numpy as np
 from dtcwt.lowlevel import coldfilt as coldfilt_gold
 from dtcwt.opencl.lowlevel import coldfilt
+from dtcwt.coeffs import biort, qshift
 
 from nose.tools import raises
 
@@ -29,6 +30,12 @@ def test_different_size():
 @raises(ValueError)
 def test_bad_input_size():
     coldfilt(lena[:511,:], (-1,1), (1,-1))
+
+def test_real_wavelet():
+    h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift('qshift_d')
+    A = coldfilt(lena[:,:511], h1b, h1a)
+    B = coldfilt_gold(lena[:,:511], h1b, h1a)
+    assert_almost_equal(A, B)
 
 def test_good_input_size():
     A = coldfilt(lena[:,:511], (-1,1), (1,-1))

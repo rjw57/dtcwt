@@ -236,7 +236,7 @@ def _to_queue(queue):
 def _to_device(X, queue=None):
     if isinstance(X, cl_array.Array) and X.queue is queue:
         return X
-    return cl_array.to_device(_to_queue(queue), np.array(X, dtype=np.float32))
+    return cl_array.to_device(_to_queue(queue), np.array(X, dtype=np.float32, order='C'))
 
 def to_array(a, queue=None):
     queue = queue or a.queue or _to_queue(queue)

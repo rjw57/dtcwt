@@ -12,6 +12,7 @@ import timeit
 import numpy as np
 
 from dtcwt.coeffs import biort, qshift
+from dtcwt.opencl.lowlevel import NoCLPresentError
 
 lena = np.load(os.path.join(os.path.dirname(__file__), '..', 'tests', 'lena.npz'))['lena']
 h0o, g0o, h1o, g1o = biort('near_sym_b')
@@ -31,11 +32,15 @@ def format_time(t):
 def benchmark(statement='pass', setup='pass'):
     number, repeat = (1, 3)
     min_time = 0
-    
-    while min_time < 0.2:
-        number *= 10
-        times = timeit.repeat(statement, setup, repeat=repeat, number=number)
-        min_time = min(times)
+ 
+    try:
+        while min_time < 0.2:
+            number *= 10
+            times = timeit.repeat(statement, setup, repeat=repeat, number=number)
+            min_time = min(times)
+    except NoCLPresentError:
+        print('Skipping benchmark since OpenCL is not present')
+        return 0
 
     t = min_time / number
     print('{0} loops, best of {1}: {2}'.format(number, repeat, format_time(t)))

@@ -215,7 +215,7 @@ def to_array(a, queue=None):
     cl.enqueue_copy(queue, rv, a.data).wait()
     return rv
 
-def _apply_kernel(X, h, kern, output, axis=0, elementstep=1):
+def _apply_kernel(X, h, kern, output, axis=0, elementstep=1, extra_kernel_args=None):
     queue = _to_queue(output.queue)
 
     # If necessary, convert X and h to device arrays
@@ -252,7 +252,7 @@ def _apply_kernel(X, h, kern, output, axis=0, elementstep=1):
             X_device.base_data, X_strides, X_shape, X_offset,
             h_device.base_data, h_stride, h_shape, h_offset,
             output.base_data, Y_strides, Y_shape, Y_offset,
-            np.int32(axis))
+            np.int32(axis), *(extra_kernel_args or []))
 
     return output
 
@@ -301,7 +301,9 @@ def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
         output_shape[axis] >>= 1
         output = cl_array.zeros(queue, output_shape, np.float32)
 
-    return _apply_kernel(X, h, kern, output, axis=axis, elementstep=2)
+    flip_output = np.dot(h, h[::-1]) > 0
+
+    return _apply_kernel(X, h, kern, output, axis=axis, elementstep=2, extra_kernel_args=[np.int32(flip_output),])
 
 @memoized
 def _convolve_kernel_for_queue(context):
@@ -398,7 +400,7 @@ void __kernel convolve_kernel(
     const __global float* X, int4 X_strides, int4 X_shape, int X_offset,
     const __global float* h, int h_stride, int h_shape, int h_offset,
     __global float* Y, int4 Y_strides, int4 Y_shape, int Y_offset,
-    int axis)
+    int axis, int flip_output)
 {
     int4 global_coord = { get_global_id(0), get_global_id(1), get_global_id(2), 0 };
     struct array_spec X_spec = { .strides = X_strides, .shape = X_shape, .offset = X_offset };
@@ -442,7 +444,12 @@ void __kernel convolve_kernel(
         output_2 += ha_even * Xe1 + ha_odd * Xe2;
     }
 
-    Y[coord_to_offset(output_coord, Y_spec)] = output_1;
-    Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output_2;
+    if(flip_output) {
+        Y[coord_to_offset(output_coord, Y_spec)] = output_2;
+        Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output_1;
+    } else {
+        Y[coord_to_offset(output_coord, Y_spec)] = output_1;
+        Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output_2;
+    }
 }
 '''

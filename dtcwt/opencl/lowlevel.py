@@ -347,10 +347,6 @@ int4 reflect(int4 x, int4 x_min, int4 x_max)
     int4 rng_by_2 = 2 * rng;
     int4 mod = (x - x_min) % rng_by_2;
     int4 normed_mod = select(mod, mod + rng_by_2, mod < 0);
-
-    int4 y1 = convert_int4(abs((x - x_min) % (x_max - x_min))) + x_min;
-    int4 y2 = convert_int4(abs((x_max - x - 1) % (x_max - x_min))) + x_min;
-    int4 y3 = convert_int4(abs((x - x_min) % (2 * (x_max - x_min))) + x_min) >= x_max;
     return select(normed_mod, rng_by_2 - normed_mod - (int4)(1,1,1,1), normed_mod >= rng) + x_min;
 }
 '''

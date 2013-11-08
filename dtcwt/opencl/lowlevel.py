@@ -473,10 +473,6 @@ void __kernel convolve_kernel(
     // A vector of flags with the convolution direction set
     int4 axis_flag = (int4)(axis,axis,axis,axis) == (int4)(0,1,2,3);
 
-    // Each run of this kernel outputs *two* pixels: the result of convolving
-    // 'odd' samples (0, 2, 4, ...) with h and the result of convolving 'even'
-    // samples (1, 3, 5, ... ) with reverse(h).
-
     // Compute the base output co-ordinate and a vector which has 1 set in the
     // component corresponding to *axis*.
     int4 output_coord = select(global_coord, global_coord * 4, axis_flag);

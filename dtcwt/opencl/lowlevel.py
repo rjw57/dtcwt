@@ -200,10 +200,10 @@ def _apply_kernel(X, h, kern, output, axis=0, elementstep=1, extra_kernel_args=N
 
     # Work out optimum group size
     if work_shape.shape[0] >= 2 and np.all(work_shape[:2] > 1):
-        local_shape = (int(np.floor(np.sqrt(queue.device.max_work_group_size))),) * 2 + (1,)
-        local_shape = local_shape[:len(output.shape)]
+        local_shape = (int(np.floor(np.sqrt(queue.device.max_work_group_size))),) * 2 + (1,1,)
     else:
         local_shape = (queue.device.max_work_group_size, 1, 1)
+    local_shape = local_shape[:len(work_shape)]
 
     global_shape = list(int(np.ceil(x/float(y))*y) for x, y in zip(work_shape, local_shape))
 

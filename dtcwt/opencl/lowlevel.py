@@ -135,6 +135,8 @@ def colifilt(X, ha, hb):
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
 
     """
+    queue = get_default_queue()
+
     # Make sure all inputs are arrays
     X = asfarray(X)
     ha = asfarray(ha)
@@ -150,69 +152,10 @@ def colifilt(X, ha, hb):
     if ha.shape[0] % 2 != 0:
         raise ValueError('Lengths of ha and hb must be even')
 
-    m = ha.shape[0]
-    m2 = np.fix(m*0.5)
+    # Perform filtering on columns of extended matrix X(xe,:) in 4 ways.
+    Y = axis_convolve_ifilter(X, ha, queue=queue)
 
-    Y = np.zeros((r*2,c), dtype=X.dtype)
-    if not np.any(np.nonzero(X[:])[0]):
-        return Y
-
-    if m2 % 2 == 0:
-        # m/2 is even, so set up t to start on d samples.
-        # Set up vector for symmetric extension of X with repeated end samples.
-        # Use 'reflect' so r < m2 works OK.
-        xe = reflect(np.arange(-m2, r+m2, dtype=np.int), -0.5, r-0.5)
-       
-        t = np.arange(3, r+m, 2)
-        if np.sum(ha*hb) > 0:
-            ta = t
-            tb = t - 1
-        else:
-            ta = t - 1
-            tb = t
-       
-        # Select odd and even samples from ha and hb. Note that due to 0-indexing
-        # 'odd' and 'even' are not perhaps what you might expect them to be.
-        hao = as_column_vector(ha[0:m:2])
-        hae = as_column_vector(ha[1:m:2])
-        hbo = as_column_vector(hb[0:m:2])
-        hbe = as_column_vector(hb[1:m:2])
-       
-        s = np.arange(0,r*2,4)
-       
-        Y[s,:]   = _column_convolve(X[xe[tb-2],:],hae)
-        Y[s+1,:] = _column_convolve(X[xe[ta-2],:],hbe)
-        Y[s+2,:] = _column_convolve(X[xe[tb  ],:],hao)
-        Y[s+3,:] = _column_convolve(X[xe[ta  ],:],hbo)
-    else:
-        # m/2 is odd, so set up t to start on b samples.
-        # Set up vector for symmetric extension of X with repeated end samples.
-        # Use 'reflect' so r < m2 works OK.
-        xe = reflect(np.arange(-m2, r+m2, dtype=np.int), -0.5, r-0.5)
-
-        t = np.arange(2, r+m-1, 2)
-        if np.sum(ha*hb) > 0:
-            ta = t
-            tb = t - 1
-        else:
-            ta = t - 1
-            tb = t
-       
-        # Select odd and even samples from ha and hb. Note that due to 0-indexing
-        # 'odd' and 'even' are not perhaps what you might expect them to be.
-        hao = as_column_vector(ha[0:m:2])
-        hae = as_column_vector(ha[1:m:2])
-        hbo = as_column_vector(hb[0:m:2])
-        hbe = as_column_vector(hb[1:m:2])
-       
-        s = np.arange(0,r*2,4)
-       
-        Y[s,:]   = _column_convolve(X[xe[tb],:],hao)
-        Y[s+1,:] = _column_convolve(X[xe[ta],:],hbo)
-        Y[s+2,:] = _column_convolve(X[xe[tb],:],hae)
-        Y[s+3,:] = _column_convolve(X[xe[ta],:],hbe)
-
-    return Y
+    return to_array(Y)
 
 def _check_cl():
     if not _HAVE_CL:
@@ -336,6 +279,21 @@ def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
 
     return _apply_kernel(X, h, kern, output, axis=axis, elementstep=2, extra_kernel_args=[np.int32(flip_output),])
 
+def axis_convolve_ifilter(X, h, axis=0, queue=None, output=None):
+    _check_cl()
+    queue = _to_queue(queue)
+    kern = _ifilter_kernel_for_queue(queue.context)
+
+    # Create output if not specified
+    if output is None:
+        output_shape = list(X.shape)
+        output_shape[axis] <<= 1
+        output = cl_array.zeros(queue, output_shape, np.float32)
+
+    flip_output = np.dot(h.flat, h.flat[::-1]) > 0
+
+    return _apply_kernel(X, h, kern, output, axis=axis, elementstep=0.5, extra_kernel_args=[np.int32(flip_output),])
+
 @memoize
 def _convolve_kernel_for_queue(context):
     """Return a kernel for convolution suitable for use with *context*. The
@@ -353,6 +311,16 @@ def _dfilter_kernel_for_queue(context):
     
     """
     kern_prog = cl.Program(context, CL_ARRAY_HEADER + DFILTER_KERNEL)
+    kern_prog.build()
+    return kern_prog.convolve_kernel
+
+@memoize
+def _ifilter_kernel_for_queue(context):
+    """Return a kernel for convolution suitable for use with *context*. The
+    return values are memoized.
+    
+    """
+    kern_prog = cl.Program(context, CL_ARRAY_HEADER + IFILTER_KERNEL)
     kern_prog.build()
     return kern_prog.convolve_kernel
 
@@ -482,5 +450,70 @@ void __kernel convolve_kernel(
         Y[coord_to_offset(output_coord, Y_spec)] = output_1;
         Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output_2;
     }
+}
+'''
+
+IFILTER_KERNEL = '''
+void __kernel convolve_kernel(
+    const __global float* X, int4 X_strides, int4 X_shape, int X_offset,
+    const __global float* h, int h_stride, int h_shape, int h_offset,
+    __global float* Y, int4 Y_strides, int4 Y_shape, int Y_offset,
+    int axis, int flip_output)
+{
+    int4 global_coord = { get_global_id(0), get_global_id(1), get_global_id(2), 0 };
+    struct array_spec X_spec = { .strides = X_strides, .shape = X_shape, .offset = X_offset };
+    struct array_spec Y_spec = { .strides = Y_strides, .shape = Y_shape, .offset = Y_offset };
+
+    // A vector of flags with the convolution direction set
+    int4 axis_flag = (int4)(axis,axis,axis,axis) == (int4)(0,1,2,3);
+
+    // Each run of this kernel outputs *two* pixels: the result of convolving
+    // 'odd' samples (0, 2, 4, ...) with h and the result of convolving 'even'
+    // samples (1, 3, 5, ... ) with reverse(h).
+
+    // Compute the base output co-ordinate and a vector which has 1 set in the
+    // component corresponding to *axis*.
+    int4 output_coord = select(global_coord, global_coord * 4, axis_flag);
+    int4 one_px_advance = select((int4)(0,0,0,0), (int4)(1,1,1,1), axis_flag);
+
+    if(any(output_coord >= Y_shape))
+        return;
+
+    int4 X_coord = select(global_coord, global_coord * 2, axis_flag);
+
+    int4 coord_min = { 0, 0, 0, 0 };
+    int4 coord_max = X_spec.shape;
+
+    float4 output = { 0, 0, 0, 0 };
+
+    int m = h_shape>>1;
+    for(int d=0; d<m; ++d) {
+        int X_offset = 2*((m>>1)-d);
+
+        float4 h_samples = {
+            h[h_offset + (d*2)*h_stride],           // ha odd
+            h[h_offset + (1+((m-d-1)*2))*h_stride], // hb odd
+            h[h_offset + (1+(d*2))*h_stride],       // ha even
+            h[h_offset + ((m-d-1)*2)*h_stride],     // hb even
+        };
+
+        float4 X_samples = {
+            X[coord_to_offset(reflect(X_coord + (X_offset+0)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (X_offset+1)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (X_offset+0)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (X_offset+1)*one_px_advance, coord_min, coord_max), X_spec)],
+        };
+
+        output += X_samples * h_samples;
+    }
+
+    if(flip_output) {
+        output = output.yxwz;
+    }
+
+    Y[coord_to_offset(output_coord, Y_spec)] = output.s0;
+    Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output.s1;
+    Y[coord_to_offset(output_coord + 2*one_px_advance, Y_spec)] = output.s2;
+    Y[coord_to_offset(output_coord + 3*one_px_advance, Y_spec)] = output.s3;
 }
 '''

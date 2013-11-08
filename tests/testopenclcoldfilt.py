@@ -61,4 +61,11 @@ def test_output_size():
     Z = coldfilt_gold(lena, (-1,1), (1,-1))
     assert_almost_equal(Y, Z)
 
+@skip_if_no_cl
+def test_qshift():
+    h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift('qshift_d')
+    y = coldfilt(lena, h1b, h1b)
+    z = coldfilt_gold(lena, h1b, h1a)
+    assert_almost_equal(y, z)
+
 # vim:sw=4:sts=4:et

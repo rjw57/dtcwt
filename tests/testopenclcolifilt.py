@@ -3,6 +3,7 @@ import os
 import numpy as np
 from dtcwt.opencl.lowlevel import colifilt
 from dtcwt.lowlevel import colifilt as colifilt_gold
+from dtcwt.coeffs import biort, qshift
 
 from nose.tools import raises
 
@@ -71,5 +72,19 @@ def test_non_orthogonal_input_non_mult_4():
     assert Y.shape == (lena.shape[0]*2, lena.shape[1])
     Z = colifilt_gold(lena, (1,0,0,1), (1,0,0,1))
     assert_almost_equal(Y,Z)
+
+@skip_if_no_cl
+def test_qshift():
+    h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift('qshift_d')
+    y = colifilt(lena, h1b, h1b)
+    z = colifilt_gold(lena, h1b, h1a)
+    assert_almost_equal(y, z)
+
+@skip_if_no_cl
+def test_qshift_odd_input():
+    h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift('qshift_d')
+    y = colifilt(lena, h1b[:-2], h1b[:-2])
+    z = colifilt_gold(lena, h1a[:-2], h1b[:-2])
+    assert_almost_equal(y, z)
 
 # vim:sw=4:sts=4:et

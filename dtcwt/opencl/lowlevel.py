@@ -487,6 +487,7 @@ void __kernel convolve_kernel(
     float4 output = { 0, 0, 0, 0 };
 
     int m = h_shape>>1;
+    int4 offsets = (m % 2 == 0) ? (int4)(-1,-2,1,0) : (int4)(1,0,1,0);
     for(int d=0; d<m; ++d) {
         int X_offset = 2*((m>>1)-d);
 
@@ -497,11 +498,16 @@ void __kernel convolve_kernel(
             h[h_offset + ((m-d-1)*2)*h_stride],     // hb even
         };
 
+        // swap odd and even samples of h if length of h is not multiple of 4
+        if(m % 2 == 0) {
+            h_samples = h_samples.zwxy;
+        }
+
         float4 X_samples = {
-            X[coord_to_offset(reflect(X_coord + (X_offset+0)*one_px_advance, coord_min, coord_max), X_spec)],
-            X[coord_to_offset(reflect(X_coord + (X_offset+1)*one_px_advance, coord_min, coord_max), X_spec)],
-            X[coord_to_offset(reflect(X_coord + (X_offset+0)*one_px_advance, coord_min, coord_max), X_spec)],
-            X[coord_to_offset(reflect(X_coord + (X_offset+1)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (X_offset+offsets.s0)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (X_offset+offsets.s1)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (X_offset+offsets.s2)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (X_offset+offsets.s3)*one_px_advance, coord_min, coord_max), X_spec)],
         };
 
         output += X_samples * h_samples;

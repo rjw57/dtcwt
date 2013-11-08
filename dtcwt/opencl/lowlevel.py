@@ -275,9 +275,7 @@ def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
         output_shape[axis] >>= 1
         output = cl_array.zeros(queue, output_shape, np.float32)
 
-    flip_output = np.dot(h.flat, h.flat[::-1]) > 0
-
-    return _apply_kernel(X, h, kern, output, axis=axis, elementstep=2, extra_kernel_args=[np.int32(flip_output),])
+    return _apply_kernel(X, h, kern, output, axis=axis, elementstep=2)
 
 def axis_convolve_ifilter(X, h, axis=0, queue=None, output=None):
     _check_cl()
@@ -290,9 +288,7 @@ def axis_convolve_ifilter(X, h, axis=0, queue=None, output=None):
         output_shape[axis] <<= 1
         output = cl_array.zeros(queue, output_shape, np.float32)
 
-    flip_output = np.dot(h.flat, h.flat[::-1]) > 0
-
-    return _apply_kernel(X, h, kern, output, axis=axis, elementstep=0.5, extra_kernel_args=[np.int32(flip_output),])
+    return _apply_kernel(X, h, kern, output, axis=axis, elementstep=0.5)
 
 @memoize
 def _convolve_kernel_for_queue(context):
@@ -390,7 +386,7 @@ void __kernel convolve_kernel(
     const __global float* X, int4 X_strides, int4 X_shape, int X_offset,
     const __global float* h, int h_stride, int h_shape, int h_offset,
     __global float* Y, int4 Y_strides, int4 Y_shape, int Y_offset,
-    int axis, int flip_output)
+    int axis)
 {
     int4 global_coord = { get_global_id(0), get_global_id(1), get_global_id(2), 0 };
     struct array_spec X_spec = { .strides = X_strides, .shape = X_shape, .offset = X_offset };
@@ -418,6 +414,12 @@ void __kernel convolve_kernel(
 
     float2 output = { 0, 0 };
     int4 offsets = { 1, 0, 3, 2 };
+
+    float ha_dot_hb = 0.f;
+    for(int i=0; i<h_shape; ++i) {
+        ha_dot_hb += h[h_offset + i*h_stride] * h[h_offset + (h_shape - 1 - i)*h_stride];
+    }
+    bool flip_output = ha_dot_hb > 0.f;
 
     int m = h_shape>>1;
     for(int d=0; d<m; ++d) {
@@ -456,7 +458,7 @@ void __kernel convolve_kernel(
     const __global float* X, int4 X_strides, int4 X_shape, int X_offset,
     const __global float* h, int h_stride, int h_shape, int h_offset,
     __global float* Y, int4 Y_strides, int4 Y_shape, int Y_offset,
-    int axis, int flip_output)
+    int axis)
 {
     int4 global_coord = { get_global_id(0), get_global_id(1), get_global_id(2), 0 };
     struct array_spec X_spec = { .strides = X_strides, .shape = X_shape, .offset = X_offset };
@@ -479,6 +481,12 @@ void __kernel convolve_kernel(
     int4 coord_max = X_spec.shape;
 
     float4 output = { 0, 0, 0, 0 };
+
+    float ha_dot_hb = 0.f;
+    for(int i=0; i<h_shape; ++i) {
+        ha_dot_hb += h[h_offset + i*h_stride] * h[h_offset + (h_shape - 1 - i)*h_stride];
+    }
+    bool flip_output = ha_dot_hb > 0.f;
 
     int m = h_shape>>1;
     int4 offsets = (m % 2 == 0) ? (int4)(-1,-2,1,0) : (int4)(1,0,1,0);

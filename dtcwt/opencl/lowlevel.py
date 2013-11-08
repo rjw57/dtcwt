@@ -425,31 +425,37 @@ void __kernel convolve_kernel(
     int4 coord_min = { 0, 0, 0, 0 };
     int4 coord_max = X_spec.shape;
 
-    float output_1 = 0, output_2 = 0;
+    float2 output = { 0, 0 };
 
     int m = h_shape>>1;
     for(int d=0; d<m; ++d) {
         int X_offset = 4*((m>>1)-d);
 
-        float ha_odd = h[h_offset + (d*2)*h_stride];
-        float ha_even = h[h_offset + (1+(d*2))*h_stride];
+        float4 h_samples = {
+            h[h_offset + (d*2)*h_stride],           // ha odd
+            h[h_offset + (1+((m-d-1)*2))*h_stride], // hb odd
+            h[h_offset + (1+(d*2))*h_stride],       // ha even
+            h[h_offset + ((m-d-1)*2)*h_stride],     // hb even
+        };
 
-        float Xo1 = X[coord_to_offset(reflect(X_coord - (X_offset-1)*one_px_advance, coord_min, coord_max), X_spec)];
-        float Xo2 = X[coord_to_offset(reflect(X_coord - (X_offset-3)*one_px_advance, coord_min, coord_max), X_spec)];
-        output_1 += ha_odd * Xo1 + ha_even * Xo2;
+        float4 X_samples = {
+            X[coord_to_offset(reflect(X_coord - (X_offset-1)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord - (X_offset)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord - (X_offset-3)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord - (X_offset-2)*one_px_advance, coord_min, coord_max), X_spec)],
+        };
 
-        float Xe1 = X[coord_to_offset(reflect(X_coord + (X_offset)*one_px_advance, coord_min, coord_max), X_spec)];
-        float Xe2 = X[coord_to_offset(reflect(X_coord + (X_offset+2)*one_px_advance, coord_min, coord_max), X_spec)];
-        output_2 += ha_even * Xe1 + ha_odd * Xe2;
+        float4 prod = h_samples * X_samples;
+
+        output += prod.s01 + prod.s23;
     }
 
     if(flip_output) {
-        Y[coord_to_offset(output_coord, Y_spec)] = output_2;
-        Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output_1;
-    } else {
-        Y[coord_to_offset(output_coord, Y_spec)] = output_1;
-        Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output_2;
+        output = output.s10;
     }
+        
+    Y[coord_to_offset(output_coord, Y_spec)] = output.s0;
+    Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output.s1;
 }
 '''
 

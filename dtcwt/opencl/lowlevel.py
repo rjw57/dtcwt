@@ -359,38 +359,29 @@ void __kernel convolve_kernel(
     __global float* Y, int4 Y_strides, int4 Y_shape, int Y_offset,
     int axis)
 {
-    int4 out_coord = { get_global_id(0), get_global_id(1), get_global_id(2), 0 };
+    int4 output_coord = { get_global_id(0), get_global_id(1), get_global_id(2), 0 };
     struct array_spec X_spec = { .strides = X_strides, .shape = X_shape, .offset = X_offset };
     struct array_spec Y_spec = { .strides = Y_strides, .shape = Y_shape, .offset = Y_offset };
     
-    if(any(out_coord >= Y_spec.shape))
+    if(any(output_coord >= Y_spec.shape))
         return;
 
+    // A vector of flags with the convolution direction set
+    int4 axis_flag = (int4)(axis,axis,axis,axis) == (int4)(0,1,2,3);
+    int4 one_px_advance = select((int4)(0,0,0,0), (int4)(1,1,1,1), axis_flag);
+
     float output = 0;
-    int4 sample_coord = out_coord;
 
     int4 coord_min = { 0, 0, 0, 0 };
     int4 coord_max = X_spec.shape;
 
     for(int d=0; d<h_shape; ++d) {
-        // on any sensible implementation, this switch will be optimised out being conditional on a constant
-        switch(axis) {
-            case 0:
-                sample_coord.x = out_coord.x + ((h_shape-1)>>1) - d;
-                break;
-            case 1:
-                sample_coord.y = out_coord.y + ((h_shape-1)>>1) - d;
-                break;
-            case 2:
-                sample_coord.z = out_coord.z + ((h_shape-1)>>1) - d;
-                break;
-        }
-
-        sample_coord = reflect(sample_coord, coord_min, coord_max);
+        int offset = ((h_shape-1)>>1) - d;
+        int4 sample_coord = reflect(output_coord + offset*one_px_advance, coord_min, coord_max);
         output += h[h_offset + d*h_stride] * X[coord_to_offset(sample_coord, X_spec)];
     }
 
-    Y[coord_to_offset(out_coord, Y_spec)] = output;
+    Y[coord_to_offset(output_coord, Y_spec)] = output;
 }
 '''
 
@@ -426,23 +417,24 @@ void __kernel convolve_kernel(
     int4 coord_max = X_spec.shape;
 
     float2 output = { 0, 0 };
+    int4 offsets = { 1, 0, 3, 2 };
 
     int m = h_shape>>1;
     for(int d=0; d<m; ++d) {
         int X_offset = 4*((m>>1)-d);
 
         float4 h_samples = {
-            h[h_offset + (d*2)*h_stride],           // ha odd
-            h[h_offset + (1+((m-d-1)*2))*h_stride], // hb odd
-            h[h_offset + (1+(d*2))*h_stride],       // ha even
-            h[h_offset + ((m-d-1)*2)*h_stride],     // hb even
+            h[h_offset + (d*2)*h_stride],                   // ha odd
+            h[h_offset + (h_shape-1-d*2)*h_stride],         // hb odd
+            h[h_offset + (1+(d*2))*h_stride],               // ha even
+            h[h_offset + (h_shape-1-(1+(d*2)))*h_stride],   // hb even
         };
 
         float4 X_samples = {
-            X[coord_to_offset(reflect(X_coord - (X_offset-1)*one_px_advance, coord_min, coord_max), X_spec)],
-            X[coord_to_offset(reflect(X_coord - (X_offset)*one_px_advance, coord_min, coord_max), X_spec)],
-            X[coord_to_offset(reflect(X_coord - (X_offset-3)*one_px_advance, coord_min, coord_max), X_spec)],
-            X[coord_to_offset(reflect(X_coord - (X_offset-2)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (-X_offset+offsets.s0)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (-X_offset+offsets.s1)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (-X_offset+offsets.s2)*one_px_advance, coord_min, coord_max), X_spec)],
+            X[coord_to_offset(reflect(X_coord + (-X_offset+offsets.s3)*one_px_advance, coord_min, coord_max), X_spec)],
         };
 
         float4 prod = h_samples * X_samples;
@@ -494,10 +486,10 @@ void __kernel convolve_kernel(
         int X_offset = 2*((m>>1)-d);
 
         float4 h_samples = {
-            h[h_offset + (d*2)*h_stride],           // ha odd
-            h[h_offset + (1+((m-d-1)*2))*h_stride], // hb odd
-            h[h_offset + (1+(d*2))*h_stride],       // ha even
-            h[h_offset + ((m-d-1)*2)*h_stride],     // hb even
+            h[h_offset + (d*2)*h_stride],                   // ha odd
+            h[h_offset + (h_shape-1-d*2)*h_stride],         // hb odd
+            h[h_offset + (1+(d*2))*h_stride],               // ha even
+            h[h_offset + (h_shape-1-(1+(d*2)))*h_stride],   // hb even
         };
 
         // swap odd and even samples of h if length of h is not multiple of 4

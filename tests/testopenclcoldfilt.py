@@ -68,4 +68,12 @@ def test_qshift():
     z = coldfilt_gold(lena, h1b, h1a)
     assert_almost_equal(y, z)
 
+@skip_if_no_cl
+def test_qshift_even_input():
+    h1b = np.array((-0.25, 0.5, 0.5, -0.25))
+    h1a = h1b[::-1]
+    y = coldfilt(lena, h1b, h1a)
+    z = coldfilt_gold(lena, h1b, h1a)
+    assert_almost_equal(y, z)
+
 # vim:sw=4:sts=4:et

@@ -75,5 +75,14 @@ def main():
     print('Percentage speed up: {0:.0f}%'.format(1e2*a/b))
     print('=====')
 
+    print('Running NumPy dtwavexfm2...')
+    a = benchmark('dtwavexfm2(lena)',
+            'from dtcwt import dtwavexfm2; from __main__ import lena')
+    print('Running OpenCL dtwavexfm2...')
+    b = benchmark('dtwavexfm2(lena)',
+            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
+    print('Percentage speed up: {0:.0f}%'.format(1e2*a/b))
+    print('=====')
+
 if __name__ == '__main__':
     main()

@@ -8,9 +8,11 @@ from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import appropriate_complex_type_for, asfarray
 from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
+from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter
+from dtcwt.opencl.lowlevel import to_device, to_queue, to_array
 from dtcwt.transform2d import q2c
 
-def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
+def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
 
     :param X: 2D real array
@@ -39,19 +41,20 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
 
     """
+    queue = to_queue(queue)
     X = np.atleast_2d(asfarray(X))
 
     # Try to load coefficients if biort is a string parameter
     try:
-        h0o, g0o, h1o, g1o = _biort(biort)
+        h0o, g0o, h1o, g1o = tuple(to_device(x) for x in _biort(biort))
     except TypeError:
-        h0o, g0o, h1o, g1o = biort
+        h0o, g0o, h1o, g1o = tuple(to_device(x) for x in biort)
 
     # Try to load coefficients if qshift is a string parameter
     try:
-        h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = _qshift(qshift)
+        h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = tuple(to_device(x) for x in _qshift(qshift))
     except TypeError:
-        h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift
+        h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = tuple(to_device(x) for x in qshift)
 
     original_size = X.shape
 
@@ -91,15 +94,15 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
 
     if nlevels >= 1:
         # Do odd top-level filters on cols.
-        Lo = colfilter(X,h0o).T
-        Hi = colfilter(X,h1o).T
+        Lo = to_array(axis_convolve(X,h0o,axis=0,queue=queue))
+        Hi = to_array(axis_convolve(X,h1o,axis=0,queue=queue))
 
         # Do odd top-level filters on rows.
-        LoLo = colfilter(Lo,h0o).T
+        LoLo = to_array(axis_convolve(Lo,h0o,axis=1))
         Yh[0] = np.zeros((LoLo.shape[0] >> 1, LoLo.shape[1] >> 1, 6), dtype=complex_dtype)
-        Yh[0][:,:,[0, 5]] = q2c(colfilter(Hi,h0o).T)     # Horizontal pair
-        Yh[0][:,:,[2, 3]] = q2c(colfilter(Lo,h1o).T)     # Vertical pair
-        Yh[0][:,:,[1, 4]] = q2c(colfilter(Hi,h1o).T)     # Diagonal pair
+        Yh[0][:,:,[0, 5]] = q2c(to_array(axis_convolve(Hi,h0o,axis=1,queue=queue)))     # Horizontal pair
+        Yh[0][:,:,[2, 3]] = q2c(to_array(axis_convolve(Lo,h1o,axis=1,queue=queue)))     # Vertical pair
+        Yh[0][:,:,[1, 4]] = q2c(to_array(axis_convolve(Hi,h1o,axis=1,queue=queue)))     # Diagonal pair
 
         if include_scale:
             Yscale[0] = LoLo
@@ -115,16 +118,16 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
             LoLo = np.hstack((LoLo[:,[0]], LoLo, LoLo[:,[-1]]))
 
         # Do even Qshift filters on rows.
-        Lo = coldfilt(LoLo,h0b,h0a).T
-        Hi = coldfilt(LoLo,h1b,h1a).T
+        Lo = to_array(axis_convolve_dfilter(LoLo,h0b,axis=0,queue=queue))
+        Hi = to_array(axis_convolve_dfilter(LoLo,h1b,axis=0,queue=queue))
 
         # Do even Qshift filters on columns.
-        LoLo = coldfilt(Lo,h0b,h0a).T
+        LoLo = to_array(axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue))
 
         Yh[level] = np.zeros((LoLo.shape[0]>>1, LoLo.shape[1]>>1, 6), dtype=complex_dtype)
-        Yh[level][:,:,[0, 5]] = q2c(coldfilt(Hi,h0b,h0a).T)  # Horizontal
-        Yh[level][:,:,[2, 3]] = q2c(coldfilt(Lo,h1b,h1a).T)  # Vertical
-        Yh[level][:,:,[1, 4]] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
+        Yh[level][:,:,[0, 5]] = q2c(to_array(axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue)))  # Horizontal
+        Yh[level][:,:,[2, 3]] = q2c(to_array(axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue)))  # Vertical
+        Yh[level][:,:,[1, 4]] = q2c(to_array(axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue)))  # Diagonal   
 
         if include_scale:
             Yscale[level] = LoLo

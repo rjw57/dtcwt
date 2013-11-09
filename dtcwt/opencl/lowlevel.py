@@ -171,28 +171,28 @@ def get_default_queue():
     ctx = cl.create_some_context()
     return cl.CommandQueue(ctx)
 
-def _to_queue(queue):
+def to_queue(queue):
     if queue is not None:
         return queue
     return get_default_queue()
 
-def _to_device(X, queue=None):
+def to_device(X, queue=None):
     if isinstance(X, cl_array.Array) and X.queue is queue:
         return X
-    return cl_array.to_device(_to_queue(queue), np.array(X, dtype=np.float32, order='C'))
+    return cl_array.to_device(to_queue(queue), np.array(X, dtype=np.float32, order='C'))
 
 def to_array(a, queue=None):
-    queue = queue or a.queue or _to_queue(queue)
+    queue = queue or a.queue or to_queue(queue)
     rv = np.empty(a.shape, a.dtype)
     cl.enqueue_copy(queue, rv, a.data).wait()
     return rv
 
 def _apply_kernel(X, h, kern, output, axis=0, elementstep=1, extra_kernel_args=None):
-    queue = _to_queue(output.queue)
+    queue = to_queue(output.queue)
 
     # If necessary, convert X and h to device arrays
-    h_device = _to_device(h, queue)
-    X_device = _to_device(X, queue)
+    h_device = to_device(h, queue)
+    X_device = to_device(X, queue)
 
     # Work out size of work group taking into account element step
     work_shape = np.array(output.shape[:3])
@@ -252,7 +252,7 @@ def axis_convolve(X, h, axis=0, queue=None, output=None):
     """
 
     _check_cl()
-    queue = _to_queue(queue)
+    queue = to_queue(queue)
     kern = _convolve_kernel_for_queue(queue.context)
 
     # Create output if not specified
@@ -266,7 +266,7 @@ def axis_convolve(X, h, axis=0, queue=None, output=None):
 
 def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
     _check_cl()
-    queue = _to_queue(queue)
+    queue = to_queue(queue)
     kern = _dfilter_kernel_for_queue(queue.context)
 
     # Create output if not specified
@@ -279,7 +279,7 @@ def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
 
 def axis_convolve_ifilter(X, h, axis=0, queue=None, output=None):
     _check_cl()
-    queue = _to_queue(queue)
+    queue = to_queue(queue)
     kern = _ifilter_kernel_for_queue(queue.context)
 
     # Create output if not specified

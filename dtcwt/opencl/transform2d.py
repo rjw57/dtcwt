@@ -8,8 +8,8 @@ from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import appropriate_complex_type_for, asfarray
 from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
-from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter
-from dtcwt.opencl.lowlevel import to_device, to_queue, to_array
+from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c as cl_q2c
+from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
@@ -165,21 +165,4 @@ def q2c(y):
     """Convert from quads in y to complex numbers in z.
 
     """
-    y = to_array(y)
-    j2 = (np.sqrt(0.5) * np.array([1, 1j])).astype(appropriate_complex_type_for(y))
-
-    # Arrange pixels from the corners of the quads into
-    # 2 subimages of alternate real and imag pixels.
-    #  a----b
-    #  |    |
-    #  |    |
-    #  c----d
-
-    # Combine (a,b) and (d,c) to form two complex subimages. 
-    p = y[0::2, 0::2]*j2[0] + y[0::2, 1::2]*j2[1] # p = (a + jb) / sqrt(2)
-    q = y[1::2, 1::2]*j2[0] - y[1::2, 0::2]*j2[1] # q = (d - jc) / sqrt(2)
-
-    # Form the 2 subbands in z.
-    z = np.dstack((p-q,p+q))
-
-    return z
+    return to_array(cl_q2c(y))

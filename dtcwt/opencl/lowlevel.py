@@ -180,7 +180,7 @@ def to_queue(queue):
     return get_default_queue()
 
 def to_device(X, queue=None):
-    if isinstance(X, cl_array.Array) and X.queue is queue:
+    if isinstance(X, cl_array.Array):
         return X
     return cl_array.to_device(to_queue(queue), np.array(X, dtype=np.float32, order='C'))
 
@@ -296,6 +296,50 @@ def axis_convolve_ifilter(X, h, axis=0, queue=None, output=None):
 
     return _apply_kernel(X, h, kern, output, axis=axis, elementstep=0.5)
 
+def q2c(X, queue=None, output=None):
+    _check_cl()
+    queue = to_queue(queue)
+    kern = _q2c_kernel_for_queue(queue.context)
+
+    # Create output if not specified
+    if output is None:
+        output_shape = [1,1,1]
+        output_shape[:len(X.shape[:2])] = X.shape[:2]
+        output_shape[0] >>= 1
+        output_shape[1] >>= 1
+        output_shape[2] = 2
+        output = cl_array.empty(queue, output_shape, np.complex64)
+
+    # If necessary, convert X
+    X_device = to_device(X, queue)
+
+    # Work out size of work group taking into account element step
+    work_shape = np.array(output.shape[:3])
+
+    # Work out optimum group size
+    if work_shape.shape[0] >= 2 and np.all(work_shape[:2] > 1):
+        local_shape = (int(np.floor(np.sqrt(queue.device.max_work_group_size))),) * 2 + (1,1,)
+    else:
+        local_shape = (queue.device.max_work_group_size, 1, 1)
+    local_shape = local_shape[:len(work_shape)]
+
+    global_shape = list(int(np.ceil(x/float(y))*y) for x, y in zip(work_shape, local_shape))
+
+    X_strides = struct.pack('iiii', *(tuple(s//X_device.dtype.itemsize for s in X_device.strides) + (0,0,0,0))[:4])
+    X_shape = struct.pack('iiii', *(tuple(X_device.shape) + (1,1,1,1))[:4])
+    X_offset = np.int32(X_device.offset)
+
+    Y_strides = struct.pack('iiii', *(tuple(s//output.dtype.itemsize for s in output.strides) + (0,0,0,0))[:4])
+    Y_shape = struct.pack('iiii', *(tuple(output.shape) + (1,1,1,1))[:4])
+    Y_offset = np.int32(output.offset)
+
+    # Perform actual convolution
+    kern(queue, global_shape, local_shape,
+            X_device.base_data, X_strides, X_shape, X_offset,
+            output.base_data, Y_strides, Y_shape, Y_offset)
+
+    return output
+
 @memoize
 def _convolve_kernel_for_queue(context):
     """Return a kernel for convolution suitable for use with *context*. The
@@ -325,6 +369,16 @@ def _ifilter_kernel_for_queue(context):
     kern_prog = cl.Program(context, CL_ARRAY_HEADER + IFILTER_KERNEL)
     kern_prog.build()
     return kern_prog.convolve_kernel
+
+@memoize
+def _q2c_kernel_for_queue(context):
+    """Return a kernel for convolution suitable for use with *context*. The
+    return values are memoized.
+    
+    """
+    kern_prog = cl.Program(context, CL_ARRAY_HEADER + Q2C_KERNEL)
+    kern_prog.build()
+    return kern_prog.q2c_kernel
 
 # Functions to access OpenCL Arrays within a kernel
 CL_ARRAY_HEADER = '''
@@ -529,5 +583,44 @@ void __kernel convolve_kernel(
     Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output.s1;
     Y[coord_to_offset(output_coord + 2*one_px_advance, Y_spec)] = output.s2;
     Y[coord_to_offset(output_coord + 3*one_px_advance, Y_spec)] = output.s3;
+}
+'''
+
+Q2C_KERNEL = '''
+void __kernel q2c_kernel(
+    const __global float* X, int4 X_strides, int4 X_shape, int X_offset,
+    __global float2* Y, int4 Y_strides, int4 Y_shape, int Y_offset)
+{
+    int4 global_coord = { get_global_id(0), get_global_id(1), get_global_id(2), 0 };
+    struct array_spec X_spec = { .strides = X_strides, .shape = X_shape, .offset = X_offset };
+    struct array_spec Y_spec = { .strides = Y_strides, .shape = Y_shape, .offset = Y_offset };
+
+    int4 X_coord = global_coord * (int4)(2,2,1,1);
+    int4 Y_coord = global_coord;
+
+    if(any(Y_coord >= Y_shape) || any(X_coord >= X_shape))
+        return;
+
+    // Arrange pixels from the corners of the quads into
+    // 2 subimages of alternate real and imag pixels.
+    //  a----b
+    //  |    |
+    //  |    |
+    //  c----d
+
+    float4 X_samples = {
+        X[coord_to_offset(X_coord,                   X_spec)], // a
+        X[coord_to_offset(X_coord + (int4)(0,1,0,0), X_spec)], // b
+        X[coord_to_offset(X_coord + (int4)(1,0,0,0), X_spec)], // c
+        X[coord_to_offset(X_coord + (int4)(1,1,0,0), X_spec)], // d
+    };
+
+    X_samples *= sqrt(0.5);
+
+    float2 z1 = { X_samples.x - X_samples.w, X_samples.y + X_samples.z };
+    float2 z2 = { X_samples.x + X_samples.w, X_samples.y - X_samples.z };
+
+    Y[coord_to_offset(Y_coord,                   Y_spec)] = z1;
+    Y[coord_to_offset(Y_coord + (int4)(0,0,1,0), Y_spec)] = z2;
 }
 '''

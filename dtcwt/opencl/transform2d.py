@@ -10,7 +10,6 @@ from dtcwt.lowlevel import appropriate_complex_type_for, asfarray
 from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter
 from dtcwt.opencl.lowlevel import to_device, to_queue, to_array
-from dtcwt.transform2d import q2c
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
@@ -100,9 +99,9 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         # Do odd top-level filters on rows.
         LoLo = axis_convolve(Lo,h0o,axis=1)
         Yh[0] = np.zeros((LoLo.shape[0] >> 1, LoLo.shape[1] >> 1, 6), dtype=complex_dtype)
-        Yh[0][:,:,0:6:5] = q2c(to_array(axis_convolve(Hi,h0o,axis=1,queue=queue)))     # Horizontal pair
-        Yh[0][:,:,2:4:1] = q2c(to_array(axis_convolve(Lo,h1o,axis=1,queue=queue)))     # Vertical pair
-        Yh[0][:,:,1:5:3] = q2c(to_array(axis_convolve(Hi,h1o,axis=1,queue=queue)))     # Diagonal pair
+        Yh[0][:,:,0:6:5] = q2c(axis_convolve(Hi,h0o,axis=1,queue=queue))     # Horizontal pair
+        Yh[0][:,:,2:4:1] = q2c(axis_convolve(Lo,h1o,axis=1,queue=queue))     # Vertical pair
+        Yh[0][:,:,1:5:3] = q2c(axis_convolve(Hi,h1o,axis=1,queue=queue))     # Diagonal pair
 
         if include_scale:
             Yscale[0] = to_array(LoLo)
@@ -127,9 +126,9 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         LoLo = axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue)
 
         Yh[level] = np.zeros((LoLo.shape[0]>>1, LoLo.shape[1]>>1, 6), dtype=complex_dtype)
-        Yh[level][:,:,0:6:5] = q2c(to_array(axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue)))  # Horizontal
-        Yh[level][:,:,2:4:1] = q2c(to_array(axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue)))  # Vertical
-        Yh[level][:,:,1:5:3] = q2c(to_array(axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue)))  # Diagonal   
+        Yh[level][:,:,0:6:5] = q2c(axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue))  # Horizontal
+        Yh[level][:,:,2:4:1] = q2c(axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue))  # Vertical
+        Yh[level][:,:,1:5:3] = q2c(axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue))  # Diagonal   
 
         if include_scale:
             Yscale[level] = to_array(LoLo)
@@ -162,3 +161,25 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     else:
         return Yl, tuple(Yh)
 
+def q2c(y):
+    """Convert from quads in y to complex numbers in z.
+
+    """
+    y = to_array(y)
+    j2 = (np.sqrt(0.5) * np.array([1, 1j])).astype(appropriate_complex_type_for(y))
+
+    # Arrange pixels from the corners of the quads into
+    # 2 subimages of alternate real and imag pixels.
+    #  a----b
+    #  |    |
+    #  |    |
+    #  c----d
+
+    # Combine (a,b) and (d,c) to form two complex subimages. 
+    p = y[0::2, 0::2]*j2[0] + y[0::2, 1::2]*j2[1] # p = (a + jb) / sqrt(2)
+    q = y[1::2, 1::2]*j2[0] - y[1::2, 0::2]*j2[1] # q = (d - jc) / sqrt(2)
+
+    # Form the 2 subbands in z.
+    z = np.dstack((p-q,p+q))
+
+    return z

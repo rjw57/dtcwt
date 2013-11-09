@@ -31,6 +31,9 @@ def memoize(obj):
         return cache[args]
     return memoizer
 
+def empty(shape, dtype, queue=None):
+    return cl_array.empty(to_queue(queue), shape, dtype)
+
 def colfilter(X, h):
     """Filter the columns of image *X* using filter vector *h*, without decimation.
     If len(h) is odd, each output sample is aligned with each input sample

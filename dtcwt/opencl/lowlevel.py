@@ -273,7 +273,7 @@ def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
     if output is None:
         output_shape = list(X.shape)
         output_shape[axis] >>= 1
-        output = cl_array.zeros(queue, output_shape, np.float32)
+        output = cl_array.empty(queue, output_shape, np.float32)
 
     return _apply_kernel(X, h, kern, output, axis=axis, elementstep=2)
 
@@ -286,7 +286,7 @@ def axis_convolve_ifilter(X, h, axis=0, queue=None, output=None):
     if output is None:
         output_shape = list(X.shape)
         output_shape[axis] <<= 1
-        output = cl_array.zeros(queue, output_shape, np.float32)
+        output = cl_array.empty(queue, output_shape, np.float32)
 
     return _apply_kernel(X, h, kern, output, axis=axis, elementstep=0.5)
 

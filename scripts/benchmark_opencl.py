@@ -54,7 +54,7 @@ def main():
     print('Running OpenCL colfilter...')
     b = benchmark('colfilter(lena, h1o)',
             'from dtcwt.opencl.lowlevel import colfilter; from __main__ import lena, h1o')
-    print('Percentage speed up: {0:.0f}%'.format(1e2*a/b))
+    print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 
     print('Running NumPy coldfilt...')
@@ -63,7 +63,7 @@ def main():
     print('Running OpenCL coldfilt...')
     b = benchmark('coldfilt(lena, h0b, h0a)',
             'from dtcwt.opencl.lowlevel import coldfilt; from __main__ import lena, h0b, h0a')
-    print('Percentage speed up: {0:.0f}%'.format(1e2*a/b))
+    print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 
     print('Running NumPy colifilt...')
@@ -72,7 +72,7 @@ def main():
     print('Running OpenCL colifilt...')
     b = benchmark('colifilt(lena, h0b, h0a)',
             'from dtcwt.opencl.lowlevel import colifilt; from __main__ import lena, h0b, h0a')
-    print('Percentage speed up: {0:.0f}%'.format(1e2*a/b))
+    print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 
     print('Running NumPy dtwavexfm2...')
@@ -81,7 +81,7 @@ def main():
     print('Running OpenCL dtwavexfm2...')
     b = benchmark('dtwavexfm2(lena)',
             'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
-    print('Percentage speed up: {0:.0f}%'.format(1e2*a/b))
+    print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 
 if __name__ == '__main__':

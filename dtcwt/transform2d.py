@@ -105,11 +105,11 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         row_size, col_size = LoLo.shape
         if row_size % 4 != 0:
             # Extend by 2 rows if no. of rows of LoLo are not divisable by 4
-            LoLo = np.vstack((LoLo[[0],:], LoLo, LoLo[[-1],:]))
+            LoLo = np.vstack((LoLo[:1,:], LoLo, LoLo[-1:,:]))
 
         if col_size % 4 != 0:
             # Extend by 2 cols if no. of cols of LoLo are not divisable by 4
-            LoLo = np.hstack((LoLo[:,[0]], LoLo, LoLo[:,[-1]]))
+            LoLo = np.hstack((LoLo[:,:1], LoLo, LoLo[:,-1:]))
 
         # Do even Qshift filters on rows.
         Lo = coldfilt(LoLo,h0b,h0a).T

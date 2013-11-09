@@ -94,8 +94,8 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
 
     if nlevels >= 1:
         # Do odd top-level filters on cols.
-        Lo = to_array(axis_convolve(X,h0o,axis=0,queue=queue))
-        Hi = to_array(axis_convolve(X,h1o,axis=0,queue=queue))
+        Lo = axis_convolve(X,h0o,axis=0,queue=queue)
+        Hi = axis_convolve(X,h1o,axis=0,queue=queue)
 
         # Do odd top-level filters on rows.
         LoLo = to_array(axis_convolve(Lo,h0o,axis=1))
@@ -118,8 +118,8 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
             LoLo = np.hstack((LoLo[:,[0]], LoLo, LoLo[:,[-1]]))
 
         # Do even Qshift filters on rows.
-        Lo = to_array(axis_convolve_dfilter(LoLo,h0b,axis=0,queue=queue))
-        Hi = to_array(axis_convolve_dfilter(LoLo,h1b,axis=0,queue=queue))
+        Lo = axis_convolve_dfilter(LoLo,h0b,axis=0,queue=queue)
+        Hi = axis_convolve_dfilter(LoLo,h1b,axis=0,queue=queue)
 
         # Do even Qshift filters on columns.
         LoLo = to_array(axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue))

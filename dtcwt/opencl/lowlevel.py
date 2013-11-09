@@ -182,6 +182,9 @@ def to_device(X, queue=None):
     return cl_array.to_device(to_queue(queue), np.array(X, dtype=np.float32, order='C'))
 
 def to_array(a, queue=None):
+    # Support passing non-CL arrays in and getting them straight back out
+    if not isinstance(a, cl_array.Array):
+        return a
     queue = queue or a.queue or to_queue(queue)
     rv = np.empty(a.shape, a.dtype)
     cl.enqueue_copy(queue, rv, a.data).wait()

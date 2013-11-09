@@ -98,23 +98,25 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         Hi = axis_convolve(X,h1o,axis=0,queue=queue)
 
         # Do odd top-level filters on rows.
-        LoLo = to_array(axis_convolve(Lo,h0o,axis=1))
+        LoLo = axis_convolve(Lo,h0o,axis=1)
         Yh[0] = np.zeros((LoLo.shape[0] >> 1, LoLo.shape[1] >> 1, 6), dtype=complex_dtype)
         Yh[0][:,:,[0, 5]] = q2c(to_array(axis_convolve(Hi,h0o,axis=1,queue=queue)))     # Horizontal pair
         Yh[0][:,:,[2, 3]] = q2c(to_array(axis_convolve(Lo,h1o,axis=1,queue=queue)))     # Vertical pair
         Yh[0][:,:,[1, 4]] = q2c(to_array(axis_convolve(Hi,h1o,axis=1,queue=queue)))     # Diagonal pair
 
         if include_scale:
-            Yscale[0] = LoLo
+            Yscale[0] = to_array(LoLo)
 
     for level in xrange(1, nlevels):
         row_size, col_size = LoLo.shape
         if row_size % 4 != 0:
             # Extend by 2 rows if no. of rows of LoLo are not divisable by 4
+            LoLo = to_array(LoLo)
             LoLo = np.vstack((LoLo[:1,:], LoLo, LoLo[-1:,:]))
 
         if col_size % 4 != 0:
             # Extend by 2 cols if no. of cols of LoLo are not divisable by 4
+            LoLo = to_array(LoLo)
             LoLo = np.hstack((LoLo[:,:1], LoLo, LoLo[:,-1:]))
 
         # Do even Qshift filters on rows.
@@ -122,7 +124,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         Hi = axis_convolve_dfilter(LoLo,h1b,axis=0,queue=queue)
 
         # Do even Qshift filters on columns.
-        LoLo = to_array(axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue))
+        LoLo = axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue)
 
         Yh[level] = np.zeros((LoLo.shape[0]>>1, LoLo.shape[1]>>1, 6), dtype=complex_dtype)
         Yh[level][:,:,[0, 5]] = q2c(to_array(axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue)))  # Horizontal
@@ -130,9 +132,9 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         Yh[level][:,:,[1, 4]] = q2c(to_array(axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue)))  # Diagonal   
 
         if include_scale:
-            Yscale[level] = LoLo
+            Yscale[level] = to_array(LoLo)
 
-    Yl = LoLo
+    Yl = to_array(LoLo,queue=queue)
 
     if initial_row_extend == 1 and initial_col_extend == 1:
         logging.warn('The image entered is now a {0} NOT a {1}.'.format(

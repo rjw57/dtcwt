@@ -296,22 +296,27 @@ def axis_convolve_ifilter(X, h, axis=0, queue=None, output=None):
 
     return _apply_kernel(X, h, kern, output, axis=axis, elementstep=0.5)
 
-def q2c(X, queue=None, output=None):
+def q2c(X1, X2, X3, queue=None, output=None):
     _check_cl()
     queue = to_queue(queue)
     kern = _q2c_kernel_for_queue(queue.context)
 
+    if X1.shape != X2.shape or X2.shape != X3.shape:
+        raise ValueError('All three X matrices must have the same shape.')
+
     # Create output if not specified
     if output is None:
         output_shape = [1,1,1]
-        output_shape[:len(X.shape[:2])] = X.shape[:2]
+        output_shape[:len(X1.shape[:2])] = X1.shape[:2]
         output_shape[0] >>= 1
         output_shape[1] >>= 1
-        output_shape[2] = 2
+        output_shape[2] = 6
         output = cl_array.empty(queue, output_shape, np.complex64)
 
     # If necessary, convert X
-    X_device = to_device(X, queue)
+    X1_device = to_device(X1, queue)
+    X2_device = to_device(X2, queue)
+    X3_device = to_device(X3, queue)
 
     # Work out size of work group taking into account element step
     work_shape = np.array(output.shape[:3])
@@ -325,9 +330,14 @@ def q2c(X, queue=None, output=None):
 
     global_shape = list(int(np.ceil(x/float(y))*y) for x, y in zip(work_shape, local_shape))
 
-    X_strides = struct.pack('iiii', *(tuple(s//X_device.dtype.itemsize for s in X_device.strides) + (0,0,0,0))[:4])
-    X_shape = struct.pack('iiii', *(tuple(X_device.shape) + (1,1,1,1))[:4])
-    X_offset = np.int32(X_device.offset)
+    X_shape = struct.pack('iiii', *(tuple(X1_device.shape) + (1,1,1,1))[:4])
+
+    X1_strides = struct.pack('iiii', *(tuple(s//X1_device.dtype.itemsize for s in X1_device.strides) + (0,0,0,0))[:4])
+    X1_offset = np.int32(X1_device.offset)
+    X2_strides = struct.pack('iiii', *(tuple(s//X2_device.dtype.itemsize for s in X2_device.strides) + (0,0,0,0))[:4])
+    X2_offset = np.int32(X2_device.offset)
+    X3_strides = struct.pack('iiii', *(tuple(s//X3_device.dtype.itemsize for s in X3_device.strides) + (0,0,0,0))[:4])
+    X3_offset = np.int32(X3_device.offset)
 
     Y_strides = struct.pack('iiii', *(tuple(s//output.dtype.itemsize for s in output.strides) + (0,0,0,0))[:4])
     Y_shape = struct.pack('iiii', *(tuple(output.shape) + (1,1,1,1))[:4])
@@ -335,7 +345,10 @@ def q2c(X, queue=None, output=None):
 
     # Perform actual convolution
     kern(queue, global_shape, local_shape,
-            X_device.base_data, X_strides, X_shape, X_offset,
+            X_shape,
+            X1_device.base_data, X1_strides, X1_offset,
+            X2_device.base_data, X2_strides, X2_offset,
+            X3_device.base_data, X3_strides, X3_offset,
             output.base_data, Y_strides, Y_shape, Y_offset)
 
     return output
@@ -588,11 +601,16 @@ void __kernel convolve_kernel(
 
 Q2C_KERNEL = '''
 void __kernel q2c_kernel(
-    const __global float* X, int4 X_strides, int4 X_shape, int X_offset,
+    int4 X_shape,
+    const __global float* X1, int4 X1_strides, int X1_offset,
+    const __global float* X2, int4 X2_strides, int X2_offset,
+    const __global float* X3, int4 X3_strides, int X3_offset,
     __global float2* Y, int4 Y_strides, int4 Y_shape, int Y_offset)
 {
     int4 global_coord = { get_global_id(0), get_global_id(1), get_global_id(2), 0 };
-    struct array_spec X_spec = { .strides = X_strides, .shape = X_shape, .offset = X_offset };
+    struct array_spec X1_spec = { .strides = X1_strides, .shape = X_shape, .offset = X1_offset };
+    struct array_spec X2_spec = { .strides = X2_strides, .shape = X_shape, .offset = X2_offset };
+    struct array_spec X3_spec = { .strides = X3_strides, .shape = X_shape, .offset = X3_offset };
     struct array_spec Y_spec = { .strides = Y_strides, .shape = Y_shape, .offset = Y_offset };
 
     int4 X_coord = global_coord * (int4)(2,2,1,1);
@@ -608,19 +626,42 @@ void __kernel q2c_kernel(
     //  |    |
     //  c----d
 
-    float4 X_samples = {
-        X[coord_to_offset(X_coord,                   X_spec)], // a
-        X[coord_to_offset(X_coord + (int4)(0,1,0,0), X_spec)], // b
-        X[coord_to_offset(X_coord + (int4)(1,0,0,0), X_spec)], // c
-        X[coord_to_offset(X_coord + (int4)(1,1,0,0), X_spec)], // d
+    float4 X1_samples = {
+        X1[coord_to_offset(X_coord,                   X1_spec)], // a
+        X1[coord_to_offset(X_coord + (int4)(0,1,0,0), X1_spec)], // b
+        X1[coord_to_offset(X_coord + (int4)(1,0,0,0), X1_spec)], // c
+        X1[coord_to_offset(X_coord + (int4)(1,1,0,0), X1_spec)], // d
     };
+    X1_samples *= sqrt(0.5);
 
-    X_samples *= sqrt(0.5);
+    float4 X2_samples = {
+        X2[coord_to_offset(X_coord,                   X2_spec)], // a
+        X2[coord_to_offset(X_coord + (int4)(0,1,0,0), X2_spec)], // b
+        X2[coord_to_offset(X_coord + (int4)(1,0,0,0), X2_spec)], // c
+        X2[coord_to_offset(X_coord + (int4)(1,1,0,0), X2_spec)], // d
+    };
+    X2_samples *= sqrt(0.5);
 
-    float2 z1 = { X_samples.x - X_samples.w, X_samples.y + X_samples.z };
-    float2 z2 = { X_samples.x + X_samples.w, X_samples.y - X_samples.z };
+    float4 X3_samples = {
+        X3[coord_to_offset(X_coord,                   X3_spec)], // a
+        X3[coord_to_offset(X_coord + (int4)(0,1,0,0), X3_spec)], // b
+        X3[coord_to_offset(X_coord + (int4)(1,0,0,0), X3_spec)], // c
+        X3[coord_to_offset(X_coord + (int4)(1,1,0,0), X3_spec)], // d
+    };
+    X3_samples *= sqrt(0.5);
 
-    Y[coord_to_offset(Y_coord,                   Y_spec)] = z1;
-    Y[coord_to_offset(Y_coord + (int4)(0,0,1,0), Y_spec)] = z2;
+    float2 z1a = { X1_samples.x - X1_samples.w, X1_samples.y + X1_samples.z };
+    float2 z1b = { X1_samples.x + X1_samples.w, X1_samples.y - X1_samples.z };
+    float2 z2a = { X2_samples.x - X2_samples.w, X2_samples.y + X2_samples.z };
+    float2 z2b = { X2_samples.x + X2_samples.w, X2_samples.y - X2_samples.z };
+    float2 z3a = { X3_samples.x - X3_samples.w, X3_samples.y + X3_samples.z };
+    float2 z3b = { X3_samples.x + X3_samples.w, X3_samples.y - X3_samples.z };
+
+    Y[coord_to_offset(Y_coord + (int4)(0,0,0,0), Y_spec)] = z1a;
+    Y[coord_to_offset(Y_coord + (int4)(0,0,1,0), Y_spec)] = z3a;
+    Y[coord_to_offset(Y_coord + (int4)(0,0,2,0), Y_spec)] = z2a;
+    Y[coord_to_offset(Y_coord + (int4)(0,0,3,0), Y_spec)] = z2b;
+    Y[coord_to_offset(Y_coord + (int4)(0,0,4,0), Y_spec)] = z3b;
+    Y[coord_to_offset(Y_coord + (int4)(0,0,5,0), Y_spec)] = z1b;
 }
 '''

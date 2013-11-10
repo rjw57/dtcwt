@@ -8,7 +8,7 @@ from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import appropriate_complex_type_for, asfarray
 from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
-from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c as cl_q2c
+from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
@@ -98,10 +98,12 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
 
         # Do odd top-level filters on rows.
         LoLo = axis_convolve(Lo,h0o,axis=1)
-        Yh[0] = np.zeros((LoLo.shape[0] >> 1, LoLo.shape[1] >> 1, 6), dtype=complex_dtype)
-        Yh[0][:,:,0:6:5] = q2c(axis_convolve(Hi,h0o,axis=1,queue=queue))     # Horizontal pair
-        Yh[0][:,:,2:4:1] = q2c(axis_convolve(Lo,h1o,axis=1,queue=queue))     # Vertical pair
-        Yh[0][:,:,1:5:3] = q2c(axis_convolve(Hi,h1o,axis=1,queue=queue))     # Diagonal pair
+
+        Yh[0] = to_array(q2c(
+            axis_convolve(Hi,h0o,axis=1,queue=queue),
+            axis_convolve(Lo,h1o,axis=1,queue=queue),
+            axis_convolve(Hi,h1o,axis=1,queue=queue),
+        ), queue=queue)
 
         if include_scale:
             Yscale[0] = to_array(LoLo)
@@ -125,10 +127,11 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         # Do even Qshift filters on columns.
         LoLo = axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue)
 
-        Yh[level] = np.zeros((LoLo.shape[0]>>1, LoLo.shape[1]>>1, 6), dtype=complex_dtype)
-        Yh[level][:,:,0:6:5] = q2c(axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue))  # Horizontal
-        Yh[level][:,:,2:4:1] = q2c(axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue))  # Vertical
-        Yh[level][:,:,1:5:3] = q2c(axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue))  # Diagonal   
+        Yh[level] = to_array(q2c(
+            axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue),
+            axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue),
+            axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue),
+        ), queue=queue)
 
         if include_scale:
             Yscale[level] = to_array(LoLo)
@@ -161,8 +164,3 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     else:
         return Yl, tuple(Yh)
 
-def q2c(y):
-    """Convert from quads in y to complex numbers in z.
-
-    """
-    return to_array(cl_q2c(y))

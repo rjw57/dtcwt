@@ -99,14 +99,14 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         # Do odd top-level filters on rows.
         LoLo = axis_convolve(Lo,h0o,axis=1)
 
-        Yh[0] = to_array(q2c(
+        Yh[0] = q2c(
             axis_convolve(Hi,h0o,axis=1,queue=queue),
             axis_convolve(Lo,h1o,axis=1,queue=queue),
             axis_convolve(Hi,h1o,axis=1,queue=queue),
-        ), queue=queue)
+        )
 
         if include_scale:
-            Yscale[0] = to_array(LoLo)
+            Yscale[0] = LoLo
 
     for level in xrange(1, nlevels):
         row_size, col_size = LoLo.shape
@@ -127,16 +127,19 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         # Do even Qshift filters on columns.
         LoLo = axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue)
 
-        Yh[level] = to_array(q2c(
+        Yh[level] = q2c(
             axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue),
             axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue),
             axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue),
-        ), queue=queue)
+        )
 
         if include_scale:
-            Yscale[level] = to_array(LoLo)
+            Yscale[level] = LoLo
 
     Yl = to_array(LoLo,queue=queue)
+    Yh = list(to_array(x) for x in Yh)
+    if include_scale:
+        Yscale = list(to_array(x) for x in Yscale)
 
     if initial_row_extend == 1 and initial_col_extend == 1:
         logging.warn('The image entered is now a {0} NOT a {1}.'.format(

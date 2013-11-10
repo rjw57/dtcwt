@@ -11,6 +11,12 @@ from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty
 
+try:
+    from pyopencl.array import concatenate
+except ImportError:
+    # The lack of OpenCL will be caught by the low-level routines.
+    pass
+
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
 
@@ -66,12 +72,12 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     initial_row_extend = 0  #initialise
     initial_col_extend = 0
     if original_size[0] % 2 != 0:
-        # if X.shape[0] is not divisable by 2 then we need to extend X by adding a row at the bottom
+        # if X.shape[0] is not divisible by 2 then we need to extend X by adding a row at the bottom
         X = np.vstack((X, X[[-1],:]))  # Any further extension will be done in due course.
         initial_row_extend = 1
 
     if original_size[1] % 2 != 0:
-        # if X.shape[1] is not divisable by 2 then we need to extend X by adding a col to the left
+        # if X.shape[1] is not divisible by 2 then we need to extend X by adding a col to the left
         X = np.hstack((X, X[:,[-1]]))
         initial_col_extend = 1
 
@@ -110,13 +116,14 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
 
     for level in xrange(1, nlevels):
         row_size, col_size = LoLo.shape
+
         if row_size % 4 != 0:
-            # Extend by 2 rows if no. of rows of LoLo are not divisable by 4
+            # Extend by 2 rows if no. of rows of LoLo are not divisible by 4
             LoLo = to_array(LoLo)
             LoLo = np.vstack((LoLo[:1,:], LoLo, LoLo[-1:,:]))
 
         if col_size % 4 != 0:
-            # Extend by 2 cols if no. of cols of LoLo are not divisable by 4
+            # Extend by 2 cols if no. of cols of LoLo are not divisible by 4
             LoLo = to_array(LoLo)
             LoLo = np.hstack((LoLo[:,:1], LoLo, LoLo[:,-1:]))
 

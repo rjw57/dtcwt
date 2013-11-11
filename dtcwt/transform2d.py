@@ -8,6 +8,8 @@ from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.utils import appropriate_complex_type_for, asfarray
 
+from dtcwt.backend.numpy.transform2d import Transform2dNumPy
+
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
 
@@ -37,123 +39,14 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
 
     """
-    X = np.atleast_2d(asfarray(X))
 
-    # Try to load coefficients if biort is a string parameter
-    try:
-        h0o, g0o, h1o, g1o = _biort(biort)
-    except TypeError:
-        h0o, g0o, h1o, g1o = biort
-
-    # Try to load coefficients if qshift is a string parameter
-    try:
-        h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = _qshift(qshift)
-    except TypeError:
-        h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift
-
-    original_size = X.shape
-
-    if len(X.shape) >= 3:
-        raise ValueError('The entered image is {0}, please enter each image slice separately.'.
-                format('x'.join(list(str(s) for s in X.shape))))
-
-    # The next few lines of code check to see if the image is odd in size, if so an extra ...
-    # row/column will be added to the bottom/right of the image
-    initial_row_extend = 0  #initialise
-    initial_col_extend = 0
-    if original_size[0] % 2 != 0:
-        # if X.shape[0] is not divisable by 2 then we need to extend X by adding a row at the bottom
-        X = np.vstack((X, X[[-1],:]))  # Any further extension will be done in due course.
-        initial_row_extend = 1
-
-    if original_size[1] % 2 != 0:
-        # if X.shape[1] is not divisable by 2 then we need to extend X by adding a col to the left
-        X = np.hstack((X, X[:,[-1]]))
-        initial_col_extend = 1
-
-    extended_size = X.shape
-
-    if nlevels == 0:
-        if include_scale:
-            return X, (), ()
-        else:
-            return X, ()
-
-    # initialise
-    Yh = [None,] * nlevels
-    if include_scale:
-        # this is only required if the user specifies a third output component.
-        Yscale = [None,] * nlevels
-
-    complex_dtype = appropriate_complex_type_for(X)
-
-    if nlevels >= 1:
-        # Do odd top-level filters on cols.
-        Lo = colfilter(X,h0o).T
-        Hi = colfilter(X,h1o).T
-
-        # Do odd top-level filters on rows.
-        LoLo = colfilter(Lo,h0o).T
-        Yh[0] = np.zeros((LoLo.shape[0] >> 1, LoLo.shape[1] >> 1, 6), dtype=complex_dtype)
-        Yh[0][:,:,0:6:5] = q2c(colfilter(Hi,h0o).T)     # Horizontal pair
-        Yh[0][:,:,2:4:1] = q2c(colfilter(Lo,h1o).T)     # Vertical pair
-        Yh[0][:,:,1:5:3] = q2c(colfilter(Hi,h1o).T)     # Diagonal pair
-
-        if include_scale:
-            Yscale[0] = LoLo
-
-    for level in xrange(1, nlevels):
-        row_size, col_size = LoLo.shape
-        if row_size % 4 != 0:
-            # Extend by 2 rows if no. of rows of LoLo are not divisable by 4
-            LoLo = np.vstack((LoLo[:1,:], LoLo, LoLo[-1:,:]))
-
-        if col_size % 4 != 0:
-            # Extend by 2 cols if no. of cols of LoLo are not divisable by 4
-            LoLo = np.hstack((LoLo[:,:1], LoLo, LoLo[:,-1:]))
-
-        # Do even Qshift filters on rows.
-        Lo = coldfilt(LoLo,h0b,h0a).T
-        Hi = coldfilt(LoLo,h1b,h1a).T
-
-        # Do even Qshift filters on columns.
-        LoLo = coldfilt(Lo,h0b,h0a).T
-
-        Yh[level] = np.zeros((LoLo.shape[0]>>1, LoLo.shape[1]>>1, 6), dtype=complex_dtype)
-        Yh[level][:,:,0:6:5] = q2c(coldfilt(Hi,h0b,h0a).T)  # Horizontal
-        Yh[level][:,:,2:4:1] = q2c(coldfilt(Lo,h1b,h1a).T)  # Vertical
-        Yh[level][:,:,1:5:3] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
-
-        if include_scale:
-            Yscale[level] = LoLo
-
-    Yl = LoLo
-
-    if initial_row_extend == 1 and initial_col_extend == 1:
-        logging.warn('The image entered is now a {0} NOT a {1}.'.format(
-            'x'.join(list(str(s) for s in extended_size)),
-            'x'.join(list(str(s) for s in original_size))))
-        logging.warn(
-            'The bottom row and rightmost column have been duplicated, prior to decomposition.')
-
-    if initial_row_extend == 1 and initial_col_extend == 0:
-        logging.warn('The image entered is now a {0} NOT a {1}.'.format(
-            'x'.join(list(str(s) for s in extended_size)),
-            'x'.join(list(str(s) for s in original_size))))
-        logging.warn(
-            'The bottom row has been duplicated, prior to decomposition.')
-
-    if initial_row_extend == 0 and initial_col_extend == 1:
-        logging.warn('The image entered is now a {0} NOT a {1}.'.format(
-            'x'.join(list(str(s) for s in extended_size)),
-            'x'.join(list(str(s) for s in original_size))))
-        logging.warn(
-            'The rightmost column has been duplicated, prior to decomposition.')
+    trans = Transform2dNumPy(biort, qshift)
+    res = trans.forward(X, nlevels, include_scale)
 
     if include_scale:
-        return Yl, tuple(Yh), tuple(Yscale)
+        return res.lowpass, res.highpass_coeffs, res.scales
     else:
-        return Yl, tuple(Yh)
+        return res.lowpass, res.highpass_coeffs
 
 def dtwavexfm2b(X, nlevels=3, biort='near_sym_b_bp', qshift='qshift_b_bp', include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.

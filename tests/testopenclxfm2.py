@@ -5,7 +5,7 @@ from nose.plugins.attrib import attr
 import numpy as np
 from dtcwt import biort, qshift
 from dtcwt import dtwavexfm2 as dtwavexfm2_np, dtwaveifm2
-from dtcwt.opencl.transform2d import dtwavexfm2 as dtwavexfm2_cl
+from dtcwt.backend.backend_opencl.transform2d import dtwavexfm2 as dtwavexfm2_cl
 
 from .util import assert_almost_equal, skip_if_no_cl
 
@@ -83,6 +83,13 @@ def test_odd_rows_and_cols():
 def test_0_levels():
     a = dtwavexfm2_np(lena, nlevels=0)
     b = dtwavexfm2_cl(lena, nlevels=0)
+    _compare_transforms(a, b)
+
+@skip_if_no_cl
+@attr('transform')
+def test_modified():
+    a = dtwavexfm2_np(lena, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))
+    b = dtwavexfm2_cl(lena, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))
     _compare_transforms(a, b)
 
 # vim:sw=4:sts=4:et

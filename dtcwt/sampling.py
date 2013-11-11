@@ -8,7 +8,7 @@ __all__ = (
     'upsample', 'upsample_highpass',
 )
 
-from dtcwt.lowlevel import reflect, asfarray
+from dtcwt.utils import reflect, asfarray
 
 import numpy as np
 

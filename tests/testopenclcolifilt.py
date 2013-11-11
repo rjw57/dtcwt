@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-from dtcwt.opencl.lowlevel import colifilt
+from dtcwt.backend.backend_opencl.lowlevel import colifilt
 from dtcwt.lowlevel import colifilt as colifilt_gold
 from dtcwt.coeffs import biort, qshift
 

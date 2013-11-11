@@ -5,7 +5,8 @@ from six.moves import xrange
 
 from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.lowlevel import colfilter, coldfilt, colifilt, as_column_vector, asfarray
+from dtcwt.lowlevel import colfilter, coldfilt, colifilt
+from dtcwt.utils import as_column_vector, asfarray
 
 def dtwavexfm(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT decompostion on a 1D column vector *X* (or on

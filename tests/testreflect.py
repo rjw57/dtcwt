@@ -1,6 +1,6 @@
 import numpy as np
 
-from dtcwt.lowlevel import reflect
+from dtcwt.utils import reflect
 
 def setup():
     global ramp, reflected

@@ -8,12 +8,13 @@ python:
     - "2.7"
     - "3.3"
 env:
-    - PIP_SPECIFIER=.
-    - PIP_SPECIFIER=.[opencl]
+    - PIP_SPECIFIER=.[docs]
+    - PIP_SPECIFIER=.[opencl,docs]
 install:
     - pip install numpy
     - pip install -e $PIP_SPECIFIER
 script:
     - python setup.py nosetests
     - python scripts/benchmark_opencl.py
+    - python setup.py build_sphinx
 

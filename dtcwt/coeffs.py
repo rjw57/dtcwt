@@ -38,6 +38,9 @@ def biort(name):
     Return a tuple whose elements are a vector specifying the h0o, g0o, h1o and
     g1o coefficients.
 
+    See :ref:`rot-symm-wavelets` for an explanation of the ``near_sym_b_bp``
+    wavelet filters.
+
     :raises IOError: if name does not correspond to a set of wavelets known to the library.
     :raises ValueError: if name specifies a :py:func:`qshift` wavelet.
 
@@ -68,6 +71,9 @@ def qshift(name):
 
     Return a tuple whose elements are a vector specifying the h0a, h0b, g0a,
     g0b, h1a, h1b, g1a and g1b coefficients.
+
+    See :ref:`rot-symm-wavelets` for an explanation of the ``qshift_b_bp``
+    wavelet filters.
 
     :raises IOError: if name does not correspond to a set of wavelets known to the library.
     :raises ValueError: if name specifies a :py:func:`biort` wavelet.

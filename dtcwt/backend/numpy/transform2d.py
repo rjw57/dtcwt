@@ -16,6 +16,13 @@ class ForwardTransformResultNumPy(object):
         self.highpass_coeffs = Yh
         self.scales = Yscale
 
+class InverseTransformResultNumPy(object):
+    def __init__(self, X):
+        self._X = X
+
+    def to_array(self):
+        return self._X
+
 class Transform2dNumPy(object):
     def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT):
         # Load bi-orthogonal wavelets
@@ -59,8 +66,25 @@ class Transform2dNumPy(object):
         .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
 
         """
-        h0o, g0o, h1o, g1o = self.biort
-        h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
+        # If biort has 6 elements instead of 4, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.biort) == 4:
+            h0o, g0o, h1o, g1o = self.biort
+        elif len(self.biort) == 6:
+            h0o, g0o, h1o, g1o, h2o, g2o = self.biort
+        else:
+            raise ValueError('Biort wavelet must have 6 or 4 components.')
+
+        # If qshift has 10 elements instead of 8, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.qshift) == 8:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
+        elif len(self.qshift) == 10:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = self.qshift
+        else:
+            raise ValueError('Qshift wavelet must have 10 or 8 components.')
 
         X = np.atleast_2d(asfarray(X))
         original_size = X.shape
@@ -103,13 +127,18 @@ class Transform2dNumPy(object):
             # Do odd top-level filters on cols.
             Lo = colfilter(X,h0o).T
             Hi = colfilter(X,h1o).T
+            if len(self.biort) >= 6:
+                Ba = colfilter(X,h2o).T
 
             # Do odd top-level filters on rows.
             LoLo = colfilter(Lo,h0o).T
             Yh[0] = np.zeros((LoLo.shape[0] >> 1, LoLo.shape[1] >> 1, 6), dtype=complex_dtype)
             Yh[0][:,:,0:6:5] = q2c(colfilter(Hi,h0o).T)     # Horizontal pair
             Yh[0][:,:,2:4:1] = q2c(colfilter(Lo,h1o).T)     # Vertical pair
-            Yh[0][:,:,1:5:3] = q2c(colfilter(Hi,h1o).T)     # Diagonal pair
+            if len(self.biort) >= 6:
+                Yh[0][:,:,1:5:3] = q2c(colfilter(Ba,h2o).T)     # Diagonal pair
+            else:
+                Yh[0][:,:,1:5:3] = q2c(colfilter(Hi,h1o).T)     # Diagonal pair
 
             if include_scale:
                 Yscale[0] = LoLo
@@ -127,6 +156,8 @@ class Transform2dNumPy(object):
             # Do even Qshift filters on rows.
             Lo = coldfilt(LoLo,h0b,h0a).T
             Hi = coldfilt(LoLo,h1b,h1a).T
+            if len(self.qshift) >= 10:
+                Ba = coldfilt(LoLo,h2b,h2a).T
 
             # Do even Qshift filters on columns.
             LoLo = coldfilt(Lo,h0b,h0a).T
@@ -134,7 +165,10 @@ class Transform2dNumPy(object):
             Yh[level] = np.zeros((LoLo.shape[0]>>1, LoLo.shape[1]>>1, 6), dtype=complex_dtype)
             Yh[level][:,:,0:6:5] = q2c(coldfilt(Hi,h0b,h0a).T)  # Horizontal
             Yh[level][:,:,2:4:1] = q2c(coldfilt(Lo,h1b,h1a).T)  # Vertical
-            Yh[level][:,:,1:5:3] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
+            if len(self.qshift) >= 10:
+                Yh[level][:,:,1:5:3] = q2c(coldfilt(Ba,h2b,h2a).T)  # Diagonal   
+            else:
+                Yh[level][:,:,1:5:3] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
 
             if include_scale:
                 Yscale[level] = LoLo
@@ -167,6 +201,121 @@ class Transform2dNumPy(object):
         else:
             return ForwardTransformResultNumPy(Yl, tuple(Yh))
 
+    def inverse(self, Yl, Yh, gain_mask=None):
+        """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D
+        reconstruction.
+
+        :param Yl: The real lowpass subband from the final level
+        :param Yh: A sequence containing the complex highpass subband for each level.
+        :param biort: Level 1 wavelets to use. See :py:func:`biort`.
+        :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+        :param gain_mask: Gain to be applied to each subband.
+
+        :returns Z: Reconstructed real array
+
+        The (*d*, *l*)-th element of *gain_mask* is gain for subband with direction
+        *d* at level *l*. If gain_mask[d,l] == 0, no computation is performed for
+        band (d,l). Default *gain_mask* is all ones. Note that both *d* and *l* are
+        zero-indexed.
+
+        If *biort* or *qshift* are strings, they are used as an argument to the
+        :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+        interpreted as tuples of vectors giving filter coefficients. In the *biort*
+        case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
+        be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
+
+        Example::
+
+            # Performs a 3-level reconstruction from Yl,Yh using the 13,19-tap
+            # filters for level 1 and the Q-shift 14-tap filters for levels >= 2.
+            Z = dtwaveifm2(Yl, Yh, 'near_sym_b', 'qshift_b')
+
+        .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
+        .. codeauthor:: Nick Kingsbury, Cambridge University, May 2002
+        .. codeauthor:: Cian Shaffrey, Cambridge University, May 2002
+
+        """
+        a = len(Yh) # No of levels.
+
+        if gain_mask is None:
+            gain_mask = np.ones((6,a)) # Default gain_mask.
+
+        gain_mask = np.array(gain_mask)
+
+        # If biort has 6 elements instead of 4, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.biort) == 4:
+            h0o, g0o, h1o, g1o = self.biort
+        elif len(self.biort) == 6:
+            h0o, g0o, h1o, g1o, h2o, g2o = self.biort
+        else:
+            raise ValueError('Biort wavelet must have 6 or 4 components.')
+
+        # If qshift has 10 elements instead of 8, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.qshift) == 8:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
+        elif len(self.qshift) == 10:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = self.qshift
+        else:
+            raise ValueError('Qshift wavelet must have 10 or 8 components.')
+
+        current_level = a
+        Z = Yl
+
+        while current_level >= 2: # this ensures that for level 1 we never do the following
+            lh = c2q(Yh[current_level-1][:,:,[0, 5]], gain_mask[[0, 5], current_level-1])
+            hl = c2q(Yh[current_level-1][:,:,[2, 3]], gain_mask[[2, 3], current_level-1])
+            hh = c2q(Yh[current_level-1][:,:,[1, 4]], gain_mask[[1, 4], current_level-1])
+
+            # Do even Qshift filters on columns.
+            y1 = colifilt(Z,g0b,g0a) + colifilt(lh,g1b,g1a)
+            y2 = colifilt(hl,g0b,g0a) + colifilt(hh,g1b,g1a)
+
+            # Do even Qshift filters on rows.
+            Z = (colifilt(y1.T,g0b,g0a) + colifilt(y2.T,g1b,g1a)).T
+
+            # Check size of Z and crop as required
+            [row_size, col_size] = Z.shape
+            S = 2*np.array(Yh[current_level-2].shape)
+            if row_size != S[0]:    # check to see if this result needs to be cropped for the rows
+                Z = Z[1:-1,:]
+            if col_size != S[1]:    # check to see if this result needs to be cropped for the cols
+                Z = Z[:,1:-1]
+
+            if np.any(np.array(Z.shape) != S[:2]):
+                raise ValueError('Sizes of subbands are not valid for DTWAVEIFM2')
+            
+            current_level = current_level - 1
+
+        if current_level == 1:
+            lh = c2q(Yh[current_level-1][:,:,[0, 5]],gain_mask[[0, 5],current_level-1])
+            hl = c2q(Yh[current_level-1][:,:,[2, 3]],gain_mask[[2, 3],current_level-1])
+            hh = c2q(Yh[current_level-1][:,:,[1, 4]],gain_mask[[1, 4],current_level-1])
+
+            # Do odd top-level filters on columns.
+            y1 = colfilter(Z,g0o) + colfilter(lh,g1o)
+
+            if len(self.qshift) >= 10:
+                y2 = colfilter(hl,g0o)
+                y2bp = colfilter(hh,g2o)
+
+                # Do odd top-level filters on rows.
+                Z = (colfilter(y1.T,g0o) + colfilter(y2.T,g1o) + colfilter(y2bp.T, g2o)).T
+            else:
+                y2 = colfilter(hl,g0o) + colfilter(hh,g1o)
+
+                # Do odd top-level filters on rows.
+                Z = (colfilter(y1.T,g0o) + colfilter(y2.T,g1o)).T
+
+        return InverseTransformResultNumPy(Z)
+
+#==========================================================================================
+#                       **********    INTERNAL FUNCTIONS    **********
+#==========================================================================================
+
 def q2c(y):
     """Convert from quads in y to complex numbers in z.
 
@@ -188,3 +337,31 @@ def q2c(y):
     z = np.dstack((p-q,p+q))
 
     return z
+
+def c2q(w,gain):
+    """Scale by gain and convert from complex w(:,:,1:2) to real quad-numbers
+    in z.
+
+    Arrange pixels from the real and imag parts of the 2 subbands
+    into 4 separate subimages .
+     A----B     Re   Im of w(:,:,1)
+     |    |
+     |    |
+     C----D     Re   Im of w(:,:,2)
+
+    """
+
+    x = np.zeros((w.shape[0] << 1, w.shape[1] << 1), dtype=w.real.dtype)
+
+    sc = np.sqrt(0.5) * gain
+    P = w[:,:,0]*sc[0] + w[:,:,1]*sc[1]
+    Q = w[:,:,0]*sc[0] - w[:,:,1]*sc[1]
+
+    # Recover each of the 4 corners of the quads.
+    x[0::2, 0::2] = P.real  # a = (A+C)*sc
+    x[0::2, 1::2] = P.imag  # b = (B+D)*sc
+    x[1::2, 0::2] = Q.imag  # c = (B-D)*sc
+    x[1::2, 1::2] = -Q.real # d = (C-A)*sc
+
+    return x
+

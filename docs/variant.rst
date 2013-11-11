@@ -4,6 +4,8 @@ Variant transforms
 In addition to the basic 1, 2 and 3 dimensional DT-CWT, this library also
 supports a selection of variant transforms.
 
+.. _rot-symm-wavelets:
+
 Rotational symmetry modified wavelet transform
 ----------------------------------------------
 

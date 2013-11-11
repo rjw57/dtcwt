@@ -17,7 +17,7 @@ from six.moves import xrange
 import struct
 import functools
 
-from dtcwt.lowlevel import asfarray, as_column_vector, reflect
+from dtcwt.utils import asfarray, as_column_vector
 
 # note that this decorator ignores **kwargs
 # From https://wiki.python.org/moin/PythonDecoratorLibrary#Alternate_memoize_as_nested_functions

@@ -6,7 +6,7 @@ from six.moves import xrange
 
 from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.lowlevel import appropriate_complex_type_for, asfarray
+from dtcwt.utils import appropriate_complex_type_for, asfarray
 from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty

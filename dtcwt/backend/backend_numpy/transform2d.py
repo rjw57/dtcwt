@@ -3,17 +3,26 @@ import logging
 
 from six.moves import xrange
 
+__all__ = ['Transform2dNumPy',]
+
 from dtcwt.backend import TransformDomainSignal, ReconstructedSignal
 from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import appropriate_complex_type_for, asfarray
 
+from dtcwt.backend import Transform2d
 from dtcwt.backend.backend_numpy.lowlevel import LowLevelBackendNumPy
 
 # Use the NumPy low-level backend
 _BACKEND = LowLevelBackendNumPy()
 
-class Transform2dNumPy(object):
+class Transform2dNumPy(Transform2d):
+    """
+    An implementation of the 2D DT-CWT via NumPy. *biort* and *qshift* are the
+    wavelets which parameterise the transform. Valid values are documented in
+    :py:func:`dtcwt.dtwavexfm2`.
+
+    """
     def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT):
         # Load bi-orthogonal wavelets
         try:
@@ -29,6 +38,11 @@ class Transform2dNumPy(object):
 
     def forward(self, X, nlevels=3, include_scale=False):
         """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
+
+        :param X: 2D real array
+        :param nlevels: Number of levels of wavelet decomposition
+
+        :returns: A :py:class:`dtcwt.backend.TransformDomainSignal` compatible object representing the transform-domain signal
 
         .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
         .. codeauthor:: Nick Kingsbury, Cambridge University, Sept 2001
@@ -173,6 +187,16 @@ class Transform2dNumPy(object):
     def inverse(self, td_signal, gain_mask=None):
         """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D
         reconstruction.
+
+        :param td_signal: A :py:class:`dtcwt.backend.TransformDomainSignal`-like class holding the transform domain representation to invert.
+        :param gain_mask: Gain to be applied to each subband.
+
+        :returns: A :py:class:`dtcwt.backend.ReconstructedSignal` compatible instance with the reconstruction.
+
+        The (*d*, *l*)-th element of *gain_mask* is gain for subband with direction
+        *d* at level *l*. If gain_mask[d,l] == 0, no computation is performed for
+        band (d,l). Default *gain_mask* is all ones. Note that both *d* and *l* are
+        zero-indexed.
 
         .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
         .. codeauthor:: Nick Kingsbury, Cambridge University, May 2002

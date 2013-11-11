@@ -241,18 +241,18 @@ def axis_convolve(X, h, axis=0, queue=None, output=None):
     of each pair of input samples, and the output matrix's shape is increased
     by one along the convolution axis.
 
-    After convolution, the :pyclass:`pyopencl.array.Array` instance holding the
+    After convolution, the :py:class:`pyopencl.array.Array` instance holding the
     device-side output is returned. This may be accessed on the host via
     :pyfunc:`to_array`.
 
     The axis of convolution is specified by *axis*. The default direction of
     convolution is column-wise.
 
-    If *queue* is non-``None``, it should be a :pyclass:`pyopencl.CommandQueue`
+    If *queue* is non-``None``, it should be a :py:class:`pyopencl.CommandQueue`
     instance which is used to perform the computation. If ``None``, a default
     global queue is used.
     
-    If *output* is non-``None``, it should be a :pyclass:`pyopencl.array.Array`
+    If *output* is non-``None``, it should be a :py:class:`pyopencl.array.Array`
     instance which the result is written into. If ``None``, an output array is
     created.
     """

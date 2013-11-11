@@ -29,13 +29,38 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         return r.lowpass, r.subbands
 
 class Transform2dOpenCL(Transform2dNumPy):
+    """
+    An implementation of the 2D DT-CWT via OpenCL. *biort* and *qshift* are the
+    wavelets which parameterise the transform. Valid values are documented in
+    :py:func:`dtcwt.dtwavexfm2`.
+
+    If *queue* is non-*None* it is an instance of
+    :py:class:`pyopencl.CommandQueue` which is used to compile and execute the
+    OpenCL kernels which implement the transform. If it is *None*, the first
+    available compute device is used.
+
+    .. note::
+        
+        At the moment *only* the **forward** transform is accelerated. The
+        inverse transform uses the NumPy backend.
+
+    """
     def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, queue=None):
         super(Transform2dOpenCL, self).__init__(biort=biort, qshift=qshift)
         self.queue = to_queue(queue)
 
     def forward(self, X, nlevels=3, include_scale=False):
         """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
-        
+
+        :param X: 2D real array
+        :param nlevels: Number of levels of wavelet decomposition
+
+        :returns: A :py:class:`dtcwt.backend.TransformDomainSignal` compatible object representing the transform-domain signal
+
+        .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
+        .. codeauthor:: Nick Kingsbury, Cambridge University, Sept 2001
+        .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
+
         """
         queue = self.queue
         X = np.atleast_2d(asfarray(X))

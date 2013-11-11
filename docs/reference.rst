@@ -46,8 +46,16 @@ NumPy
 .. automodule:: dtcwt.backend.backend_numpy
     :members:
 
+.. automodule:: dtcwt.backend.backend_numpy.transform2d
+    :members:
+    :inherited-members:
+
 OpenCL
 ''''''
 
 .. automodule:: dtcwt.backend.backend_opencl
     :members:
+
+.. automodule:: dtcwt.backend.backend_opencl.transform2d
+    :members:
+    :inherited-members:

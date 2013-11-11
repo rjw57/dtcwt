@@ -1,5 +1,5 @@
 """
-Provide low-level OpenCL accelerated operations.
-"""
+Provide low-level OpenCL accelerated operations. This backend requires that
+PyOpenCL be installed.
 
-from .lowlevel import colfilter
+"""

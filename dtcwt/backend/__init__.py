@@ -72,7 +72,7 @@ class Transform2d(object):
         :param X: 2D real array
         :param nlevels: Number of levels of wavelet decomposition
 
-        :returns td: A :pyclass:`dtcwt.backend.TransformDomainSignal` compatible object representing the transform-domain signal
+        :returns td: A :py:class:`dtcwt.backend.TransformDomainSignal` compatible object representing the transform-domain signal
 
         """
         raise NotImplementedError()
@@ -81,10 +81,10 @@ class Transform2d(object):
         """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D
         reconstruction.
 
-        :param td_signal: A :pyclass:`dtcwt.backend.TransformDomainSignal`-like class holding the transform domain representation to invert.
+        :param td_signal: A :py:class:`dtcwt.backend.TransformDomainSignal`-like class holding the transform domain representation to invert.
         :param gain_mask: Gain to be applied to each subband.
 
-        :returns Z: A :pyclass:`dtcwt.backend.ReconstructedSignal` compatible instance with the reconstruction.
+        :returns Z: A :py:class:`dtcwt.backend.ReconstructedSignal` compatible instance with the reconstruction.
 
         The (*d*, *l*)-th element of *gain_mask* is gain for subband with direction
         *d* at level *l*. If gain_mask[d,l] == 0, no computation is performed for

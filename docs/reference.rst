@@ -45,3 +45,9 @@ NumPy
 
 .. automodule:: dtcwt.backend.backend_numpy
     :members:
+
+OpenCL
+''''''
+
+.. automodule:: dtcwt.backend.backend_opencl
+    :members:

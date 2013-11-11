@@ -5,7 +5,7 @@ from nose.plugins.attrib import attr
 import numpy as np
 from dtcwt import biort, qshift
 from dtcwt import dtwavexfm2 as dtwavexfm2_np, dtwaveifm2
-from dtcwt.opencl.transform2d import dtwavexfm2 as dtwavexfm2_cl
+from dtcwt.backend.backend_opencl.transform2d import dtwavexfm2 as dtwavexfm2_cl
 
 from .util import assert_almost_equal, skip_if_no_cl
 

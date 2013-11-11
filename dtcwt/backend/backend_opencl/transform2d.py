@@ -7,9 +7,9 @@ from six.moves import xrange
 from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import appropriate_complex_type_for, asfarray
-from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
-from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
-from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty
+from dtcwt.backend.backend_opencl.lowlevel import colfilter, coldfilt, colifilt
+from dtcwt.backend.backend_opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
+from dtcwt.backend.backend_opencl.lowlevel import to_device, to_queue, to_array, empty
 
 from dtcwt.backend import TransformDomainSignal, ReconstructedSignal
 from dtcwt.backend.backend_numpy.transform2d import Transform2dNumPy

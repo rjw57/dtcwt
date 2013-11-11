@@ -33,3 +33,15 @@ here just in case you do.
 
 .. automodule:: dtcwt.lowlevel
     :members:
+
+Backends
+````````
+
+.. automodule:: dtcwt.backend
+    :members:
+
+NumPy
+'''''
+
+.. automodule:: dtcwt.backend.backend_numpy
+    :members:

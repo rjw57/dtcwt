@@ -11,6 +11,9 @@ from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty
 
+from dtcwt.backend import TransformDomainSignal, ReconstructedSignal
+from dtcwt.backend.backend_numpy.transform2d import Transform2dNumPy
+
 try:
     from pyopencl.array import concatenate
 except ImportError:
@@ -18,159 +21,169 @@ except ImportError:
     pass
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
-    """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
-
-    :param X: 2D real array
-    :param nlevels: Number of levels of wavelet decomposition
-    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
-    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
-
-    :returns Yl: The real lowpass image from the final level
-    :returns Yh: A tuple containing the complex highpass subimages for each level.
-    :returns Yscale: If *include_scale* is True, a tuple containing real lowpass coefficients for every scale.
-
-    If *biort* or *qshift* are strings, they are used as an argument to the
-    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
-    interpreted as tuples of vectors giving filter coefficients. In the *biort*
-    case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
-    be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
-
-    Example::
-
-        # Performs a 3-level transform on the real image X using the 13,19-tap
-        # filters for level 1 and the Q-shift 14-tap filters for levels >= 2.
-        Yl, Yh = dtwavexfm2(X, 3, 'near_sym_b', 'qshift_b')
-
-    .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
-    .. codeauthor:: Nick Kingsbury, Cambridge University, Sept 2001
-    .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
-
-    """
-    queue = to_queue(queue)
-    X = np.atleast_2d(asfarray(X))
-
-    # Try to load coefficients if biort is a string parameter
-    try:
-        h0o, g0o, h1o, g1o = tuple(to_device(x) for x in _biort(biort))
-    except TypeError:
-        h0o, g0o, h1o, g1o = tuple(to_device(x) for x in biort)
-
-    # Try to load coefficients if qshift is a string parameter
-    try:
-        h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = tuple(to_device(x) for x in _qshift(qshift))
-    except TypeError:
-        h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = tuple(to_device(x) for x in qshift)
-
-    original_size = X.shape
-
-    if len(X.shape) >= 3:
-        raise ValueError('The entered image is {0}, please enter each image slice separately.'.
-                format('x'.join(list(str(s) for s in X.shape))))
-
-    # The next few lines of code check to see if the image is odd in size, if so an extra ...
-    # row/column will be added to the bottom/right of the image
-    initial_row_extend = 0  #initialise
-    initial_col_extend = 0
-    if original_size[0] % 2 != 0:
-        # if X.shape[0] is not divisible by 2 then we need to extend X by adding a row at the bottom
-        X = np.vstack((X, X[[-1],:]))  # Any further extension will be done in due course.
-        initial_row_extend = 1
-
-    if original_size[1] % 2 != 0:
-        # if X.shape[1] is not divisible by 2 then we need to extend X by adding a col to the left
-        X = np.hstack((X, X[:,[-1]]))
-        initial_col_extend = 1
-
-    extended_size = X.shape
-
-    if nlevels == 0:
-        if include_scale:
-            return X, (), ()
-        else:
-            return X, ()
-
-    # initialise
-    Yh = [None,] * nlevels
+    t = Transform2dOpenCL(biort=biort, qshift=qshift, queue=queue)
+    r = t.forward(X, nlevels=nlevels, include_scale=include_scale)
     if include_scale:
-        # this is only required if the user specifies a third output component.
-        Yscale = [None,] * nlevels
-
-    complex_dtype = appropriate_complex_type_for(X)
-
-    if nlevels >= 1:
-        # Do odd top-level filters on cols.
-        Lo = axis_convolve(X,h0o,axis=0,queue=queue)
-        Hi = axis_convolve(X,h1o,axis=0,queue=queue)
-
-        # Do odd top-level filters on rows.
-        LoLo = axis_convolve(Lo,h0o,axis=1)
-
-        Yh[0] = q2c(
-            axis_convolve(Hi,h0o,axis=1,queue=queue),
-            axis_convolve(Lo,h1o,axis=1,queue=queue),
-            axis_convolve(Hi,h1o,axis=1,queue=queue),
-        )
-
-        if include_scale:
-            Yscale[0] = LoLo
-
-    for level in xrange(1, nlevels):
-        row_size, col_size = LoLo.shape
-
-        if row_size % 4 != 0:
-            # Extend by 2 rows if no. of rows of LoLo are not divisible by 4
-            LoLo = to_array(LoLo)
-            LoLo = np.vstack((LoLo[:1,:], LoLo, LoLo[-1:,:]))
-
-        if col_size % 4 != 0:
-            # Extend by 2 cols if no. of cols of LoLo are not divisible by 4
-            LoLo = to_array(LoLo)
-            LoLo = np.hstack((LoLo[:,:1], LoLo, LoLo[:,-1:]))
-
-        # Do even Qshift filters on rows.
-        Lo = axis_convolve_dfilter(LoLo,h0b,axis=0,queue=queue)
-        Hi = axis_convolve_dfilter(LoLo,h1b,axis=0,queue=queue)
-
-        # Do even Qshift filters on columns.
-        LoLo = axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue)
-
-        Yh[level] = q2c(
-            axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue),
-            axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue),
-            axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue),
-        )
-
-        if include_scale:
-            Yscale[level] = LoLo
-
-    Yl = to_array(LoLo,queue=queue)
-    Yh = list(to_array(x) for x in Yh)
-    if include_scale:
-        Yscale = list(to_array(x) for x in Yscale)
-
-    if initial_row_extend == 1 and initial_col_extend == 1:
-        logging.warn('The image entered is now a {0} NOT a {1}.'.format(
-            'x'.join(list(str(s) for s in extended_size)),
-            'x'.join(list(str(s) for s in original_size))))
-        logging.warn(
-            'The bottom row and rightmost column have been duplicated, prior to decomposition.')
-
-    if initial_row_extend == 1 and initial_col_extend == 0:
-        logging.warn('The image entered is now a {0} NOT a {1}.'.format(
-            'x'.join(list(str(s) for s in extended_size)),
-            'x'.join(list(str(s) for s in original_size))))
-        logging.warn(
-            'The bottom row has been duplicated, prior to decomposition.')
-
-    if initial_row_extend == 0 and initial_col_extend == 1:
-        logging.warn('The image entered is now a {0} NOT a {1}.'.format(
-            'x'.join(list(str(s) for s in extended_size)),
-            'x'.join(list(str(s) for s in original_size))))
-        logging.warn(
-            'The rightmost column has been duplicated, prior to decomposition.')
-
-    if include_scale:
-        return Yl, tuple(Yh), tuple(Yscale)
+        return r.lowpass, r.subbands, r.scales
     else:
-        return Yl, tuple(Yh)
+        return r.lowpass, r.subbands
 
+class Transform2dOpenCL(Transform2dNumPy):
+    def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, queue=None):
+        super(Transform2dOpenCL, self).__init__(biort=biort, qshift=qshift)
+        self.queue = to_queue(queue)
+
+    def forward(self, X, nlevels=3, include_scale=False):
+        """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
+        
+        """
+        queue = self.queue
+        X = np.atleast_2d(asfarray(X))
+
+        # If biort has 6 elements instead of 4, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.biort) == 4:
+            h0o, g0o, h1o, g1o = self.biort
+        elif len(self.biort) == 6:
+            h0o, g0o, h1o, g1o, h2o, g2o = self.biort
+        else:
+            raise ValueError('Biort wavelet must have 6 or 4 components.')
+
+        # If qshift has 10 elements instead of 8, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.qshift) == 8:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
+        elif len(self.qshift) == 10:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = self.qshift
+        else:
+            raise ValueError('Qshift wavelet must have 10 or 8 components.')
+
+        original_size = X.shape
+
+        if len(X.shape) >= 3:
+            raise ValueError('The entered image is {0}, please enter each image slice separately.'.
+                    format('x'.join(list(str(s) for s in X.shape))))
+
+        # The next few lines of code check to see if the image is odd in size, if so an extra ...
+        # row/column will be added to the bottom/right of the image
+        initial_row_extend = 0  #initialise
+        initial_col_extend = 0
+        if original_size[0] % 2 != 0:
+            # if X.shape[0] is not divisible by 2 then we need to extend X by adding a row at the bottom
+            X = np.vstack((X, X[[-1],:]))  # Any further extension will be done in due course.
+            initial_row_extend = 1
+
+        if original_size[1] % 2 != 0:
+            # if X.shape[1] is not divisible by 2 then we need to extend X by adding a col to the left
+            X = np.hstack((X, X[:,[-1]]))
+            initial_col_extend = 1
+
+        extended_size = X.shape
+
+        if nlevels == 0:
+            if include_scale:
+                return TransformDomainSignal(X, (), ())
+            else:
+                return TransformDomainSignal(X, ())
+
+        # initialise
+        Yh = [None,] * nlevels
+        if include_scale:
+            # this is only required if the user specifies a third output component.
+            Yscale = [None,] * nlevels
+
+        complex_dtype = appropriate_complex_type_for(X)
+
+        if nlevels >= 1:
+            # Do odd top-level filters on cols.
+            Lo = axis_convolve(X,h0o,axis=0,queue=queue)
+            Hi = axis_convolve(X,h1o,axis=0,queue=queue)
+            if len(self.biort) >= 6:
+                Ba = axis_convolve(X,h2o,axis=0,queue=queue)
+
+            # Do odd top-level filters on rows.
+            LoLo = axis_convolve(Lo,h0o,axis=1)
+
+            if len(self.biort) >= 6:
+                diag = axis_convolve(Ba,h2o,axis=1,queue=queue)
+            else:
+                diag = axis_convolve(Hi,h1o,axis=1,queue=queue)
+
+            Yh[0] = q2c(
+                axis_convolve(Hi,h0o,axis=1,queue=queue),
+                axis_convolve(Lo,h1o,axis=1,queue=queue),
+                diag,
+            )
+
+            if include_scale:
+                Yscale[0] = LoLo
+
+        for level in xrange(1, nlevels):
+            row_size, col_size = LoLo.shape
+
+            if row_size % 4 != 0:
+                # Extend by 2 rows if no. of rows of LoLo are not divisible by 4
+                LoLo = to_array(LoLo)
+                LoLo = np.vstack((LoLo[:1,:], LoLo, LoLo[-1:,:]))
+
+            if col_size % 4 != 0:
+                # Extend by 2 cols if no. of cols of LoLo are not divisible by 4
+                LoLo = to_array(LoLo)
+                LoLo = np.hstack((LoLo[:,:1], LoLo, LoLo[:,-1:]))
+
+            # Do even Qshift filters on rows.
+            Lo = axis_convolve_dfilter(LoLo,h0b,axis=0,queue=queue)
+            Hi = axis_convolve_dfilter(LoLo,h1b,axis=0,queue=queue)
+            if len(self.qshift) >= 10:
+                Ba = axis_convolve_dfilter(LoLo,h2b,axis=0,queue=queue)
+
+            # Do even Qshift filters on columns.
+            LoLo = axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue)
+
+            if len(self.qshift) >= 10:
+                diag = axis_convolve_dfilter(Ba,h2b,axis=1,queue=queue)
+            else:
+                diag = axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue)
+
+            Yh[level] = q2c(
+                axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue),
+                axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue),
+                diag,
+            )
+
+            if include_scale:
+                Yscale[level] = LoLo
+
+        Yl = to_array(LoLo,queue=queue)
+        Yh = list(to_array(x) for x in Yh)
+        if include_scale:
+            Yscale = list(to_array(x) for x in Yscale)
+
+        if initial_row_extend == 1 and initial_col_extend == 1:
+            logging.warn('The image entered is now a {0} NOT a {1}.'.format(
+                'x'.join(list(str(s) for s in extended_size)),
+                'x'.join(list(str(s) for s in original_size))))
+            logging.warn(
+                'The bottom row and rightmost column have been duplicated, prior to decomposition.')
+
+        if initial_row_extend == 1 and initial_col_extend == 0:
+            logging.warn('The image entered is now a {0} NOT a {1}.'.format(
+                'x'.join(list(str(s) for s in extended_size)),
+                'x'.join(list(str(s) for s in original_size))))
+            logging.warn(
+                'The bottom row has been duplicated, prior to decomposition.')
+
+        if initial_row_extend == 0 and initial_col_extend == 1:
+            logging.warn('The image entered is now a {0} NOT a {1}.'.format(
+                'x'.join(list(str(s) for s in extended_size)),
+                'x'.join(list(str(s) for s in original_size))))
+            logging.warn(
+                'The rightmost column has been duplicated, prior to decomposition.')
+
+
+        if include_scale:
+            return TransformDomainSignal(Yl, tuple(Yh), tuple(Yscale))
+        else:
+            return TransformDomainSignal(Yl, tuple(Yh))

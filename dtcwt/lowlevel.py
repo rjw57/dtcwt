@@ -1,4 +1,4 @@
-from dtcwt.backend.numpy.lowlevel import LowLevelBackendNumPy
+from dtcwt.backend.backend_numpy.lowlevel import LowLevelBackendNumPy
 
 _BACKEND = LowLevelBackendNumPy()
 

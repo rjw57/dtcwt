@@ -85,4 +85,11 @@ def test_0_levels():
     b = dtwavexfm2_cl(lena, nlevels=0)
     _compare_transforms(a, b)
 
+@skip_if_no_cl
+@attr('transform')
+def test_modified():
+    a = dtwavexfm2_np(lena, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))
+    b = dtwavexfm2_cl(lena, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))
+    _compare_transforms(a, b)
+
 # vim:sw=4:sts=4:et

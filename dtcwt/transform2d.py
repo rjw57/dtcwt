@@ -8,7 +8,8 @@ from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.utils import appropriate_complex_type_for, asfarray
 
-from dtcwt.backend.numpy.transform2d import Transform2dNumPy
+from dtcwt.backend import TransformDomainSignal
+from dtcwt.backend.backend_numpy.transform2d import Transform2dNumPy
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
@@ -44,9 +45,9 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     res = trans.forward(X, nlevels, include_scale)
 
     if include_scale:
-        return res.lowpass, res.highpass_coeffs, res.scales
+        return res.lowpass, res.subbands, res.scales
     else:
-        return res.lowpass, res.highpass_coeffs
+        return res.lowpass, res.subbands
 
 def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
     """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D
@@ -83,8 +84,8 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
 
     """
     trans = Transform2dNumPy(biort, qshift)
-    res = trans.inverse(Yl, Yh, gain_mask=gain_mask)
-    return res.to_array()
+    res = trans.inverse(TransformDomainSignal(Yl, Yh), gain_mask=gain_mask)
+    return res.value
 
 # BACKWARDS COMPATIBILITY: add a dtwave{i,x}fm2b function which is a copy of
 # dtwave{i,x}fm2b. The functionality of the ...b variant is rolled into the

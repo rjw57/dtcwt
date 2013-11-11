@@ -1,7 +1,5 @@
 """ Useful utilities for testing the 2-D DTCWT with synthetic images"""
 
-__all__ = ( 'drawedge', 'drawcirc',)
-
 import numpy as np
 
 def drawedge(theta,r,w,N):

@@ -35,6 +35,7 @@ setup(
 
     extras_require={
         'docs': [ 'sphinx', 'docutils', ],
+        'opencl': [ 'pyopencl', ],
     },
 
     tests_require=[ 'coverage', ],

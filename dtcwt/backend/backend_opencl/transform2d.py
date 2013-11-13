@@ -6,7 +6,7 @@ from six.moves import xrange
 
 from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.utils import appropriate_complex_type_for, asfarray
+from dtcwt.utils import appropriate_complex_type_for, asfarray, memoize
 from dtcwt.backend.backend_opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.backend.backend_opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.backend.backend_opencl.lowlevel import to_device, to_queue, to_array, empty
@@ -38,6 +38,15 @@ class TransformDomainSignalOpenCL(object):
     are implemented via properties. The original OpenCL arrays may be accessed
     via the ``cl_...`` attributes.
 
+    .. note::
+    
+        The copy from device to host is performed *once* and then memoized.
+        This makes repeated access to the host-side attributes efficient but
+        will mean that any changes to the device-side arrays will not be
+        reflected in the host-side attributes after their first access. You
+        should not be modifying the arrays once you return an instance of this
+        class anyway but if you do, beware!
+
     .. py:attribute:: cl_lowpass
 
         The CL array containing the lowpass image.
@@ -58,14 +67,17 @@ class TransformDomainSignalOpenCL(object):
         self.cl_scales = scales
 
     @property
+    @memoize
     def lowpass(self):
         return to_array(self.cl_lowpass) if self.cl_lowpass is not None else None
 
     @property
+    @memoize
     def subbands(self):
         return tuple(to_array(x) for x in self.cl_subbands) if self.cl_subbands is not None else None
 
     @property
+    @memoize
     def scales(self):
         return tuple(to_array(x) for x in self.cl_scales) if self.cl_scales is not None else None
 

@@ -8,8 +8,8 @@ from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.utils import appropriate_complex_type_for, asfarray
 
-from dtcwt.backend import TransformDomainSignal
-from dtcwt.backend.backend_numpy.transform2d import Transform2dNumPy
+from dtcwt.backend.base import TransformDomainSignal
+from dtcwt.backend.backend_numpy import Transform2d
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
@@ -41,7 +41,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
 
     """
 
-    trans = Transform2dNumPy(biort, qshift)
+    trans = Transform2d(biort, qshift)
     res = trans.forward(X, nlevels, include_scale)
 
     if include_scale:
@@ -83,7 +83,7 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
     .. codeauthor:: Cian Shaffrey, Cambridge University, May 2002
 
     """
-    trans = Transform2dNumPy(biort, qshift)
+    trans = Transform2d(biort, qshift)
     res = trans.inverse(TransformDomainSignal(Yl, Yh), gain_mask=gain_mask)
     return res.value
 

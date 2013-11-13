@@ -1,5 +1,6 @@
 """ Useful utilities for testing the 2-D DTCWT with synthetic images"""
 
+import functools
 import numpy as np
 
 def drawedge(theta,r,w,N):
@@ -122,3 +123,15 @@ def reflect(x, minx, maxx):
         y[t] = (2*maxx - y[t]).astype(y.dtype)
 
     return y
+
+# note that this decorator ignores **kwargs
+# From https://wiki.python.org/moin/PythonDecoratorLibrary#Alternate_memoize_as_nested_functions
+def memoize(obj):
+    cache = obj.cache = {}
+
+    @functools.wraps(obj)
+    def memoizer(*args, **kwargs):
+        if args not in cache:
+            cache[args] = obj(*args, **kwargs)
+        return cache[args]
+    return memoizer

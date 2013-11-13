@@ -15,21 +15,8 @@ class NoCLPresentError(RuntimeError):
 import numpy as np
 from six.moves import xrange
 import struct
-import functools
 
-from dtcwt.utils import asfarray, as_column_vector
-
-# note that this decorator ignores **kwargs
-# From https://wiki.python.org/moin/PythonDecoratorLibrary#Alternate_memoize_as_nested_functions
-def memoize(obj):
-    cache = obj.cache = {}
-
-    @functools.wraps(obj)
-    def memoizer(*args, **kwargs):
-        if args not in cache:
-            cache[args] = obj(*args, **kwargs)
-        return cache[args]
-    return memoizer
+from dtcwt.utils import asfarray, as_column_vector, memoize
 
 def empty(shape, dtype, queue=None):
     return cl_array.empty(to_queue(queue), shape, dtype)

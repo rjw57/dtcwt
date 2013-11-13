@@ -14,6 +14,9 @@ wavelet transform toolbox provided by `Prof. Nick Kingsbury
 <http://www-sigproc.eng.cam.ac.uk/~ngk/>`_. This library is intended to ease
 the porting of algorithms written using the original MATLAB toolbox to Python.
 
+The library also includes an OpenCL-based implementation of the wavelet
+transform which can accelerate computation even on CPU-only devices.
+
 Features of note
 ````````````````
 
@@ -32,8 +35,9 @@ Contents
     :maxdepth: 1
 
     gettingstarted
-    examples
     variant
+    backends
+    examples
     reference
 
 

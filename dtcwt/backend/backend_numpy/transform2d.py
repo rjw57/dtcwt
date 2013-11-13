@@ -3,20 +3,17 @@ import logging
 
 from six.moves import xrange
 
-__all__ = ['Transform2dNumPy',]
-
-from dtcwt.backend import TransformDomainSignal, ReconstructedSignal
+from dtcwt.backend.base import TransformDomainSignal, ReconstructedSignal, Transform2d as Transform2dBase
 from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import appropriate_complex_type_for, asfarray
 
-from dtcwt.backend import Transform2d
 from dtcwt.backend.backend_numpy.lowlevel import LowLevelBackendNumPy
 
 # Use the NumPy low-level backend
 _BACKEND = LowLevelBackendNumPy()
 
-class Transform2dNumPy(Transform2d):
+class Transform2d(Transform2dBase):
     """
     An implementation of the 2D DT-CWT via NumPy. *biort* and *qshift* are the
     wavelets which parameterise the transform. Valid values are documented in

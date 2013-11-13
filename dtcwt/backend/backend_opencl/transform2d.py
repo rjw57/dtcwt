@@ -11,8 +11,8 @@ from dtcwt.backend.backend_opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.backend.backend_opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.backend.backend_opencl.lowlevel import to_device, to_queue, to_array, empty
 
-from dtcwt.backend import TransformDomainSignal, ReconstructedSignal
-from dtcwt.backend.backend_numpy.transform2d import Transform2dNumPy
+from dtcwt.backend.base import TransformDomainSignal, ReconstructedSignal
+from dtcwt.backend.backend_numpy import Transform2d as Transform2dNumPy
 
 try:
     from pyopencl.array import concatenate, Array as CLArray
@@ -21,14 +21,14 @@ except ImportError:
     pass
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
-    t = Transform2dOpenCL(biort=biort, qshift=qshift, queue=queue)
+    t = Transform2d(biort=biort, qshift=qshift, queue=queue)
     r = t.forward(X, nlevels=nlevels, include_scale=include_scale)
     if include_scale:
         return r.lowpass, r.subbands, r.scales
     else:
         return r.lowpass, r.subbands
 
-class TransformDomainSignalOpenCL(object):
+class TransformDomainSignal(object):
     """
     An interface-compatible version of
     :py:class:`dtcwt.backend.TransformDomainSignal` where the initialiser
@@ -81,7 +81,7 @@ class TransformDomainSignalOpenCL(object):
     def scales(self):
         return tuple(to_array(x) for x in self.cl_scales) if self.cl_scales is not None else None
 
-class Transform2dOpenCL(Transform2dNumPy):
+class Transform2d(Transform2dNumPy):
     """
     An implementation of the 2D DT-CWT via OpenCL. *biort* and *qshift* are the
     wavelets which parameterise the transform. Valid values are documented in
@@ -99,7 +99,7 @@ class Transform2dOpenCL(Transform2dNumPy):
 
     """
     def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, queue=None):
-        super(Transform2dOpenCL, self).__init__(biort=biort, qshift=qshift)
+        super(Transform2d, self).__init__(biort=biort, qshift=qshift)
         self.queue = to_queue(queue)
 
     def forward(self, X, nlevels=3, include_scale=False):
@@ -179,9 +179,9 @@ class Transform2dOpenCL(Transform2dNumPy):
 
         if nlevels == 0:
             if include_scale:
-                return TransformDomainSignalOpenCL(X, (), ())
+                return TransformDomainSignal(X, (), ())
             else:
-                return TransformDomainSignalOpenCL(X, ())
+                return TransformDomainSignal(X, ())
 
         # initialise
         Yh = [None,] * nlevels
@@ -275,6 +275,6 @@ class Transform2dOpenCL(Transform2dNumPy):
                 'The rightmost column has been duplicated, prior to decomposition.')
 
         if include_scale:
-            return TransformDomainSignalOpenCL(Yl, tuple(Yh), tuple(Yscale))
+            return TransformDomainSignal(Yl, tuple(Yh), tuple(Yscale))
         else:
-            return TransformDomainSignalOpenCL(Yl, tuple(Yh))
+            return TransformDomainSignal(Yl, tuple(Yh))

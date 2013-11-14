@@ -12,8 +12,8 @@ from dtcwt.utils import reflect, asfarray
 
 import numpy as np
 
-_W0 = -3*np.pi/2.0
-_W1 = -np.pi/2.0
+_W0 = -3*np.pi/2.15
+_W1 = -np.pi/2.15
 
 #: The expected phase advances in the x-direction for each subband of the 2D transform
 DTHETA_DX_2D = np.array((_W1, _W0, _W0, _W0, _W0, _W1))

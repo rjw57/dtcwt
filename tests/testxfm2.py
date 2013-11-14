@@ -57,6 +57,11 @@ def test_odd_rows_and_cols():
 def test_odd_rows_and_cols_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(lena[:509,:509], include_scale=True)
 
+def test_rot_symm_modified():
+    # This test only checks there is no error running these functions, not that they work
+    Yl, Yh, Yscale = dtwavexfm2(lena, biort='near_sym_b_bp', qshift='qshift_b_bp', include_scale=True)
+    Z = dtwaveifm2(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
+
 def test_0_levels():
     Yl, Yh = dtwavexfm2(lena, nlevels=0)
     assert np.all(np.abs(Yl - lena) < TOLERANCE)

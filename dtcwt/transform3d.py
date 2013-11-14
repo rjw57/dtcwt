@@ -5,7 +5,8 @@ from six.moves import xrange
 
 from dtcwt import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.lowlevel import colfilter, coldfilt, colifilt, asfarray
+from dtcwt.lowlevel import colfilter, coldfilt, colifilt
+from dtcwt.utils import asfarray
 
 def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4, discard_level_1=False):
     """Perform a *n*-level DTCWT-3D decompostion on a 3D matrix *X*.

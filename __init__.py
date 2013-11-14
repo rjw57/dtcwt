@@ -9,9 +9,7 @@ __all__ = [
 
     'dtwavexfm2',
     'dtwaveifm2',
-    'dtwavexfm2b',
-    'dtwaveifm2b',
-
+    
     'dtwavexfm3',
     'dtwaveifm3',
 

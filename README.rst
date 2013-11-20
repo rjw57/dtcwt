@@ -49,4 +49,13 @@ Kingsbury, Cambridge University. The original README can be found in
 ORIGINAL_README.txt.  This file outlines the conditions of use of the original
 MATLAB toolbox.
 
+Changes
+```````
+
+0.7.1
+'''''
+
+* Fix a memory leak in OpenCL implementation where transform results were never
+  de-allocated.
+
 .. vim:sw=4:sts=4:et

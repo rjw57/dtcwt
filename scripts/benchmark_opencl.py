@@ -12,7 +12,7 @@ import timeit
 import numpy as np
 
 from dtcwt.coeffs import biort, qshift
-from dtcwt.backend.backend_opencl.lowlevel import NoCLPresentError
+from dtcwt.backend.backend_opencl.lowlevel import NoCLPresentError, get_default_queue
 
 lena = np.load(os.path.join(os.path.dirname(__file__), '..', 'tests', 'lena.npz'))['lena']
 h0o, g0o, h1o, g1o = biort('near_sym_b')
@@ -48,6 +48,9 @@ def benchmark(statement='pass', setup='pass'):
     return t
 
 def main():
+    queue = get_default_queue()
+    print('Using context: {0}'.format(queue.context))
+
     print('Running NumPy colfilter...')
     a = benchmark('colfilter(lena, h1o)',
             'from dtcwt.lowlevel import colfilter; from __main__ import lena, h1o')

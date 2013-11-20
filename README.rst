@@ -52,6 +52,12 @@ MATLAB toolbox.
 Changes
 ```````
 
+0.7.2
+'''''
+
+* Fixed regression from 0.7 where ``backend_opencl.dtwavexfm2`` would return
+  ``None, None, None``.
+
 0.7.1
 '''''
 

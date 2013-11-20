@@ -48,8 +48,12 @@ def benchmark(statement='pass', setup='pass'):
     return t
 
 def main():
-    queue = get_default_queue()
-    print('Using context: {0}'.format(queue.context))
+    try:
+        queue = get_default_queue()
+        print('Using context: {0}'.format(queue.context))
+    except NoCLPresentError:
+        print('Skipping benchmark since OpenCL is not present')
+        return
 
     print('Running NumPy colfilter...')
     a = benchmark('colfilter(lena, h1o)',

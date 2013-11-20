@@ -67,19 +67,22 @@ class TransformDomainSignal(object):
         self.cl_scales = scales
 
     @property
-    @memoize
     def lowpass(self):
-        return to_array(self.cl_lowpass) if self.cl_lowpass is not None else None
+        if not hasattr(self, '_lowpass'):
+            self._lowpass = to_array(self.cl_lowpass) if self.cl_lowpass is not None else None
+        return self._lowpass
 
     @property
-    @memoize
     def subbands(self):
-        return tuple(to_array(x) for x in self.cl_subbands) if self.cl_subbands is not None else None
+        if not hasattr(self, '_subbands'):
+            self._subbands = tuple(to_array(x) for x in self.cl_subbands) if self.cl_subbands is not None else None
+        return self._subbands
 
     @property
-    @memoize
     def scales(self):
-        return tuple(to_array(x) for x in self.cl_scales) if self.cl_scales is not None else None
+        if not hasattr(self, '_scales'):
+            self._scales = tuple(to_array(x) for x in self.cl_scales) if self.cl_scales is not None else None
+        return self._scales
 
 class Transform2d(Transform2dNumPy):
     """

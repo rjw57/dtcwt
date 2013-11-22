@@ -80,7 +80,7 @@ def qshift(name):
 
     """
     if name == 'qshift_b_bp':
-        return _load_from_file(name, ('h0a', 'h0b', 'g0a', 'g0b', 'h1a', 'h1b', 'g1a', 'g1b','h2a', 'h2b'))
+        return _load_from_file(name, ('h0a', 'h0b', 'g0a', 'g0b', 'h1a', 'h1b', 'g1a', 'g1b', 'h2a', 'h2b', 'g2a','g2b'))
     else:
         return _load_from_file(name, ('h0a', 'h0b', 'g0a', 'g0b', 'h1a', 'h1b', 'g1a', 'g1b'))
 

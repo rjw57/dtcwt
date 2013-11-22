@@ -143,15 +143,15 @@ class Transform2d(Transform2dNumPy):
         else:
             raise ValueError('Biort wavelet must have 6 or 4 components.')
 
-        # If qshift has 10 elements instead of 8, then it's a modified
+        # If qshift has 12 elements instead of 8, then it's a modified
         # rotationally symmetric wavelet
         # FIXME: there's probably a nicer way to do this
         if len(self.qshift) == 8:
             h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
-        elif len(self.qshift) == 10:
-            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = self.qshift
+        elif len(self.qshift) == 12:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = self.qshift[:10]
         else:
-            raise ValueError('Qshift wavelet must have 10 or 8 components.')
+            raise ValueError('Qshift wavelet must have 12 or 8 components.')
 
         original_size = X.shape
 
@@ -234,13 +234,13 @@ class Transform2d(Transform2dNumPy):
             # Do even Qshift filters on rows.
             Lo = axis_convolve_dfilter(LoLo,h0b,axis=0,queue=queue)
             Hi = axis_convolve_dfilter(LoLo,h1b,axis=0,queue=queue)
-            if len(self.qshift) >= 10:
+            if len(self.qshift) >= 12:
                 Ba = axis_convolve_dfilter(LoLo,h2b,axis=0,queue=queue)
 
             # Do even Qshift filters on columns.
             LoLo = axis_convolve_dfilter(Lo,h0b,axis=1,queue=queue)
 
-            if len(self.qshift) >= 10:
+            if len(self.qshift) >= 12:
                 diag = axis_convolve_dfilter(Ba,h2b,axis=1,queue=queue)
             else:
                 diag = axis_convolve_dfilter(Hi,h1b,axis=1,queue=queue)

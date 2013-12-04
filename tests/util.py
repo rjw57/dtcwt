@@ -15,6 +15,15 @@ def assert_almost_equal(a, b, tolerance=TOLERANCE):
             'Arrays differ by a maximum of {0} which is greater than the tolerance of {1}'.
             format(md, tolerance))
 
+def assert_percentile_almost_equal(a, b, percentile=90, tolerance=TOLERANCE):
+    md = np.percentile(np.abs(a-b), percentile)
+    if md <= tolerance:
+        return
+
+    raise AssertionError(
+            'Arrays differ by a maximum of {0} in the {2}th percentile which is greater than the tolerance of {1}'.
+            format(md, tolerance, percentile))
+
 def _mean(a, axis=None, *args, **kwargs):
     """Equivalent to numpy.mean except that the axis along which the mean is taken is not removed."""
 

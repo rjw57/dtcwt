@@ -5,8 +5,9 @@ from nose.plugins.attrib import attr
 import numpy as np
 from dtcwt import dtwavexfm2, dtwaveifm2, dtwavexfm2b, dtwaveifm2b, biort, qshift
 from dtcwt.lowlevel import coldfilt, colifilt
+from dtcwt.sampling import rescale_highpass
 
-from .util import assert_almost_equal, summarise_mat
+from .util import assert_almost_equal, summarise_mat, assert_percentile_almost_equal
 
 ## IMPORTANT NOTE ##
 
@@ -36,6 +37,9 @@ TOLERANCE = 1e-5
 
 def assert_almost_equal_to_summary(a, summary, *args, **kwargs):
     assert_almost_equal(summarise_mat(a), summary, *args, **kwargs)
+
+def assert_percentile_almost_equal_to_summary(a, summary, *args, **kwargs):
+    assert_percentile_almost_equal(summarise_mat(a), summary, *args, **kwargs)
 
 def setup():
     global lena
@@ -85,5 +89,16 @@ def test_dtwavexfm2b():
 
     for idx, a in enumerate(Yscale):
         assert_almost_equal_to_summary(a, verif['lena_Yscaleb_{0}'.format(idx)], tolerance=TOLERANCE)
+
+def test_rescale_highpass():
+    # N.B we can only test bilinear rescaling since cpxinterb2b doesn't support Lanczos
+    Yl, Yh = dtwavexfm2b(lena, 3, 'near_sym_a', 'qshift_a')
+    X = Yh[2]
+    Xrescale = rescale_highpass(X, (X.shape[0]*3, X.shape[1]*3), 'bilinear')
+
+    # Almost equal in the rescale case is a hard thing to quantify. Due to the
+    # slight differences in interpolation method the odd pixel can very by
+    # quite an amount. Use a percentile approach to look at the bigger picture.
+    assert_percentile_almost_equal_to_summary(Xrescale, verif['lena_upsample'], 60, tolerance=TOLERANCE)
 
 # vim:sw=4:sts=4:et

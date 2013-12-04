@@ -52,6 +52,12 @@ MATLAB toolbox.
 Changes
 ```````
 
+0.8.0
+'''''
+
+* Verified the highpass re-sampling routines in ``dtcwt.sampling`` against the
+  existing MATLAB implementation.
+
 0.7.2
 '''''
 

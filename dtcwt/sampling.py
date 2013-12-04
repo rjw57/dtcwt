@@ -1,4 +1,14 @@
-"""Rescaling and re-sampling high- and low-pass subbands.
+"""This module contains function for rescaling and re-sampling high- and
+low-pass subbands.
+
+.. note::
+
+    All of these functions take an integer co-ordinate (x, y) to be the
+    *centre* of the corresponding pixel. Therefore the upper-left pixel
+    notionally covers the interval (-0.5, 0.5) in x and y. An image with N rows
+    and M columns, therefore, has an extent (-0.5, M-0.5) on the x-axis and an
+    extent of (-0.5, N-0.5) on the y-axis. The rescale and upsample functions
+    in this module will use this region as the extent of the image.
 
 """
 
@@ -12,8 +22,8 @@ from dtcwt.utils import reflect, asfarray
 
 import numpy as np
 
-_W0 = -3*np.pi/2.0
-_W1 = -np.pi/2.0
+_W0 = -3*np.pi/2.15
+_W1 = -np.pi/2.15
 
 #: The expected phase advances in the x-direction for each subband of the 2D transform
 DTHETA_DX_2D = np.array((_W1, _W0, _W0, _W0, _W0, _W1))

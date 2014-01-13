@@ -88,7 +88,6 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mod
             Yl, Yh[level] = _level1_xfm(Yl, h0o, h1o, ext_mode)
         else:
             Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b, ext_mode)
-
     return Yl, tuple(Yh)
 
 def dtwaveifm3(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
@@ -159,7 +158,7 @@ def dtwaveifm3(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
             else:
                 prev_shape = np.array(Yh[-level-1].shape) * 2
 
-            Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, ext_mode, prev_shape)
+            Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, self.ext_mode, prev_shape)
 
     return Yl
 

@@ -20,62 +20,6 @@ except ImportError:
     # The lack of OpenCL will be caught by the low-level routines.
     pass
 
-class TransformDomainSignal(object):
-    """
-    An interface-compatible version of
-    :py:class:`dtcwt.backend.TransformDomainSignal` where the initialiser
-    arguments are assumed to by :py:class:`pyopencl.array.Array` instances.
-
-    The attributes defined in :py:class:`dtcwt.backend.TransformDomainSignal`
-    are implemented via properties. The original OpenCL arrays may be accessed
-    via the ``cl_...`` attributes.
-
-    .. note::
-    
-        The copy from device to host is performed *once* and then memoized.
-        This makes repeated access to the host-side attributes efficient but
-        will mean that any changes to the device-side arrays will not be
-        reflected in the host-side attributes after their first access. You
-        should not be modifying the arrays once you return an instance of this
-        class anyway but if you do, beware!
-
-    .. py:attribute:: cl_lowpass
-
-        The CL array containing the lowpass image.
-
-    .. py:attribute:: cl_subbands
-
-        A tuple of CL arrays containing the subband images.
-
-    .. py:attribute:: cl_scales
-
-        *(optional)* Either ``None`` or a tuple of lowpass images for each
-        scale.
-
-    """
-    def __init__(self, lowpass, subbands, scales=None):
-        self.cl_lowpass = lowpass
-        self.cl_subbands = subbands
-        self.cl_scales = scales
-
-    @property
-    def lowpass(self):
-        if not hasattr(self, '_lowpass'):
-            self._lowpass = to_array(self.cl_lowpass) if self.cl_lowpass is not None else None
-        return self._lowpass
-
-    @property
-    def subbands(self):
-        if not hasattr(self, '_subbands'):
-            self._subbands = tuple(to_array(x) for x in self.cl_subbands) if self.cl_subbands is not None else None
-        return self._subbands
-
-    @property
-    def scales(self):
-        if not hasattr(self, '_scales'):
-            self._scales = tuple(to_array(x) for x in self.cl_scales) if self.cl_scales is not None else None
-        return self._scales
-
 class Transform3d(Transform3dNumPy):
     """
     An implementation of the 3D DT-CWT via OpenCL. *biort* and *qshift* are the
@@ -97,7 +41,7 @@ class Transform3d(Transform3dNumPy):
         super(Transform3d, self).__init__(biort=biort, qshift=qshift, ext_mode=ext_mode)
         self.queue = to_queue(queue)
 
-    def forward(self, X, nlevels=3, include_scale=False):
+    def forward(self, X, nlevels=3, discard_level_1=False):
         """Perform a *n*-level DTCWT-3D decompostion on a 3D matrix *X*.
         
         :param X: 3D real array-like object
@@ -173,12 +117,12 @@ class Transform3d(Transform3dNumPy):
         # level is 0-indexed
         for level in xrange(nlevels):
             # Transform
-            if level == 0 and not include_scale:
-                Yl = _level1_xfm_no_highpass(Yl, h0o, h1o)
-            elif level == 0 and include_scale:
-                Yl, Yh[level] = _level1_xfm(Yl, h0o, h1o)
+            if level == 0 and discard_level_1:
+                Yl = _level1_xfm_no_highpass(Yl, h0o, h1o, self.ext_mode)
+            elif level == 0 and not discard_level_1:
+                Yl, Yh[level] = _level1_xfm(Yl, h0o, h1o, self.ext_mode)
             else:
-                Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b)
+                Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b, self.ext_mode)
         #FIXME: need some way to separate the Yscale component to include the scale when necessary.
         return TransformDomainSignal(Yl, tuple(Yh))
 
@@ -259,124 +203,124 @@ class Transform3d(Transform3dNumPy):
                 else:
                     prev_shape = np.array(Yh[-level-1].shape) * 2
                     
-                    Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, prev_shape)
+                Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, self.ext_mode, prev_shape)
 
         return ReconstructedSignal(Yl)
 
-    def _level1_xfm(self, X, h0o, h1o):
-        """Perform level 1 of the 3d transform.
+def _level1_xfm(X, h0o, h1o, ext_mode):
+    """Perform level 1 of the 3d transform.
 
-        """
-        # Check shape of input according to ext_mode. Note that shape of X is
-        # double original input in each direction.
-        if self.ext_mode == 4 and np.any(np.fmod(X.shape, 2) != 0):
-            raise ValueError('Input shape should be a multiple of 2 in each direction when self.ext_mode == 4')
-        elif self.ext_mode == 8 and np.any(np.fmod(X.shape, 4) != 0):
-            raise ValueError('Input shape should be a multiple of 4 in each direction when self.ext_mode == 8')
-    
-        # Create work area
-        work_shape = np.asanyarray(X.shape) * 2
+    """
+    # Check shape of input according to ext_mode. Note that shape of X is
+    # double original input in each direction.
+    if ext_mode == 4 and np.any(np.fmod(X.shape, 2) != 0):
+        raise ValueError('Input shape should be a multiple of 2 in each direction when self.ext_mode == 4')
+    elif ext_mode == 8 and np.any(np.fmod(X.shape, 4) != 0):
+        raise ValueError('Input shape should be a multiple of 4 in each direction when self.ext_mode == 8')
 
-        # We need one extra row per octant if filter length is even
-        if h0o.shape[0] % 2 == 0:
-            work_shape += 2
+    # Create work area
+    work_shape = np.asanyarray(X.shape) * 2
 
-            work = np.zeros(work_shape, dtype=X.dtype)
+    # We need one extra row per octant if filter length is even
+    if h0o.shape[0] % 2 == 0:
+        work_shape += 2
 
-            # Form some useful slices
-            s0a = slice(None, work.shape[0] >> 1)
-            s1a = slice(None, work.shape[1] >> 1)
-            s2a = slice(None, work.shape[2] >> 1)
-            s0b = slice(work.shape[0] >> 1, None)
-            s1b = slice(work.shape[1] >> 1, None)
-            s2b = slice(work.shape[2] >> 1, None)
-    
-            x0a = slice(None, X.shape[0])
-            x1a = slice(None, X.shape[1])
-            x2a = slice(None, X.shape[2])
-            x0b = slice(work.shape[0] >> 1, (work.shape[0] >> 1) + X.shape[0])
-            x1b = slice(work.shape[1] >> 1, (work.shape[1] >> 1) + X.shape[1])
-            x2b = slice(work.shape[2] >> 1, (work.shape[2] >> 1) + X.shape[2])
+    work = np.zeros(work_shape, dtype=X.dtype)
 
-            # Assign input
-            if h0o.shape[0] % 2 == 0:
-                work[:X.shape[0], :X.shape[1], :X.shape[2]] = X
+    # Form some useful slices
+    s0a = slice(None, work.shape[0] >> 1)
+    s1a = slice(None, work.shape[1] >> 1)
+    s2a = slice(None, work.shape[2] >> 1)
+    s0b = slice(work.shape[0] >> 1, None)
+    s1b = slice(work.shape[1] >> 1, None)
+    s2b = slice(work.shape[2] >> 1, None)
+
+    x0a = slice(None, X.shape[0])
+    x1a = slice(None, X.shape[1])
+    x2a = slice(None, X.shape[2])
+    x0b = slice(work.shape[0] >> 1, (work.shape[0] >> 1) + X.shape[0])
+    x1b = slice(work.shape[1] >> 1, (work.shape[1] >> 1) + X.shape[1])
+    x2b = slice(work.shape[2] >> 1, (work.shape[2] >> 1) + X.shape[2])
+
+    # Assign input
+    if h0o.shape[0] % 2 == 0:
+        work[:X.shape[0], :X.shape[1], :X.shape[2]] = X
+
+        # Copy last rows/cols/slices
+        work[ X.shape[0], :X.shape[1], :X.shape[2]] = X[-1, :, :]
+        work[:X.shape[0],  X.shape[1], :X.shape[2]] = X[:, -1, :]
+        work[:X.shape[0], :X.shape[1],  X.shape[2]] = X[:, :, -1]
+        work[X.shape[0], X.shape[1], X.shape[2]] = X[-1,-1,-1]
+    else:
+        work[s0a, s1a, s2a] = X
+
+    # Loop over 2nd dimension extracting 2D slice from first and 3rd dimensions
+    for f in xrange(work.shape[1] >> 1):
+        # extract slice
+        y = work[s0a, f, x2a].T
+
+        # Do odd top-level filters on 3rd dim. The order here is important
+        # since the second filtering will modify the elements of y as well
+        # since y is merely a view onto work.
+        work[s0a, f, s2b] = colfilter(y, h1o).T
+        work[s0a, f, s2a] = colfilter(y, h0o).T
+
+    # Loop over 3rd dimension extracting 2D slice from first and 2nd dimensions
+    for f in xrange(work.shape[2]):
+        # Do odd top-level filters on rows.
+        y1 = work[x0a, x1a, f].T
+        y2 = np.vstack((colfilter(y1, h0o), colfilter(y1, h1o))).T
+
+        # Do odd top-level filters on columns.
+        work[s0a, :, f] = colfilter(y2, h0o)
+        work[s0b, :, f] = colfilter(y2, h1o)
+
+    # Return appropriate slices of output
+    return (
+        work[s0a, s1a, s2a],                # LLL
+        np.concatenate((
+            cube2c(work[x0a, x1b, x2a]),    # HLL
+            cube2c(work[x0b, x1a, x2a]),    # LHL
+            cube2c(work[x0b, x1b, x2a]),    # HHL
+            cube2c(work[x0a, x1a, x2b]),    # LLH
+            cube2c(work[x0a, x1b, x2b]),    # HLH
+            cube2c(work[x0b, x1a, x2b]),    # LHH
+            cube2c(work[x0b, x1b, x2b]),    # HLH
+            ), axis=3)
+        )
+
+def _level1_xfm_no_highpass(X, h0o, h1o, ext_mode):
+    """Perform level 1 of the 3d transform discarding highpass subbands.
+
+    """
+    # Check shape of input according to ext_mode. Note that shape of X is
+    # double original input in each direction.
+    if ext_mode == 4 and np.any(np.fmod(X.shape, 2) != 0):
+        raise ValueError('Input shape should be a multiple of 2 in each direction when self.ext_mode == 4')
+    elif ext_mode == 8 and np.any(np.fmod(X.shape, 4) != 0):
+        raise ValueError('Input shape should be a multiple of 4 in each direction when self.ext_mode == 8')
+
+    out = np.zeros_like(X)
+
+    # Loop over 2nd dimension extracting 2D slice from first and 3rd dimensions
+    for f in xrange(X.shape[1]):
+        # extract slice
+        y = X[:, f, :].T
+        out[:, f, :] = colfilter(y, h0o).T
         
-                # Copy last rows/cols/slices
-                work[ X.shape[0], :X.shape[1], :X.shape[2]] = X[-1, :, :]
-                work[:X.shape[0],  X.shape[1], :X.shape[2]] = X[:, -1, :]
-                work[:X.shape[0], :X.shape[1],  X.shape[2]] = X[:, :, -1]
-                work[X.shape[0], X.shape[1], X.shape[2]] = X[-1,-1,-1]
-            else:
-                work[s0a, s1a, s2a] = X
+  # Loop over 3rd dimension extracting 2D slice from first and 2nd dimensions
+    for f in xrange(X.shape[2]):
+        y = colfilter(out[:, :, f].T, h0o).T
+        out[:, :, f] = colfilter(y, h0o)
 
-                # Loop over 2nd dimension extracting 2D slice from first and 3rd dimensions
-        for f in xrange(work.shape[1] >> 1):
-            # extract slice
-            y = work[s0a, f, x2a].T
+    return out
 
-            # Do odd top-level filters on 3rd dim. The order here is important
-            # since the second filtering will modify the elements of y as well
-            # since y is merely a view onto work.
-            work[s0a, f, s2b] = colfilter(y, h1o).T
-            work[s0a, f, s2a] = colfilter(y, h0o).T
-
-        # Loop over 3rd dimension extracting 2D slice from first and 2nd dimensions
-        for f in xrange(work.shape[2]):
-            # Do odd top-level filters on rows.
-            y1 = work[x0a, x1a, f].T
-            y2 = np.vstack((colfilter(y1, h0o), colfilter(y1, h1o))).T
-
-            # Do odd top-level filters on columns.
-            work[s0a, :, f] = colfilter(y2, h0o)
-            work[s0b, :, f] = colfilter(y2, h1o)
-        
-        # Return appropriate slices of output
-        return (
-            work[s0a, s1a, s2a],                # LLL
-            np.concatenate((
-                cube2c(work[x0a, x1b, x2a]),    # HLL
-                cube2c(work[x0b, x1a, x2a]),    # LHL
-                cube2c(work[x0b, x1b, x2a]),    # HHL
-                cube2c(work[x0a, x1a, x2b]),    # LLH
-                cube2c(work[x0a, x1b, x2b]),    # HLH
-                cube2c(work[x0b, x1a, x2b]),    # LHH
-                cube2c(work[x0b, x1b, x2b]),    # HLH
-                ), axis=3)
-            )
-
-    def _level1_xfm_no_highpass(X, h0o, h1o):
-        """Perform level 1 of the 3d transform discarding highpass subbands.
-
-        """
-        # Check shape of input according to ext_mode. Note that shape of X is
-        # double original input in each direction.
-        if self.ext_mode == 4 and np.any(np.fmod(X.shape, 2) != 0):
-            raise ValueError('Input shape should be a multiple of 2 in each direction when self.ext_mode == 4')
-        elif self.ext_mode == 8 and np.any(np.fmod(X.shape, 4) != 0):
-            raise ValueError('Input shape should be a multiple of 4 in each direction when self.ext_mode == 8')
-
-        out = np.zeros_like(X)
-
-        # Loop over 2nd dimension extracting 2D slice from first and 3rd dimensions
-        for f in xrange(X.shape[1]):
-            # extract slice
-            y = X[:, f, :].T
-            out[:, f, :] = colfilter(y, h0o).T
-
-        # Loop over 3rd dimension extracting 2D slice from first and 2nd dimensions
-        for f in xrange(X.shape[2]):
-            y = colfilter(out[:, :, f].T, h0o).T
-            out[:, :, f] = colfilter(y, h0o)
-
-        return out
-
-def _level2_xfm(X, h0a, h0b, h1a, h1b):
+def _level2_xfm(X, h0a, h0b, h1a, h1b, ext_mode):
     """Perform level 2 or greater of the 3d transform.
 
     """
 
-    if self.ext_mode == 4:
+    if ext_mode == 4:
         if X.shape[0] % 4 != 0:
             X = np.concatenate((X[[0],:,:], X, X[[-1],:,:]), 0)
         if X.shape[1] % 4 != 0:
@@ -420,7 +364,7 @@ def _level2_xfm(X, h0a, h0b, h1a, h1b):
         # Do even Qshift filters on rows.
         y1 = work[:, :, f].T
         y2 = np.vstack((coldfilt(y1, h0b, h0a), coldfilt(y1, h1b, h1a))).T
-
+        
         # Do even Qshift filters on columns.
         work[s0a, :, f] = coldfilt(y2, h0b, h0a)
         work[s0b, :, f] = coldfilt(y2, h1b, h1a)
@@ -436,8 +380,8 @@ def _level2_xfm(X, h0a, h0b, h1a, h1b):
             cube2c(work[s0a, s1b, s2b]),    # HLH
             cube2c(work[s0b, s1a, s2b]),    # LHH
             cube2c(work[s0b, s1b, s2b]),    # HLH
-        ), axis=3)
-    )
+            ), axis=3)
+        )
 
 def _level1_ifm(Yl, Yh, g0o, g1o):
     """Perform level 1 of the inverse 3d transform.
@@ -461,7 +405,7 @@ def _level1_ifm(Yl, Yh, g0o, g1o):
     s0b = slice(work.shape[0] >> 1, None)
     s1b = slice(work.shape[1] >> 1, None)
     s2b = slice(work.shape[2] >> 1, None)
-
+      
     x0a = slice(None, Xshape[0])
     x1a = slice(None, Xshape[1])
     x2a = slice(None, Xshape[2])
@@ -514,7 +458,7 @@ def _level1_ifm_no_highpass(Yl, g0o, g1o):
 
     return output
 
-def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, prev_level_size):
+def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, ext_mode, prev_level_size):
     """Perform level 2 or greater of the 3d inverse transform.
 
     """
@@ -543,7 +487,7 @@ def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, prev_level_size):
         # Do even Qshift filters on rows.
         y = colifilt(work[:, s1a, f].T, g0b, g0a) + colifilt(work[:, s1b, f].T, g1b, g1a)
 
-        # Do even Qshift filters on columns.
+          # Do even Qshift filters on columns.
         work[:, :, f] = colifilt(y[:, s0a].T, g0b, g0a) + colifilt(y[:,s0b].T, g1b, g1a)
 
     for f in xrange(work.shape[1]):
@@ -559,7 +503,7 @@ def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, prev_level_size):
     prev_level_size = np.asarray(prev_level_size)
     curr_level_size = np.asarray(Yh.shape)
 
-    if self.ext_mode == 4:
+    if ext_mode == 4:
         if curr_level_size[0] * 2 != prev_level_size[0]:
             # Discard the top and bottom rows
             work = work[1:-1,:,:]
@@ -569,15 +513,15 @@ def _level2_ifm(Yl, Yh, g0a, g0b, g1a, g1b, prev_level_size):
         if curr_level_size[2] * 2 != prev_level_size[2]:
             # Discard the top and bottom rows
             work = work[:,:,1:-1]
-    elif self.ext_mode == 8:
+    elif ext_mode == 8:
         if curr_level_size[0] * 2 != prev_level_size[0]:
-            # Discard the top and bottom rows
+        # Discard the top and bottom rows
             work = work[2:-2,:,:]
         if curr_level_size[1] * 2 != prev_level_size[1]:
-            # Discard the top and bottom rows
+        # Discard the top and bottom rows
             work = work[:,2:-2,:]
         if curr_level_size[2] * 2 != prev_level_size[2]:
-            # Discard the top and bottom rows
+        # Discard the top and bottom rows
             work = work[:,:,2:-2]
 
     return work

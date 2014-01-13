@@ -94,3 +94,53 @@ class Transform2d(object):
         """
         raise NotImplementedError()
 
+class Transform3d(object):
+    """
+    An implementation of a 3D DT-CWT transformation. Backends must provide a
+    transform class which provides an interface compatible with this base
+    class.
+
+    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+
+    If *biort* or *qshift* are strings, they are used as an argument to the
+    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+    interpreted as tuples of vectors giving filter coefficients. In the *biort*
+    case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
+    be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
+
+    In some cases the tuples may have more elements. This is used to represent
+    the :ref:`rot-symm-wavelets`.
+    
+    """
+    def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT):
+        raise NotImplementedError()
+
+    def forward(self, X, nlevels=3, include_scale=False):
+        """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
+
+        :param X: 2D real array
+        :param nlevels: Number of levels of wavelet decomposition
+
+        :returns: A :py:class:`dtcwt.backend.TransformDomainSignal` compatible object representing the transform-domain signal
+
+        """
+        raise NotImplementedError()
+
+    def inverse(self, td_signal, gain_mask=None):
+        """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D
+        reconstruction.
+
+        :param td_signal: A :py:class:`dtcwt.backend.TransformDomainSignal`-like class holding the transform domain representation to invert.
+        :param gain_mask: Gain to be applied to each subband.
+
+        :returns: A :py:class:`dtcwt.backend.ReconstructedSignal` compatible instance with the reconstruction.
+
+        The (*d*, *l*)-th element of *gain_mask* is gain for subband with direction
+        *d* at level *l*. If gain_mask[d,l] == 0, no computation is performed for
+        band (d,l). Default *gain_mask* is all ones. Note that both *d* and *l* are
+        zero-indexed.
+
+        """
+        raise NotImplementedError()
+

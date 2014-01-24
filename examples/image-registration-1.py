@@ -37,8 +37,8 @@ def rot(theta):
     s, c = np.sin(theta), np.cos(theta)
     return np.array([[c,s,0], [-s,c,0], [0,0,1]])
 
-theta = np.deg2rad(5)
-dx, dy = 5/f1.shape[1], -10/f1.shape[0]
+theta = np.deg2rad(10)
+dx, dy = 20/f1.shape[1], -10/f1.shape[0]
 
 T = trans(0.5+dx, 0.5+dy).dot(rot(theta)).dot(trans(-0.5,-0.5))
 
@@ -63,24 +63,29 @@ gt_vys = T[1,2] + T[1,0]*X + T[1,1]*Y - Y
 
 # Take the DTCWT of both frames.
 logging.info('Taking DTCWT')
-nlevels = 7
+nlevels = 8
 Yl1, Yh1 = dtcwt.dtwavexfm2(f1, nlevels=nlevels)
 Yl2, Yh2 = dtcwt.dtwavexfm2(f2, nlevels=nlevels)
 
 # Iteratively solve for transform
-logging.info('Computing initial solution')
-Qt_mats = qtildematrices(Yh1, Yh2, [-1])
-Qt = np.sum(list(x.sum() for x in Qt_mats), axis=0)
-a = solvetransform(Qt)
 
-# Iterate a few more times
-for iteration in xrange(10):
-    Yh3 = list(affinewarphighpass(x, a) for x in Yh1)
+# Start with a set of warped high-pass subbands which
+# are a shallow copy of Yh1
+Yh3 = list(Yh1)
 
-    startlevel = -2-iteration//4
+# Initial velocity field is zero
+a = np.zeros(6, dtype=np.float32)
+
+for iteration in xrange(4*(len(Yh1)-5)):
+    startlevel = len(Yh1)-2-iteration//4
     levels = [startlevel, startlevel+1]
 
     logging.info('Refining with levels: %s' % (levels,))
+
+    # Warp Yh1 for each level we're looking at in this iteration
+    for level in levels:
+        Yh3[level] = affinewarphighpass(Yh1[level], a, method='bilinear')
+
     Qt_mats = qtildematrices(Yh3, Yh2, levels)
     Qt = np.sum(list(x.sum() for x in Qt_mats), axis=0)
     a += solvetransform(Qt)
@@ -124,17 +129,27 @@ imshow(gt_vys)
 title('Ground truth velocity y-component')
 colorbar()
 
+# Compute a high-quality warping using Lanczos re-sampling
+logging.info('Computing high-quality warped image')
+Yh3 = list(affinewarphighpass(x, a, method='lanczos') for x in Yh1)
+warped_wavelet = dtcwt.dtwaveifm2(Yl1, Yh3)
+warped_direct = affinewarp(f1, a, method='lanczos')
+
 figure()
-subplot(131)
+subplot(221)
 imshow(f1, cmap=cm.gray, clim=(0,1))
 title('Frame 1')
 
-subplot(132)
-imshow(dtcwt.dtwaveifm2(Yl1, Yh3), cmap=cm.gray, clim=(0,1))
-title('Frame 1 warped to Frame 2')
-
-subplot(133)
+subplot(222)
 imshow(f2, cmap=cm.gray, clim=(0,1))
 title('Frame 2')
+
+subplot(223)
+imshow(warped_wavelet, cmap=cm.gray, clim=(0,1))
+title('Frame 1 warped to Frame 2 (wavelet domain)')
+
+subplot(224)
+imshow(warped_direct, cmap=cm.gray, clim=(0,1))
+title('Frame 1 warped to Frame 2 (image domain)')
 
 show()

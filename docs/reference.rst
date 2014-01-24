@@ -53,6 +53,12 @@ Image sampling
 .. automodule:: dtcwt.sampling
     :members:
 
+Image registration
+``````````````````
+
+.. automodule:: dtcwt.registration
+    :members:
+
 Miscellaneous and low-level support functions
 `````````````````````````````````````````````
 

@@ -38,7 +38,7 @@ def rot(theta):
     return np.array([[c,s,0], [-s,c,0], [0,0,1]])
 
 theta = np.deg2rad(10)
-dx, dy = 20/f1.shape[1], -10/f1.shape[0]
+dx, dy = 20/f1.shape[1], -30/f1.shape[0]
 
 T = trans(0.5+dx, 0.5+dy).dot(rot(theta)).dot(trans(-0.5,-0.5))
 
@@ -131,25 +131,15 @@ colorbar()
 
 # Compute a high-quality warping using Lanczos re-sampling
 logging.info('Computing high-quality warped image')
-Yh3 = list(affinewarphighpass(x, a, method='lanczos') for x in Yh1)
-warped_wavelet = dtcwt.dtwaveifm2(Yl1, Yh3)
 warped_direct = affinewarp(f1, a, method='lanczos')
 
 figure()
-subplot(221)
-imshow(f1, cmap=cm.gray, clim=(0,1))
-title('Frame 1')
-
-subplot(222)
+subplot(121)
 imshow(f2, cmap=cm.gray, clim=(0,1))
 title('Frame 2')
 
-subplot(223)
-imshow(warped_wavelet, cmap=cm.gray, clim=(0,1))
-title('Frame 1 warped to Frame 2 (wavelet domain)')
-
-subplot(224)
+subplot(122)
 imshow(warped_direct, cmap=cm.gray, clim=(0,1))
-title('Frame 1 warped to Frame 2 (image domain)')
+title('Frame 1 warped to Frame 2')
 
 show()

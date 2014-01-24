@@ -18,10 +18,12 @@ __all__ = [
     'EXPECTED_SHIFTS',
 
     'affinewarphighpass',
+    'affinewarp',
     'confidence',
     'phasegradient',
     'qtildematrices',
-    'samplehighpass',
+    'normsamplehighpass',
+    'normsample',
     'solvetransform',
     'velocityfield',
 ]
@@ -156,7 +158,7 @@ def solvetransform(Qtilde):
     q = Qtilde[-1,:-1]
     return -np.linalg.inv(Q).dot(q)
 
-def samplehighpass(Yh, xs, ys, method=None):
+def normsamplehighpass(Yh, xs, ys, method=None):
     """
     Given a NxMx6 array of subband responses, sample from co-ordinates *xs* and
     *ys*.
@@ -167,6 +169,17 @@ def samplehighpass(Yh, xs, ys, method=None):
 
     """
     return dtcwt.sampling.sample_highpass(Yh, xs*Yh.shape[1], ys*Yh.shape[0], method=method)
+
+def normsample(Yh, xs, ys, method=None):
+    """
+    Given a NxM image sample from co-ordinates *xs* and *ys*.
+
+    .. note::
+      The sample co-ordinates are in *normalised* co-ordinates such that the
+      image width and height are both unity.
+
+    """
+    return dtcwt.sampling.sample(Yh, xs*Yh.shape[1], ys*Yh.shape[0], method=method)
 
 def velocityfield(a, xs, ys):
     r"""
@@ -208,4 +221,29 @@ def affinewarphighpass(Yh, a, method=None):
     """
     xs, ys = np.meshgrid(np.arange(0,1,1/Yh.shape[1]), np.arange(0,1,1/Yh.shape[0]))
     vxs, vys = velocityfield(a, xs, ys)
-    return samplehighpass(Yh, xs+vxs, ys+vys, method=method)
+    return normsamplehighpass(Yh, xs+vxs, ys+vys, method=method)
+
+def affinewarp(Yh, a, method=None):
+    r"""
+    Given a NxM image, warp it according to affine transform parametrised by
+    the vector *a* s.t. the pixel at (x,y) samples from (x',y') where
+
+    .. math::
+      [x', y']^T = \mathbf{T} \ [1, x, y]^T
+
+    and
+
+    .. math::
+      \mathbf{T} = \begin{bmatrix}
+            a_0 & a_2 & a_4  \\
+            a_1 & a_3 & a_5
+          \end{bmatrix}
+
+    .. note::
+      The sample co-ordinates are in *normalised* co-ordinates such that the
+      image width and height are both unity.
+
+    """
+    xs, ys = np.meshgrid(np.arange(0,1,1/Yh.shape[1]), np.arange(0,1,1/Yh.shape[0]))
+    vxs, vys = velocityfield(a, xs, ys)
+    return normsample(Yh, xs+vxs, ys+vys, method=method)

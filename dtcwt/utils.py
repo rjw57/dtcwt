@@ -100,29 +100,18 @@ def reflect(x, minx, maxx):
     converted into a waveform which ramps linearly up and down between *minx* and
     *maxx*.  If *x* contains integers and *minx* and *maxx* are (integers + 0.5), the
     ramps will have repeated max and min samples.
-   
+
     .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
     .. codeauthor:: Nick Kingsbury, Cambridge University, January 1999.
-    
+
     """
-
-    # Copy x to avoid in-place modification
-    y = np.array(x, copy=True)
-
-    # Reflect y in maxx.
-    t = y > maxx
-    y[t] = (2*maxx - y[t]).astype(y.dtype)
-
-    while np.any(y < minx):
-        # Reflect y in minx.
-        t = y < minx
-        y[t] = (2*minx - y[t]).astype(y.dtype)
-
-        # Reflect y in maxx.
-        t = y > maxx
-        y[t] = (2*maxx - y[t]).astype(y.dtype)
-
-    return y
+    x = np.asanyarray(x)
+    rng = maxx - minx
+    rng_by_2 = 2 * rng
+    mod = np.fmod(x - minx, rng_by_2)
+    normed_mod = np.where(mod < 0, mod + rng_by_2, mod)
+    out = np.where(normed_mod >= rng, rng_by_2 - normed_mod, normed_mod) + minx
+    return np.array(out, dtype=x.dtype)
 
 # note that this decorator ignores **kwargs
 # From https://wiki.python.org/moin/PythonDecoratorLibrary#Alternate_memoize_as_nested_functions

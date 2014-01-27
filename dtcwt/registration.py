@@ -263,22 +263,21 @@ def estimateflow(reference_h, target_h):
     avecs = np.zeros((warped_h[2].shape[0], warped_h[2].shape[1], 6))
 
     # Compute initial global transform
-    for it in xrange(2):
-        levels = list(x for x in xrange(len(warped_h)-1, len(warped_h)-3, -1) if x>=0)
-        Qt_mats = list(x.sum() for x in qtildematrices(warped_h, target_h, levels))
-        Qt = np.sum(Qt_mats, axis=0)
+    levels = list(x for x in xrange(len(warped_h)-1, len(warped_h)-3, -1) if x>=0)
+    Qt_mats = list(x.sum() for x in qtildematrices(warped_h, target_h, levels))
+    Qt = np.sum(Qt_mats, axis=0)
 
-        a = solvetransform(Qt)
-        for r, c in itertools.product(xrange(avecs.shape[0]), xrange(avecs.shape[1])):
-            avecs[r,c] += a
+    a = solvetransform(Qt)
+    for r, c in itertools.product(xrange(avecs.shape[0]), xrange(avecs.shape[1])):
+        avecs[r,c] += a
 
-        for l in levels:
-            warped_h[l] = warphighpass(reference_h[l], avecs, method='bilinear')
+    for l in levels:
+        warped_h[l] = warphighpass(reference_h[l], avecs, method='bilinear')
 
     # Refine estimate
-    for it in xrange(2 * (len(warped_h)-3)):
+    for it in xrange(2 * (len(warped_h)-3) - 1):
         s, e = len(warped_h) - 2, len(warped_h) - 2 - (it+1)//2
-        levels = list(x for x in xrange(s, e-1, -1) if x>=1 and x<len(warped_h))
+        levels = list(x for x in xrange(s, e-1, -1) if x>=2 and x<len(warped_h))
         if len(levels) == 0:
             continue
 

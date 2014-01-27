@@ -3,11 +3,15 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm2, dtwaveifm2, dtwavexfm2b, dtwaveifm2b, biort, qshift
+
+from scipy.io import loadmat
+from dtcwt import dtwavexfm2, dtwavexfm3, dtwaveifm2, dtwavexfm2b, dtwaveifm2b, biort, qshift
 from dtcwt.lowlevel import coldfilt, colifilt
 from dtcwt.sampling import rescale_highpass
 
-from .util import assert_almost_equal, summarise_mat, assert_percentile_almost_equal
+from dtcwt.backend.base import TransformDomainSignal, ReconstructedSignal
+
+from .util import assert_almost_equal, summarise_mat, summarise_cube, assert_percentile_almost_equal
 
 ## IMPORTANT NOTE ##
 
@@ -21,7 +25,7 @@ from .util import assert_almost_equal, summarise_mat, assert_percentile_almost_e
 #  G | H | I
 #
 # Where A, C, G and I are NxN and N is some agreed 'apron' size. E is replaced
-# my it's element-wise mean and thus becomes 1x1. The remaining matrices are
+# by it's element-wise mean and thus becomes 1x1. The remaining matrices are
 # replaced by the element-wise mean along the apropriate axis to result in a
 # (2N+1) x (2N+1) matrix. These matrices are compared.
 #
@@ -41,9 +45,18 @@ def assert_almost_equal_to_summary(a, summary, *args, **kwargs):
 def assert_percentile_almost_equal_to_summary(a, summary, *args, **kwargs):
     assert_percentile_almost_equal(summarise_mat(a), summary, *args, **kwargs)
 
+def assert_almost_equal_to_summary_cube(a, summary, *args, **kwargs):
+    assert_almost_equal(summarise_cube(a), summary, *args, **kwargs)
+
+def assert_percentile_almost_equal_to_summary_cube(a, summary, *args, **kwargs):
+    assert_percentile_almost_equal(summarise_cube(a), summary, *args, **kwargs)
+
 def setup():
     global lena
     lena = np.load(os.path.join(os.path.dirname(__file__), 'lena.npz'))['lena']
+
+    global qbgn
+    qbgn = loadmat(os.path.join(os.path.dirname(__file__), 'qbgn.mat'))['qbgn']
 
     global verif
     verif = np.load(os.path.join(os.path.dirname(__file__), 'verification.npz'))
@@ -100,5 +113,17 @@ def test_rescale_highpass():
     # slight differences in interpolation method the odd pixel can very by
     # quite an amount. Use a percentile approach to look at the bigger picture.
     assert_percentile_almost_equal_to_summary(Xrescale, verif['lena_upsample'], 60, tolerance=TOLERANCE)
+
+def test_transform3d_numpy():
+    from dtcwt.backend.backend_numpy import Transform3d
+    transform = Transform3d(biort='near_sym_a',qshift='qshift_b')
+    td_signal = transform.forward(qbgn, nlevels=3, include_scale=True, discard_level_1=False)
+    Yl, Yh, Yscale = td_signal.lowpass, td_signal.subbands, td_signal.scales
+    #assert_almost_equal_to_summary_cube(Yl, verif['qbgn_Yl'], tolerance=TOLERANCE)
+    for idx, a in enumerate(Yh):
+        assert_almost_equal_to_summary_cube(a, verif['qbgn_Yh_{0}'.format(idx)], tolerance=TOLERANCE)
+
+    for idx, a in enumerate(Yscale):
+        assert_almost_equal_to_summary_cube(a, verif['qbgn_Yscale_{0}'.format(idx)], tolerance=TOLERANCE)
 
 # vim:sw=4:sts=4:et

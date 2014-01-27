@@ -37,7 +37,7 @@ class Transform3d(Transform3dBase):
 
         self.ext_mode = ext_mode
             
-    def forward(self, X, nlevels=3, discard_level_1=False):
+    def forward(self, X, nlevels=3, include_scale=False, discard_level_1=False):
         """Perform a *n*-level DTCWT-3D decompostion on a 3D matrix *X*.
         
         :param X: 3D real array-like object
@@ -88,6 +88,9 @@ class Transform3d(Transform3dBase):
         """
         X = np.atleast_3d(asfarray(X))
 
+        # If biort has 6 elements instead of 4, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
         if len(self.biort) == 4:
             h0o, g0o, h1o, g1o = self.biort
         elif len(self.biort) == 6:
@@ -95,6 +98,9 @@ class Transform3d(Transform3dBase):
         else:
             raise ValueError('Biort wavelet must have 6 or 4 components.')
         
+        # If qshift has 12 elements instead of 8, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
         if len(self.qshift) == 8:
             h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
         elif len(self.qshift) == 12:
@@ -108,18 +114,31 @@ class Transform3d(Transform3dBase):
 
         Yl = X
         Yh = [None,] * nlevels
+        
+        if include_scale:
+            # this is only required if the user specifies a third output component.
+            Yscale = [None,] * nlevels
+
         #pdb.set_trace()
         # level is 0-indexed
         for level in xrange(nlevels):
             # Transform
             if level == 0 and discard_level_1:
                 Yl = _level1_xfm_no_highpass(Yl, h0o, h1o, self.ext_mode)
+                if include_scale:
+                    Yscale[0] = Yl
             elif level == 0 and not discard_level_1:
                 Yl, Yh[level] = _level1_xfm(Yl, h0o, h1o, self.ext_mode)
+                if include_scale:
+                    Yscale[0] = Yl
             else:
                 Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b, self.ext_mode)
-        #FIXME: need some way to separate the Yscale component to include the scale when necessary.
-        return TransformDomainSignal(Yl, tuple(Yh))
+                if include_scale:
+                    Yscale[level] = Yl
+        if include_scale:
+            return TransformDomainSignal(Yl, tuple(Yh), tuple(Yscale))
+        else: 
+            return TransformDomainSignal(Yl, tuple(Yh))
 
     def inverse(self, td_signal):
         """Perform an *n*-level dual-tree complex wavelet (DTCWT) 3D
@@ -374,13 +393,13 @@ def _level2_xfm(X, h0a, h0b, h1a, h1b, ext_mode):
             cube2c(work[s0a, s1a, s2b]),    # LLH
             cube2c(work[s0a, s1b, s2b]),    # HLH
             cube2c(work[s0b, s1a, s2b]),    # LHH
-            cube2c(work[s0b, s1b, s2b]),    # HLH
+            cube2c(work[s0b, s1b, s2b]),    # HHH
             ), axis=3)
         )
 
 def _level1_ifm(Yl, Yh, g0o, g1o):
-    """Perform level 1 of the inverse 3d transform.
-
+    """
+    Perform level 1 of the inverse 3d transform.
     """
     # Create work area
     work = np.zeros(np.asanyarray(Yl.shape) * 2, dtype=Yl.dtype)
@@ -559,14 +578,25 @@ def cube2c(y):
 
     # TODO: check if the above should be the below and, if so, fix c2cube
     #
-    # A = y[0::2, 0::2, 0::2]
-    # B = y[0::2, 0::2, 1::2]
-    # C = y[0::2, 1::2, 0::2]
-    # D = y[0::2, 1::2, 1::2]
-    # E = y[1::2, 0::2, 0::2]
-    # F = y[1::2, 0::2, 1::2]
-    # G = y[1::2, 1::2, 0::2]
-    # H = y[1::2, 1::2, 1::2]
+    #A = y[0::2, 0::2, 0::2]
+    #B = y[0::2, 0::2, 1::2]
+    #C = y[0::2, 1::2, 0::2]
+    #D = y[0::2, 1::2, 1::2]
+    #E = y[1::2, 0::2, 0::2]
+    #F = y[1::2, 0::2, 1::2]
+    #G = y[1::2, 1::2, 0::2]
+    #H = y[1::2, 1::2, 1::2]
+
+    # TODO: check if the above should be the below and, if so, fix c2cube
+    #
+    #A = y[0::2, 0::2, 0::2]
+    #B = y[0::2, 1::2, 0::2]
+    #C = y[1::2, 0::2, 0::2]
+    #D = y[1::2, 1::2, 0::2]
+    #E = y[0::2, 0::2, 1::2]
+    #F = y[0::2, 1::2, 1::2]
+    #G = y[1::2, 0::2, 1::2]
+    #H = y[1::2, 1::2, 1::2]
 
     # Combine to form subbands
     p = ( A-G-D-F) * j2[0] + ( B-H+C+E) * j2[1]

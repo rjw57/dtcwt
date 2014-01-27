@@ -12,6 +12,8 @@ from __future__ import division
 
 import itertools
 
+from six.moves import xrange
+
 import dtcwt
 import dtcwt.sampling
 import dtcwt.utils

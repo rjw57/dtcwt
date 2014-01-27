@@ -258,6 +258,14 @@ def affinewarp(Yh, a, method=None):
     return normsample(Yh, xs+vxs, ys+vys, method=method)
 
 def estimateflow(reference_h, target_h):
+    """
+    Given highpass subbands from the reference and target image, estimate the
+    local distortion at 8x8 pixel scales. Return a NxMx6 array where the
+    6-element vector at (N,M) corresponds to the affine distortion parameters
+    for that section of the image. The returned array is 8x downsampled from
+    the original.
+
+    """
     # Make a copy of reference_h for warping
     warped_h = list(reference_h)
 
@@ -301,23 +309,46 @@ def estimateflow(reference_h, target_h):
     return avecs
 
 def velocityfield(avecs, shape, method=None):
+    """
+    Given the affine distortion parameters returned from :py:func:`estimateflow`, return
+    a tuple of 2D arrays giving the x- and y- components of the velocity field. The
+    shape of the velocity component field is *shape*. The velocities are measured in
+    terms of normalised units where the image has width and height of unity.
+
+    The *method* parameter is interpreted as in :py:func:`dtcwt.sampling.rescale` and
+    is the sampling method used to resize *avecs* to *shape*.
+
+    """
     h, w = shape[:2]
     pxs, pys = np.meshgrid(np.arange(0, w, dtype=np.float32) / w,
                            np.arange(0, h, dtype=np.float32) / h)
 
-    avecs = dtcwt.sampling.rescale(avecs, shape, method='bilinear')
+    avecs = dtcwt.sampling.rescale(avecs, shape, method=method)
     vxs = avecs[:,:,0] + avecs[:,:,2] * pxs + avecs[:,:,4] * pys
     vys = avecs[:,:,1] + avecs[:,:,3] * pxs + avecs[:,:,5] * pys
 
     return vxs, vys
 
 def warphighpass(Yh, avecs, method=None):
+    """
+    A convenience function to warp a highpass subband image according to the
+    velocity field implied by *avecs*.
+
+    This function correctly 'de-rotates' the highpass image before sampling and
+    're-rotates' afterwards.
+
+    """
     X, Y = np.meshgrid(np.arange(Yh.shape[1], dtype=np.float32)/Yh.shape[1],
                        np.arange(Yh.shape[0], dtype=np.float32)/Yh.shape[0])
     vxs, vys = velocityfield(avecs, Yh.shape, method=method)
     return normsamplehighpass(Yh, X+vxs, Y+vys, method=method)
 
 def warp(I, avecs, method=None):
+    """
+    A convenience function to warp an image according to the velocity field
+    implied by *avecs*.
+
+    """
     X, Y = np.meshgrid(np.arange(I.shape[1], dtype=np.float32)/I.shape[1],
                        np.arange(I.shape[0], dtype=np.float32)/I.shape[0])
     vxs, vys = velocityfield(avecs, I.shape, method=method)

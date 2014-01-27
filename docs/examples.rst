@@ -26,3 +26,26 @@ directions in total over all four quadrants.
 The source for the script is shown below:
 
 .. literalinclude:: ../examples/3d_dtcwt_directionality.py
+
+2D Image Registration
+---------------------
+
+This library includes support for 2D image registration modelled after the 3D
+algorithm outlined in the paper `Efficient Registration of Nonrigid 3-D Bodies`_.
+The
+:download:`image-registration-2.py<../examples/image-registration-2.py>`
+script in the examples directory shows a complete worked example of using the
+registration API using two sets of source images: a woman playing tennis and some
+traffic at a road junction.
+
+.. _Efficient Registration of Nonrigid 3-D Bodies: http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=5936113
+
+The source for the script is shown here:
+
+.. literalinclude:: ../examples/image-registration-2.py
+
+If you're interested in some of the more fundamental theory behind the
+registration, a simpler example which uses lower-level functions to estimate a
+single global affine distortion is available in the
+:download:`image-registration-1.py<../examples/image-registration-1.py>`
+script.

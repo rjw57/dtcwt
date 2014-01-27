@@ -57,6 +57,7 @@ Changes
 
 * Verified the highpass re-sampling routines in ``dtcwt.sampling`` against the
   existing MATLAB implementation.
+* Added experimental image registration routines.
 
 0.7.2
 '''''

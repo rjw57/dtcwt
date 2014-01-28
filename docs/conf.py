@@ -170,7 +170,7 @@ html_static_path = ['_static']
 htmlhelp_basename = 'dtcwtdoc'
 
 # On read the docs we need to use a different CDN URL for MathJax which loads
-# over HTTPS or HTTP depending on how the page loads.
+# over HTTPS.
 if os.environ.get('READTHEDOCS', None) == 'True':
     mathjax_path = 'https://c328740.ssl.cf1.rackcdn.com/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'
 

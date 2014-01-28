@@ -26,7 +26,7 @@ __all__ = [
     'affinewarp',
     'affinewarphighpass',
     'confidence',
-    'estimateflow',
+    'estimatereg',
     'normsample',
     'normsamplehighpass',
     'phasegradient',
@@ -104,26 +104,14 @@ def confidence(sb1, sb2):
 
     return numerator / denominator
 
+Q_TRIU_INDICES = list(zip(*np.triu_indices(6)))
+Q_TRIU_FLAT_INDICES = np.ravel_multi_index(np.triu_indices(6), (6,6))
+
 def qtildematrices(Yh1, Yh2, levels):
     r"""
     Compute :math:`\tilde{Q}` matrices for given levels.
 
     """
-    def _Qt_mat(x, y, dx, dy, dt):
-        # The computation that this function performs is:
-        #
-        # Kt_mat = np.array(((1, 0, s*x, 0, s*y, 0, 0), (0, 1, 0, s*x, 0, s*y, 0), (0,0,0,0,0,0,1)))
-        # c_vec = np.array((dx, dy, -dt))
-        # a = (Kt_mat.T).dot(c_vec)
-
-        a = np.array((
-            dx, dy, x*dx, x*dy, y*dx, y*dy, -dt
-        ))
-
-        return np.outer(a, a)
-
-    _Qt_mats = np.vectorize(_Qt_mat, otypes='O')
-
     # A list of arrays of \tilde{Q} matrices for each level
     Qt_mats = []
 
@@ -138,7 +126,30 @@ def qtildematrices(Yh1, Yh2, levels):
             dy, dx, dt = phasegradient(subbands1[:,:,subband], subbands2[:,:,subband],
                                             EXPECTED_SHIFTS[subband,:])
 
-            Qt = _Qt_mats(xs, ys, dx*subbands1.shape[1], dy*subbands1.shape[0], dt)
+            dx *= subbands1.shape[1]
+            dy *= subbands1.shape[0]
+
+            # This is the equivalent of the following for each member of the array
+            #  Kt_mat = np.array(((1, 0, s*x, 0, s*y, 0, 0), (0, 1, 0, s*x, 0, s*y, 0), (0,0,0,0,0,0,1)))
+            #  c_vec = np.array((dx, dy, -dt))
+            #  tmp = (Kt_mat.T).dot(c_vec)
+            tmp = (
+                dx, dy, xs*dx, xs*dy, ys*dx, ys*dy, -dt
+            )
+
+            # Calculate Qmatrix elements
+            Qt = np.zeros(dx.shape[:2] + (27,))
+            elem_idx = 0
+
+            # Q sub-matrix
+            for r, c in Q_TRIU_INDICES:
+                Qt[:,:,elem_idx] = tmp[r] * tmp[c]
+                elem_idx += 1
+
+            # q sub-vector
+            for r in xrange(6):
+                Qt[:,:,elem_idx] = tmp[r] * tmp[6]
+                elem_idx += 1
 
             # Update Qt mats
             if Qt_mat_sum is None:
@@ -150,7 +161,7 @@ def qtildematrices(Yh1, Yh2, levels):
 
     return Qt_mats
 
-def solvetransform(Qtilde):
+def solvetransform(Qtilde_vec):
     r"""
     Solve for affine transform parameter vector :math:`a` from :math:`\mathbf{\tilde{Q}}`
     matrix. decomposes :math:`\mathbf{\tilde{Q}}` as
@@ -163,9 +174,44 @@ def solvetransform(Qtilde):
 
     Returns :math:`\mathbf{a} = -\mathbf{Q}^{-1} \mathbf{q}`.
     """
-    Q = Qtilde[:-1,:-1]
-    q = Qtilde[-1,:-1]
-    return -np.linalg.inv(Q).dot(q)
+
+    # Convert from 27-element vector into Q matrix and vector
+    Q = np.zeros(Qtilde_vec.shape[:-1] + (6*6,))
+    Q[..., Q_TRIU_FLAT_INDICES] = Qtilde_vec[...,:21]
+    q = Qtilde_vec[...,-6:]
+    Q = np.reshape(Q, Qtilde_vec.shape[:-1] + (6,6))
+
+    # Want to find a = -Q^{-1} q => Qa = -q
+    # The naive way would be: return -np.linalg.inv(Q).dot(q)
+    # A less naive way would be: return np.linalg.solve(Q, -q)
+    #
+    # Recall that, given Q is symmetric, we can decompose it at Q = U L U^T with
+    # diagonal L and orthogonal U. Hence:
+    #
+    #   U L U^T a = -q => a = - U L^-1 U^T q
+    #
+    # An even better way is thus to use the specialised eigenvector
+    # calculation for symmetric matrices:
+
+    # NumPy >1.8 directly supports using the last two dimensions as a matrix. IF
+    # we get a LinAlgError, we assume that we need to fall-back to a NumPy 1.7
+    # approach which is *significantly* slower.
+    try:
+        l, U = np.linalg.eigh(Q, 'U')
+    except np.linalg.LinAlgError:
+        # Try the slower fallback
+        l = np.zeros(Qtilde_vec.shape[:-1] + (6,))
+        U = np.zeros(Qtilde_vec.shape[:-1] + (6,6))
+        for idx in itertools.product(*list(xrange(s) for s in Qtilde_vec.shape[:-1])):
+            l[idx], U[idx] = np.linalg.eigh(Q[idx], 'U')
+
+    # Now we have some issue here. If Qtilde_vec is a straightforward vector
+    # then we can just return U.dot((U.T.dot(-q))/l). However if Qtilde_vec is
+    # an array of vectors then the straightforward dot product won't work. We
+    # want to perform matrix multiplication on stacked matrices.
+    return dtcwt.utils.stacked_2d_matrix_vector_prod(
+        U, dtcwt.utils.stacked_2d_vector_matrix_prod(-q, U) / l
+    )
 
 def normsamplehighpass(Yh, xs, ys, method=None):
     """
@@ -257,15 +303,28 @@ def affinewarp(Yh, a, method=None):
     vxs, vys = affinevelocityfield(a, xs, ys)
     return normsample(Yh, xs+vxs, ys+vys, method=method)
 
-def estimateflow(reference_h, target_h):
+def estimatereg(reference, target):
     """
-    Given highpass subbands from the reference and target image, estimate the
-    local distortion at 8x8 pixel scales. Return a NxMx6 array where the
-    6-element vector at (N,M) corresponds to the affine distortion parameters
-    for that section of the image. The returned array is 8x downsampled from
-    the original.
+    Estimate registration from reference image to target.
+
+    :param reference: transformed reference image
+    :param target: transformed target image
+
+    The *reference* and *transform* parameters should support the same API as
+    :py:class:`dtcwt.backend.base.TransformDomainSignal`.
+
+    The local affine distortion is estimated at at 8x8 pixel scales.
+    Return a NxMx6 array where the 6-element vector at (N,M) corresponds to the
+    affine distortion parameters for the 8x8 block with index (N,M).
+
+    Use the :py:func:`velocityfield` function to convert the return value from
+    this function into a velocity field.
 
     """
+    # Extract highpass
+    reference_h = reference.subbands
+    target_h = target.subbands
+
     # Make a copy of reference_h for warping
     warped_h = list(reference_h)
 
@@ -274,15 +333,12 @@ def estimateflow(reference_h, target_h):
 
     # Compute initial global transform
     levels = list(x for x in xrange(len(warped_h)-1, len(warped_h)-3, -1) if x>=0)
-    Qt_mats = list(x.sum() for x in qtildematrices(warped_h, target_h, levels))
+    Qt_mats = list(np.sum(np.sum(x, axis=0), axis=0) for x in qtildematrices(warped_h, target_h, levels))
     Qt = np.sum(Qt_mats, axis=0)
 
     a = solvetransform(Qt)
-    for r, c in itertools.product(xrange(avecs.shape[0]), xrange(avecs.shape[1])):
-        avecs[r,c] += a
-
-    for l in levels:
-        warped_h[l] = warphighpass(reference_h[l], avecs, method='bilinear')
+    for idx in xrange(a.shape[0]):
+        avecs[:,:,idx] = a[idx]
 
     # Refine estimate
     for it in xrange(2 * (len(warped_h)-3) - 1):
@@ -291,26 +347,21 @@ def estimateflow(reference_h, target_h):
         if len(levels) == 0:
             continue
 
+        # Warp the levels we'll be looking at with the current best-guess transform
+        for l in levels:
+            warped_h[l] = warphighpass(reference_h[l], avecs, method='bilinear')
+
         qts = np.sum(list(dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='bilinear')
                           for x in qtildematrices(warped_h, target_h, levels)),
                      axis=0)
 
-        for r, c in itertools.product(xrange(avecs.shape[0]), xrange(avecs.shape[1])):
-            # if np.abs(np.linalg.det(qts[r,c][:-1,:-1])) > np.abs(qts[r,c][-1,-1]):
-            try:
-                avecs[r,c] += solvetransform(qts[r,c])
-            except np.linalg.LinError:
-                # It's OK for refinement to generate singular matrices
-                pass
-
-        for l in levels:
-            warped_h[l] = warphighpass(reference_h[l], avecs, method='bilinear')
+        avecs += solvetransform(qts)
 
     return avecs
 
 def velocityfield(avecs, shape, method=None):
     """
-    Given the affine distortion parameters returned from :py:func:`estimateflow`, return
+    Given the affine distortion parameters returned from :py:func:`estimatereg`, return
     a tuple of 2D arrays giving the x- and y- components of the velocity field. The
     shape of the velocity component field is *shape*. The velocities are measured in
     terms of normalised units where the image has width and height of unity.
@@ -319,13 +370,15 @@ def velocityfield(avecs, shape, method=None):
     is the sampling method used to resize *avecs* to *shape*.
 
     """
-    h, w = shape[:2]
+    h, w = avecs.shape[:2]
     pxs, pys = np.meshgrid(np.arange(0, w, dtype=np.float32) / w,
                            np.arange(0, h, dtype=np.float32) / h)
 
-    avecs = dtcwt.sampling.rescale(avecs, shape, method=method)
     vxs = avecs[:,:,0] + avecs[:,:,2] * pxs + avecs[:,:,4] * pys
     vys = avecs[:,:,1] + avecs[:,:,3] * pxs + avecs[:,:,5] * pys
+
+    vxs = dtcwt.sampling.rescale(vxs, shape, method=method)
+    vys = dtcwt.sampling.rescale(vys, shape, method=method)
 
     return vxs, vys
 

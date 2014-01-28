@@ -16,6 +16,7 @@ from matplotlib.pyplot import *
 import numpy as np
 
 import dtcwt
+from dtcwt.backend.backend_numpy import Transform2d
 import dtcwt.sampling
 from dtcwt.registration import *
 
@@ -31,12 +32,13 @@ def register_frames(filename):
     # Take the DTCWT of both frames.
     logging.info('Taking DTCWT')
     nlevels = 6
-    Yl1, Yh1 = dtcwt.dtwavexfm2(f1, nlevels=nlevels)
-    Yl2, Yh2 = dtcwt.dtwavexfm2(f2, nlevels=nlevels)
+    trans = Transform2d()
+    t1 = trans.forward(f1, nlevels=nlevels)
+    t2 = trans.forward(f2, nlevels=nlevels)
 
     # Solve for transform
     logging.info('Finding flow')
-    avecs = estimateflow(Yh1, Yh2)
+    avecs = estimatereg(t1, t2)
 
     logging.info('Computing warped image')
     warped_f1 = warp(f1, avecs, method='bilinear')

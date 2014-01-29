@@ -12,9 +12,12 @@ env:
     - PIP_SPECIFIER=.[opencl,docs]
 install:
     - pip install numpy
+    - pip install coveralls
     - pip install -e $PIP_SPECIFIER
 script:
     - python setup.py nosetests
     - python scripts/benchmark_opencl.py
     - python setup.py build_sphinx
+after_success:
+    - coveralls
 

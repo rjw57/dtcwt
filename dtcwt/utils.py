@@ -124,3 +124,48 @@ def memoize(obj):
             cache[args] = obj(*args, **kwargs)
         return cache[args]
     return memoizer
+
+def stacked_2d_matrix_vector_prod(mats, vecs):
+    """
+    Interpret *mats* and *vecs* as arrays of 2D matrices and vectors. I.e.
+    *mats* has shape PxQxNxM and *vecs* has shape PxQxM. The result
+    is a PxQxN array equivalent to:
+
+    .. code::
+
+        result[i,j,:] = mats[i,j,:,:].dot(vecs[i,j,:])
+
+    for all valid row and column indices *i* and *j*.
+    """
+    return np.einsum('...ij,...j->...i', mats, vecs)
+
+def stacked_2d_vector_matrix_prod(vecs, mats):
+    """
+    Interpret *mats* and *vecs* as arrays of 2D matrices and vectors. I.e.
+    *mats* has shape PxQxNxM and *vecs* has shape PxQxN. The result
+    is a PxQxM array equivalent to:
+
+    .. code::
+
+        result[i,j,:] = mats[i,j,:,:].T.dot(vecs[i,j,:])
+
+    for all valid row and column indices *i* and *j*.
+    """
+    vecshape = np.array(vecs.shape + (1,))
+    vecshape[-1:-3:-1] = vecshape[-2:]
+    outshape = mats.shape[:-2] + (mats.shape[-1],)
+    return stacked_2d_matrix_matrix_prod(vecs.reshape(vecshape), mats).reshape(outshape)
+
+def stacked_2d_matrix_matrix_prod(mats1, mats2):
+    """
+    Interpret *mats1* and *mats2* as arrays of 2D matrices. I.e.
+    *mats1* has shape PxQxNxM and *mats2* has shape PxQxMxR. The result
+    is a PxQxNxR array equivalent to:
+
+    .. code::
+
+        result[i,j,:,:] = mats1[i,j,:,:].dot(mats2[i,j,:,:])
+
+    for all valid row and column indices *i* and *j*.
+    """
+    return np.einsum('...ij,...jk->...ik', mats1, mats2)

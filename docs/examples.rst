@@ -42,10 +42,4 @@ traffic at a road junction.
 
 The source for the script is shown here:
 
-.. literalinclude:: ../examples/image-registration-2.py
-
-If you're interested in some of the more fundamental theory behind the
-registration, a simpler example which uses lower-level functions to estimate a
-single global affine distortion is available in the
-:download:`image-registration-1.py<../examples/image-registration-1.py>`
-script.
+.. literalinclude:: ../examples/image-registration.py

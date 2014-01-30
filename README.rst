@@ -9,7 +9,20 @@ transforms and their inverse in Python.
     :target: https://travis-ci.org/rjw57/dtcwt
 
 .. image:: https://coveralls.io/repos/rjw57/dtcwt/badge.png
-   :target: https://coveralls.io/r/rjw57/dtcwt
+    :target: https://coveralls.io/r/rjw57/dtcwt
+    :alt: Coverage
+
+.. image:: https://pypip.in/license/dtcwt/badge.png
+    :target: https://pypi.python.org/pypi/dtcwt/
+    :alt: License
+
+.. image:: https://pypip.in/v/dtcwt/badge.png
+    :target: https://pypi.python.org/pypi/dtcwt/
+    :alt: Latest Version
+
+.. image:: https://pypip.in/d/dtcwt/badge.png
+    :target: https://pypi.python.org/pypi//dtcwt/
+    :alt: Downloads
 
 Installation
 ````````````

@@ -51,7 +51,8 @@ def register_frames(filename):
     vxs -= np.median(vxs.flat)
     vys -= np.median(vys.flat)
 
-    figure()
+    figure(figsize=(16,9))
+
     subplot(221)
     imshow(np.dstack((f1, f2, np.zeros_like(f1))))
     title('Overlaid frames')
@@ -71,6 +72,8 @@ def register_frames(filename):
     imshow(np.sqrt(vxs*vxs + vys*vys), interpolation='none', cmap=cm.hot)
     colorbar()
     title('Magnitude of computed velocity (median subtracted)')
+
+    savefig(os.path.splitext(os.path.basename(filename))[0] + '-registration.png')
 
 register_frames(os.path.join(os.path.dirname(__file__), '..', 'tests', 'traffic.npz'))
 register_frames(os.path.join(os.path.dirname(__file__), '..', 'tests', 'tennis.npz'))

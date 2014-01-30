@@ -1,10 +1,5 @@
 """
-.. note::
-  This module is experimental. It's API may change between versions.
-
-Functions for DTCWT-based image registration as outlined in
-`[1] <http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=5936113>`_.
-These functions are 2D-only for the moment.
+NumPy implementation of image registration
 
 """
 
@@ -15,26 +10,16 @@ import itertools
 from six.moves import xrange
 
 import dtcwt
+from dtcwt.backend import backend_numpy
 import dtcwt.sampling
 import dtcwt.utils
 import numpy as np
 
 __all__ = [
-    'EXPECTED_SHIFTS',
-
-    'affinevelocityfield',
-    'affinewarp',
-    'affinewarphighpass',
-    'confidence',
     'estimatereg',
-    'normsample',
-    'normsamplehighpass',
-    'phasegradient',
-    'qtildematrices',
-    'solvetransform',
     'velocityfield',
     'warp',
-    'warphighpass',
+    'warptransform',
 ]
 
 # Horizontal and vertical expected phase shifts for each subband
@@ -107,11 +92,27 @@ def confidence(sb1, sb2):
 Q_TRIU_INDICES = list(zip(*np.triu_indices(6)))
 Q_TRIU_FLAT_INDICES = np.ravel_multi_index(np.triu_indices(6), (6,6))
 
-def qtildematrices(Yh1, Yh2, levels):
+def qtildematrices(t_ref, t_target, levels):
     r"""
     Compute :math:`\tilde{Q}` matrices for given levels.
 
+    :param t_ref: the transformed reference image
+    :param t_target: the transformed target image
+    :param levels: a sequence of indices specifying which levels to examine
+    :returns: a tuple of :math:`\tilde{Q}` matrices for each index in *levels*
+
+    Both *t_ref* and *t_target* should be
+    :py:class:`dtcwt.backend.base.TransformDomainSignal`-compatible objects.
+    Indices in *levels* are 0-based.
+
+    The returned matrices are NxMx27 where NxM is the shape of the
+    corresponding level's highpass subbands.
+
     """
+    # Extract subbands
+    Yh1 = t_ref.subbands
+    Yh2 = t_target.subbands
+
     # A list of arrays of \tilde{Q} matrices for each level
     Qt_mats = []
 
@@ -236,72 +237,35 @@ def normsample(Yh, xs, ys, method=None):
     """
     return dtcwt.sampling.sample(Yh, xs*Yh.shape[1], ys*Yh.shape[0], method=method)
 
-def affinevelocityfield(a, xs, ys):
-    r"""
-    Evaluate the velocity field parametrised by *a* at *xs* and *ys*.
-
-    Return a pair *vx*, *vy* giving the x- and y-component of the velocity.
-
-    The velocity vector is given by :math:`\mathbf{v} = \mathbf{K} \mathbf{a}` where
-
-    .. math::
-      \mathbf{K} = \begin{bmatrix}
-            1 & 0 & x & 0 & y & 0  \\
-            0 & 1 & 0 & x & 0 & y
-          \end{bmatrix}
-
+def warptransform(t, avecs, levels, method=None):
     """
-    return (a[0] + a[2]*xs + a[4]*ys), (a[1] + a[3]*xs + a[5]*ys)
+    Return a warped version of a transformed image acting only on specified levels.
 
-def affinewarphighpass(Yh, a, method=None):
-    r"""
-    Given a NxMx6 array of subband responses, warp it according to affine transform
-    parametrised by the vector *a* s.t. the pixel at (x,y) samples from (x',y') where
+    :param t: a transformed image
+    :param avecs: an array of affine distortion parameters
+    :param levels: a sequence of 0-based indices specifying which levels to act on
 
-    .. math::
-      [x', y']^T = \mathbf{T} \ [1, x, y]^T
+    *t* should be a
+    :py:class:`dtcwt.backend.base.TransformDomainSignal`-compatible instance.
 
-    and
-
-    .. math::
-      \mathbf{T} = \begin{bmatrix}
-            a_0 & a_2 & a_4  \\
-            a_1 & a_3 & a_5
-          \end{bmatrix}
+    The *method* parameter is interpreted as in :py:func:`dtcwt.sampling.rescale` and
+    is the sampling method used to resize *avecs* to *shape*.
 
     .. note::
-      The sample co-ordinates are in *normalised* co-ordinates such that the
-      image width and height are both unity.
+
+        This function will clone the transform *t* but it is a shallow clone
+        where possible. Only the levels specified in *levels* will be
+        deep-copied and warped.
 
     """
-    xs, ys = np.meshgrid(np.arange(0,1,1/Yh.shape[1]), np.arange(0,1,1/Yh.shape[0]))
-    vxs, vys = affinevelocityfield(a, xs, ys)
-    return normsamplehighpass(Yh, xs+vxs, ys+vys, method=method)
+    warped_subbands = list(t.subbands)
 
-def affinewarp(Yh, a, method=None):
-    r"""
-    Given a NxM image, warp it according to affine transform parametrised by
-    the vector *a* s.t. the pixel at (x,y) samples from (x',y') where
+    # Warp specified levels
+    for l in levels:
+        warped_subbands[l] = warphighpass(warped_subbands[l], avecs, method=method)
 
-    .. math::
-      [x', y']^T = \mathbf{T} \ [1, x, y]^T
-
-    and
-
-    .. math::
-      \mathbf{T} = \begin{bmatrix}
-            a_0 & a_2 & a_4  \\
-            a_1 & a_3 & a_5
-          \end{bmatrix}
-
-    .. note::
-      The sample co-ordinates are in *normalised* co-ordinates such that the
-      image width and height are both unity.
-
-    """
-    xs, ys = np.meshgrid(np.arange(0,1,1/Yh.shape[1]), np.arange(0,1,1/Yh.shape[0]))
-    vxs, vys = affinevelocityfield(a, xs, ys)
-    return normsample(Yh, xs+vxs, ys+vys, method=method)
+    # Clone the transform
+    return backend_numpy.TransformDomainSignal(t.lowpass, tuple(warped_subbands), t.scales)
 
 def estimatereg(reference, target):
     """
@@ -321,19 +285,16 @@ def estimatereg(reference, target):
     this function into a velocity field.
 
     """
-    # Extract highpass
-    reference_h = reference.subbands
-    target_h = target.subbands
-
-    # Make a copy of reference_h for warping
-    warped_h = list(reference_h)
+    # Extract number of levels and shape of level 3 subband
+    nlevels = len(reference.subbands)
+    avecs_shape = reference.subbands[2].shape[:2] + (6,)
 
     # Initialise matrix of 'a' vectors
-    avecs = np.zeros((warped_h[2].shape[0], warped_h[2].shape[1], 6))
+    avecs = np.zeros(avecs_shape)
 
     # Compute initial global transform
-    levels = list(x for x in xrange(len(warped_h)-1, len(warped_h)-3, -1) if x>=0)
-    Qt_mats = list(np.sum(np.sum(x, axis=0), axis=0) for x in qtildematrices(warped_h, target_h, levels))
+    levels = list(x for x in xrange(nlevels-1, nlevels-3, -1) if x>=0)
+    Qt_mats = list(np.sum(np.sum(x, axis=0), axis=0) for x in qtildematrices(reference, target, levels))
     Qt = np.sum(Qt_mats, axis=0)
 
     a = solvetransform(Qt)
@@ -341,18 +302,17 @@ def estimatereg(reference, target):
         avecs[:,:,idx] = a[idx]
 
     # Refine estimate
-    for it in xrange(2 * (len(warped_h)-3) - 1):
-        s, e = len(warped_h) - 2, len(warped_h) - 2 - (it+1)//2
-        levels = list(x for x in xrange(s, e-1, -1) if x>=2 and x<len(warped_h))
+    for it in xrange(2 * (nlevels-3) - 1):
+        s, e = nlevels - 2, nlevels - 2 - (it+1)//2
+        levels = list(x for x in xrange(s, e-1, -1) if x>=2 and x<nlevels)
         if len(levels) == 0:
             continue
 
         # Warp the levels we'll be looking at with the current best-guess transform
-        for l in levels:
-            warped_h[l] = warphighpass(reference_h[l], avecs, method='bilinear')
+        warped = warptransform(reference, avecs, levels, method='bilinear')
 
         qts = np.sum(list(dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='bilinear')
-                          for x in qtildematrices(warped_h, target_h, levels)),
+                          for x in qtildematrices(warped, target, levels)),
                      axis=0)
 
         avecs += solvetransform(qts)

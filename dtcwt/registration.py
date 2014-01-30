@@ -23,9 +23,6 @@ import numpy as np
 __all__ = [
     'EXPECTED_SHIFTS',
 
-    'affinevelocityfield',
-    'affinewarp',
-    'affinewarphighpass',
     'confidence',
     'estimatereg',
     'normsample',
@@ -252,73 +249,6 @@ def normsample(Yh, xs, ys, method=None):
 
     """
     return dtcwt.sampling.sample(Yh, xs*Yh.shape[1], ys*Yh.shape[0], method=method)
-
-def affinevelocityfield(a, xs, ys):
-    r"""
-    Evaluate the velocity field parametrised by *a* at *xs* and *ys*.
-
-    Return a pair *vx*, *vy* giving the x- and y-component of the velocity.
-
-    The velocity vector is given by :math:`\mathbf{v} = \mathbf{K} \mathbf{a}` where
-
-    .. math::
-      \mathbf{K} = \begin{bmatrix}
-            1 & 0 & x & 0 & y & 0  \\
-            0 & 1 & 0 & x & 0 & y
-          \end{bmatrix}
-
-    """
-    return (a[0] + a[2]*xs + a[4]*ys), (a[1] + a[3]*xs + a[5]*ys)
-
-def affinewarphighpass(Yh, a, method=None):
-    r"""
-    Given a NxMx6 array of subband responses, warp it according to affine transform
-    parametrised by the vector *a* s.t. the pixel at (x,y) samples from (x',y') where
-
-    .. math::
-      [x', y']^T = \mathbf{T} \ [1, x, y]^T
-
-    and
-
-    .. math::
-      \mathbf{T} = \begin{bmatrix}
-            a_0 & a_2 & a_4  \\
-            a_1 & a_3 & a_5
-          \end{bmatrix}
-
-    .. note::
-      The sample co-ordinates are in *normalised* co-ordinates such that the
-      image width and height are both unity.
-
-    """
-    xs, ys = np.meshgrid(np.arange(0,1,1/Yh.shape[1]), np.arange(0,1,1/Yh.shape[0]))
-    vxs, vys = affinevelocityfield(a, xs, ys)
-    return normsamplehighpass(Yh, xs+vxs, ys+vys, method=method)
-
-def affinewarp(Yh, a, method=None):
-    r"""
-    Given a NxM image, warp it according to affine transform parametrised by
-    the vector *a* s.t. the pixel at (x,y) samples from (x',y') where
-
-    .. math::
-      [x', y']^T = \mathbf{T} \ [1, x, y]^T
-
-    and
-
-    .. math::
-      \mathbf{T} = \begin{bmatrix}
-            a_0 & a_2 & a_4  \\
-            a_1 & a_3 & a_5
-          \end{bmatrix}
-
-    .. note::
-      The sample co-ordinates are in *normalised* co-ordinates such that the
-      image width and height are both unity.
-
-    """
-    xs, ys = np.meshgrid(np.arange(0,1,1/Yh.shape[1]), np.arange(0,1,1/Yh.shape[0]))
-    vxs, vys = affinevelocityfield(a, xs, ys)
-    return normsample(Yh, xs+vxs, ys+vys, method=method)
 
 def warptransform(t, avecs, levels, method='bilinear'):
     """

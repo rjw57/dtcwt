@@ -87,7 +87,7 @@ for iteration in xrange(4*(len(Yh1)-5)):
         Yh3[level] = affinewarphighpass(Yh1[level], a, method='bilinear')
 
     Qt_mats = qtildematrices(Yh3, Yh2, levels)
-    Qt = np.sum(list(x.sum() for x in Qt_mats), axis=0)
+    Qt = np.sum(list(np.sum(np.sum(x, axis=0), axis=0) for x in Qt_mats), axis=0)
     a += solvetransform(Qt)
 
 logging.info('Computing velocity field')

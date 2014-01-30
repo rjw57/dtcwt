@@ -3,6 +3,7 @@ import os
 import numpy as np
 
 import dtcwt
+from dtcwt.backend.backend_numpy import Transform2d
 from dtcwt.registration import *
 
 def setup():
@@ -22,11 +23,12 @@ def test_frames_loaded():
     assert f2.max() <= 1
     assert f2.dtype == np.float64
 
-def test_estimate_flor():
+def test_estimatereg():
     nlevels = 6
-    Yl1, Yh1 = dtcwt.dtwavexfm2(f1, nlevels=nlevels)
-    Yl2, Yh2 = dtcwt.dtwavexfm2(f2, nlevels=nlevels)
-    avecs = estimateflow(Yh1, Yh2)
+    trans = Transform2d()
+    t1 = trans.forward(f1, nlevels=nlevels)
+    t2 = trans.forward(f2, nlevels=nlevels)
+    avecs = estimatereg(t1, t2)
 
     # Make sure warped frame 1 has lower mean overlap error than non-warped
     warped_f1 = warp(f1, avecs, method='bilinear')

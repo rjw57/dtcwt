@@ -2,20 +2,21 @@ The dtcwt library
 =================
 
 This library provides support for computing 1D, 2D and 3D dual-tree complex
-wavelet transforms and their inverse in Python. The interface is simple and
-easy to use. As a quick example, a 1D DT-CWT can be performed from the Python
-console in a single line::
+wavelet transforms and their inverse in Python along with some signal
+processing algorithms which make use of the DTCWT.
 
-    >>> import dtcwt
-    >>> Yl, Yh = dtcwt.dtwavexfm([1,2,3,4], nlevels=3) # 3 levels, default wavelets
+Contents
+````````
 
-The interface is intentionally similar to the existing MATLAB dual-tree complex
-wavelet transform toolbox provided by `Prof. Nick Kingsbury
-<http://www-sigproc.eng.cam.ac.uk/~ngk/>`_. This library is intended to ease
-the porting of algorithms written using the original MATLAB toolbox to Python.
+.. toctree::
+    :maxdepth: 2
 
-The library also includes an OpenCL-based implementation of the wavelet
-transform which can accelerate computation even on CPU-only devices.
+    gettingstarted
+    variant
+    backends
+    registration
+    examples
+    reference
 
 Features of note
 ````````````````
@@ -27,20 +28,6 @@ The features of the ``dtcwt`` library are:
 * API similarity with the DTCWT MATLAB toolbox.
 * Automatic selection of single versus double precision calculation.
 * Built-in support for the most common complex wavelet families.
-
-Contents
-````````
-
-.. toctree::
-    :maxdepth: 1
-
-    gettingstarted
-    variant
-    backends
-    registration
-    examples
-    reference
-
 
 Licence
 ```````

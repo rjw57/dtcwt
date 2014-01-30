@@ -1,10 +1,5 @@
 """
-.. note::
-  This module is experimental. It's API may change between versions.
-
-Functions for DTCWT-based image registration as outlined in
-`[1] <http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=5936113>`_.
-These functions are 2D-only for the moment.
+NumPy implementation of image registration
 
 """
 
@@ -21,8 +16,6 @@ import dtcwt.utils
 import numpy as np
 
 __all__ = [
-    'EXPECTED_SHIFTS',
-
     'estimatereg',
     'velocityfield',
     'warp',
@@ -253,7 +246,7 @@ def warptransform(t, avecs, levels, method=None):
     :param levels: a sequence of 0-based indices specifying which levels to act on
 
     *t* should be a
-    :pyclass:`dtcwt.backend.base.TransformDomainSignal`-compatible instance.
+    :py:class:`dtcwt.backend.base.TransformDomainSignal`-compatible instance.
 
     The *method* parameter is interpreted as in :py:func:`dtcwt.sampling.rescale` and
     is the sampling method used to resize *avecs* to *shape*.

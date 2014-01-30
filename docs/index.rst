@@ -12,9 +12,9 @@ Contents
     :maxdepth: 2
 
     gettingstarted
-    variant
+    transforms
     backends
-    registration
+    algorithms
     examples
     reference
 

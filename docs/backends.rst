@@ -6,6 +6,29 @@ transform: a `NumPy <http://www.numpy.org/>`_ based implementation and an OpenCL
 implementation which uses the `PyOpenCL <http://mathema.tician.de/software/pyopencl/>`_
 bindings for Python.
 
+NumPy
+'''''
+
+The NumPy backend is the reference implementation of the transform. All
+algorithms and transforms will have a NumPy backend. NumPy implementations are
+written to be efficient but also clear in their operation.
+
+OpenCL
+''''''
+
+Some transforms and algorithms implement an OpenCL backend. This backend, if
+present, will provide an identical API to the NumPy backend. NumPy-based input
+may be passed in and out of the backends but if OpenCL-based input is passed
+in, a copy back to the host may be avoided in some cases. Not all transforms or
+algorithms have an OpenCL-based implementation and the implementation itself
+may not be full-featured.
+
+OpenCL support depends on the `PyOpenCL
+<http://mathema.tician.de/software/pyopencl/>`_ package being installed and an
+OpenCL implementation being installed on your machine. Attempting to use an
+OpenCL backen without both of these being present will result in a runtime (but
+not import-time) exception.
+
 Which backend should I use?
 '''''''''''''''''''''''''''
 

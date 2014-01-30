@@ -40,6 +40,9 @@ traffic at a road junction.
 
 .. _Efficient Registration of Nonrigid 3-D Bodies: http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=5936113
 
-The source for the script is shown here:
+It will attempt to register two image pairs: a challenging sequence from a
+video sequence and a sequence from a traffic camera. The result is shown below.
 
-.. literalinclude:: ../examples/image-registration.py
+.. image:: tennis-registration.png
+
+.. image:: traffic-registration.png

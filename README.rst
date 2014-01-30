@@ -8,6 +8,18 @@ transforms and their inverse in Python.
 .. image:: https://travis-ci.org/rjw57/dtcwt.png?branch=master
     :target: https://travis-ci.org/rjw57/dtcwt
 
+.. image:: https://pypip.in/license/dtcwt/badge.png
+    :target: https://pypi.python.org/pypi/dtcwt/
+    :alt: License
+
+.. image:: https://pypip.in/v/dtcwt/badge.png
+    :target: https://pypi.python.org/pypi/dtcwt/
+    :alt: Latest Version
+
+.. image:: https://pypip.in/d/dtcwt/badge.png
+    :target: https://pypi.python.org/pypi//dtcwt/
+    :alt: Downloads
+
 Installation
 ````````````
 

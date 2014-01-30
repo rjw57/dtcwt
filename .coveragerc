@@ -4,4 +4,4 @@
 omit =
     */python?.?/*
     */site-packages/nose/*
-
+    tests/*

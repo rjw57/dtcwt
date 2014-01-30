@@ -244,7 +244,7 @@ def normsample(Yh, xs, ys, method=None):
     """
     return dtcwt.sampling.sample(Yh, xs*Yh.shape[1], ys*Yh.shape[0], method=method)
 
-def warptransform(t, avecs, levels, method='bilinear'):
+def warptransform(t, avecs, levels, method=None):
     """
     Return a warped version of a transformed image acting only on specified levels.
 
@@ -254,6 +254,9 @@ def warptransform(t, avecs, levels, method='bilinear'):
 
     *t* should be a
     :pyclass:`dtcwt.backend.base.TransformDomainSignal`-compatible instance.
+
+    The *method* parameter is interpreted as in :py:func:`dtcwt.sampling.rescale` and
+    is the sampling method used to resize *avecs* to *shape*.
 
     .. note::
 

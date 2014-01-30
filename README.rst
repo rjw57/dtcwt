@@ -8,8 +8,8 @@ transforms and their inverse in Python.
 .. image:: https://travis-ci.org/rjw57/dtcwt.png?branch=master
     :target: https://travis-ci.org/rjw57/dtcwt
 
-.. image:: https://coveralls.io/repos/rjw57/dtcwt/badge.png
-    :target: https://coveralls.io/r/rjw57/dtcwt
+.. image:: https://coveralls.io/repos/rjw57/dtcwt/badge.png?branch=master
+    :target: https://coveralls.io/r/rjw57/dtcwt?branch=master
     :alt: Coverage
 
 .. image:: https://pypip.in/license/dtcwt/badge.png

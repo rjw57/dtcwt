@@ -33,7 +33,7 @@ The source for the script is shown below:
 This library includes support for 2D image registration modelled after the 3D
 algorithm outlined in the paper `Efficient Registration of Nonrigid 3-D Bodies`_.
 The
-:download:`image-registration-2.py<../examples/image-registration-2.py>`
+:download:`image-registration.py<../examples/image-registration.py>`
 script in the examples directory shows a complete worked example of using the
 registration API using two sets of source images: a woman playing tennis and some
 traffic at a road junction.

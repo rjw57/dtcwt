@@ -37,6 +37,7 @@ Contents
     gettingstarted
     variant
     backends
+    registration
     examples
     reference
 

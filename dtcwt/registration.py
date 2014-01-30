@@ -23,13 +23,7 @@ import numpy as np
 __all__ = [
     'EXPECTED_SHIFTS',
 
-    'confidence',
     'estimatereg',
-    'normsample',
-    'normsamplehighpass',
-    'phasegradient',
-    'qtildematrices',
-    'solvetransform',
     'velocityfield',
     'warp',
     'warptransform',

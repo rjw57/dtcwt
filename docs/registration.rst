@@ -233,8 +233,8 @@ transform and progressively refined with finer-scale levels.
 
 The following flow diagram, taken from the paper, illustrates the algorithm.
 
-.. figure:: registration-flow.svg
-    :figclass: align-center
+.. image:: registration-flow.svg
+    :class: align-center
 
 The pair of images to be registered are first transformed by the DTCWT and
 levels to be used for motion estimation are selected. The subband coefficients

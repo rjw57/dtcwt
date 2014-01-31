@@ -12,8 +12,9 @@ env:
     - PIP_SPECIFIER=.[opencl,docs]
 install:
     - pip install --upgrade pip setuptools  # Upgrade pip and setuptools to get ones with `wheel` support
-    - pip install --find-links http://wheels.astropy.org/ --find-links http://wheels2.astropy.org/ --use-wheel --use-mirrors numpy coveralls
-    - pip install --find-links http://wheels.astropy.org/ --find-links http://wheels2.astropy.org/ --use-wheel --use-mirrors -e $PIP_SPECIFIER
+    - pip install --no-use-wheel pytools # Work around broken pytools wheel on Py3
+    - pip install --find-links http://wheels.astropy.org/ --find-links http://wheels2.astropy.org/ --use-wheel numpy matplotlib ipython
+    - pip install -e $PIP_SPECIFIER
 script:
     - python setup.py nosetests
     - python scripts/benchmark_opencl.py

@@ -234,7 +234,7 @@ transform and progressively refined with finer-scale levels.
 The following flow diagram, taken from the paper, illustrates the algorithm.
 
 .. figure:: registration-flow.svg
-    :align: center
+    :figclass: align-center
 
 Using the implementation
 ------------------------

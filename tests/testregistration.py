@@ -6,11 +6,11 @@ import dtcwt
 from dtcwt.backend.backend_numpy import Transform2d
 from dtcwt.registration import *
 
+import tests.datasets as datasets
+
 def setup():
     global f1, f2
-    frames = np.load(os.path.join(os.path.dirname(__file__), 'traffic.npz'))
-    f1 = frames['f1']
-    f2 = frames['f2']
+    f1, f2 = datasets.regframes('traffic')
 
 def test_frames_loaded():
     assert f1.shape == (576, 768)

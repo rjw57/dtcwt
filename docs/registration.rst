@@ -236,6 +236,15 @@ The following flow diagram, taken from the paper, illustrates the algorithm.
 .. figure:: registration-flow.svg
     :figclass: align-center
 
+The pair of images to be registered are first transformed by the DTCWT and
+levels to be used for motion estimation are selected. The subband coefficients
+of the source image are shifted according to the current motion field estimate.
+These shifted coefficients together with those of the reference image are then
+used to generate motion constraints. From these the
+:math:`\mathbf{\tilde{Q}}_\mathbf{\chi}` matrices are calculated and the local
+affine distortion parameters updated. After a few iterations, the distortion
+parameters are used to warp the source image directly.
+
 Using the implementation
 ------------------------
 

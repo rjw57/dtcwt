@@ -4,9 +4,11 @@ import numpy as np
 from dtcwt import biort, qshift
 from dtcwt.lowlevel import colfilter
 
+import tests.datasets as datasets
+
 def setup():
     global lena
-    lena = np.load(os.path.join(os.path.dirname(__file__), 'lena.npz'))['lena']
+    lena = datasets.lena()
 
 def test_lena_loaded():
     assert lena.shape == (512, 512)

@@ -8,10 +8,11 @@ from dtcwt.coeffs import biort, qshift
 from nose.tools import raises
 
 from .util import assert_almost_equal, skip_if_no_cl
+import tests.datasets as datasets
 
 def setup():
     global lena
-    lena = np.load(os.path.join(os.path.dirname(__file__), 'lena.npz'))['lena']
+    lena = datasets.lena()
 
 def test_lena_loaded():
     assert lena.shape == (512, 512)

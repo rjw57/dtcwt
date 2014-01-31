@@ -63,7 +63,7 @@ def overlay_quiver_DTCWT(image, vectorField, level, offset):
         thiscolour = cmap(sb / float(vectorField.shape[2])) # Select colour for this subband
         hq = quiver(g2*(2**level) + offset*(2**level), g1*(2**level) + offset*(2**level), np.real(vectorField[:,:,sb]), \
         np.imag(vectorField[:,:,sb]), color=thiscolour, scale=scalefactor*2**level)
-        quiverkey(hq, image.shape[1]+75, 50 + sb*50, 200, "subband " + np.str(sb), coordinates='data', color=thiscolour)
+        quiverkey(hq, image.shape[1]+75, 50 + sb*50, 1, "subband " + np.str(sb), coordinates='data', color=thiscolour)
         hold(True)
 
     return hq

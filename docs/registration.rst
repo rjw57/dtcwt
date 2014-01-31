@@ -233,7 +233,7 @@ transform and progressively refined with finer-scale levels.
 
 The following flow diagram, taken from the paper, illustrates the algorithm.
 
-.. figure:: registration-flow.*
+.. figure:: registration-flow.svg
     :align: center
 
 Using the implementation
@@ -247,23 +247,117 @@ interest at :py:func:`dtcwt.registration.estimatereg` and
 :py:func:`dtcwt.registration.warp` will take these affine parameter vectors and
 warp an image with them.
 
-Registration of a source image to a given reference image can be performed
-using two function calls not counting the DTCWT itself:
+As an example, we will register two frames from a video of road traffic.
+Firstly, as boilerplate, import plotting command from pylab and also the
+:py:mod:`datasets` module which is part of the test suite for :py:mod:`dtcwt`.
 
-.. code::
+.. ipython::
 
-    import dtcwt.backend.backend_numpy as backend
-    import dtcwt.registration as registration
+    In [0]: from pylab import *
 
-    # ... load two identically shaped NxM images into reference and source ...
+    In [0]: import datasets
 
-    # Transform reference and source
-    t = backend.Transform2d()
-    ref_t = t.forward(reference, nlevels=6)
-    src_t = t.forward(source, nlevels=6)
+If we show one image in the red channel and one in the green, we can see where
+the images are incorrectly registered by looking for red or green fringes:
 
-    # Estimate registration from source -> reference
-    reg = registration.estimatereg(src_t, ref_t)
+.. ipython::
 
-    # Warp source image
-    registered_source = registration.warp(source, reg)
+    @doctest
+    In [1]: ref, src = datasets.regframes('traffic')
+
+    In [1]: figure()
+
+    In [3]: imshow(np.dstack((ref, src, np.zeros_like(ref))))
+    Out[3]: <matplotlib.image.AxesImage at 0x319d9d0>
+
+    @savefig gen-registration-input.png align=center
+    In [4]: title('Registration input images')
+    Out[4]: <matplotlib.text.Text at 0x3193ad0>
+
+To register the images we first take the DTCWT:
+
+.. ipython::
+    :doctest:
+
+    In [5]: import dtcwt.backend.backend_numpy as backend
+
+    In [6]: transform = backend.Transform2d()
+
+    In [7]: ref_t = transform.forward(ref, nlevels=6)
+
+    In [8]: src_t = transform.forward(src, nlevels=6)
+
+Registration is now performed via the :py:func:`dtcwt.registration.estimatereg`
+function. Once the registration is estimated, we can warp the source image to
+the reference using the :py:func:`dtcwt.registration.warp` function.
+
+.. ipython::
+
+    In [9]: import dtcwt.registration as registration
+
+    @doctest
+    In [10]: reg = registration.estimatereg(src_t, ref_t)
+
+    :doctest:
+    In [13]: warped_src = registration.warp(src, reg, method='bilinear')
+
+Plotting the warped and reference image in the green and red channels again
+shows a marked reduction in colour fringes.
+
+.. ipython::
+
+    In [1]: figure()
+
+    In [14]: imshow(np.dstack((ref, warped_src, np.zeros_like(ref))))
+    Out[14]: <matplotlib.image.AxesImage at 0x3186d90>
+
+    @savefig gen-registration-warped.png align=center
+    In [15]: title('Source image warped to reference')
+
+The velocity field, in units of image width/height, can be calculated by the
+:py:func:`dtcwt.registration.velocityfield` function. We need to scale the
+result by the image width and height to get a velocity field in pixels.
+
+.. ipython::
+
+    @doctest
+    In [24]: vxs, vys = registration.velocityfield(reg, ref.shape[:2], method='bilinear')
+
+    In [0]: vxs = vxs * ref.shape[1]
+
+    In [0]: vys = vys * ref.shape[0]
+
+
+We can plot the result as a quiver map overlaid on the reference image:
+
+.. ipython::
+
+    In [1]: figure()
+
+    In [26]: X, Y = np.meshgrid(np.arange(ref.shape[1]), np.arange(ref.shape[0]))
+
+    In [27]: imshow(ref, cmap=cm.gray, clim=(0,1))
+    Out[27]: <matplotlib.image.AxesImage at 0x7ded610>
+
+    In [25]: step = 8
+
+    In [28]: quiver(X[::step,::step], Y[::step,::step],
+       ....:        vxs[::step,::step], vys[::step,::step],
+       ....:        color='g', angles='xy', scale_units='xy', scale=0.25)
+    Out[28]: <matplotlib.quiver.Quiver at 0x7df1110>
+
+    @savefig gen-registration-vel-field.png align=center
+    In [29]: title('Estimated velocity field (x4 scale)')
+
+We can also plot the magnitude of the velocity field which clearly shows the moving cars:
+
+.. ipython::
+
+    In [1]: figure()
+
+    In [30]: imshow(np.abs(vxs + 1j*vys), cmap=cm.hot)
+    Out[30]: <matplotlib.image.AxesImage at 0x7ded250>
+
+    @savefig gen-registration-vel-mag.png align=center
+    In [31]: title('Velocity field magnitude')
+    Out[31]: <matplotlib.text.Text at 0x3193ad0>

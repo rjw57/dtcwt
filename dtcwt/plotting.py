@@ -26,10 +26,20 @@ __all__ = (
 
 def overlay_quiver_DTCWT(image, vectorField, level, offset):
     """Overlays nicely coloured quiver plot of complex coefficients over original full-size image,
-    providing a useful phase visualisation. vectorField is a single [MxNx6] numpy array of DTCWT 
-    coefficients, level specifies the transform level of vectorField. Offset for DTCWT coefficients
-    is typically 0.5. Should also work with other types of complex arrays (e.g., SLP coefficients),
-    as long as the format is the same.
+    providing a useful phase visualisation.
+
+    :param vectorField: a single [MxNx6] numpy array of DTCWT coefficients
+    :param level: the transform level (1-indexed) of *vectorField*.
+    :param offset: Offset for DTCWT coefficients (typically 0.5)
+
+    .. note::
+
+        The *level* parameter is 1-indexed meaning that the third level has
+        index "3". This is unusual in Python but is kept for compatibility
+        with similar MATLAB routines.
+
+    Should also work with other types of complex arrays (e.g., SLP
+    coefficients), as long as the format is the same.
 
     Usage example:
 

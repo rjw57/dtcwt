@@ -24,14 +24,17 @@ and frequency responses[1].
 .. figure:: modified_wavelets.png
 
 
-Usage is very similar to the standard 2-D transform function, but the only supported parameters are 
-'near_sym_b_bp', 'qshift_b_bp'. These arguments are optional, but it is best practice to include them
-so that your intentions are clear (and because it is easier for others to spot than the difference 
-between 2() and 2b().
+Usage is very similar to the standard 2-D transform function, but one uses the
+'near_sym_b_bp' and 'qshift_b_bp' wavelets.
 
-.. code-block:: console
+.. code-block::
 
-    Yl, Yh = dtcwt.dtwavexfm2b(image, tfmlevel, 'near_sym_b_bp', 'qshift_b_bp')
+    import dtcwt.backend.backend_numpy as backend
+    transform = backend.Transform2d(biort='near_sym_bp', qshift='qshift_bp')
+
+    # .. load image and select number of levels ...
+
+    image_t = transform.foward(image, nlevels=nlevels)
 
 
 While the Hilbert transform property of the DTCWT is preserved, perfect reconstruction is lost.

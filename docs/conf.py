@@ -45,6 +45,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'matplotlib.sphinxext.ipython_directive',
+    'matplotlib.sphinxext.plot_directive',
     'IPython.sphinxext.ipython_console_highlighting',
 ]
 
@@ -257,3 +258,10 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
+
+# -- Plotting -------------------------------------------------------------------
+plot_pre_code = '''
+from pylab import *
+import datasets
+import dtcwt
+'''

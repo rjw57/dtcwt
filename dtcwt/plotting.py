@@ -1,20 +1,6 @@
 """
 Convenience functions for plotting DTCWT-related objects.
 
-The usage examples for functions in this module assume the following boilerplate:
-
-.. ipython::
-
-    In [0]: from pylab import *
-
-    In [0]: import datasets
-
-    In [0]: import dtcwt.plotting as dtcwtplt
-
-    In [1]: import dtcwt.backend.backend_numpy as backend
-
-    In [0]: transform2d = backend.Transform2d()
-
 """
 
 import numpy as np
@@ -43,16 +29,18 @@ def overlay_quiver_DTCWT(image, vectorField, level, offset):
 
     Usage example:
 
-    .. ipython::
+    .. plot::
+        :include-source: true
 
-        In [0]: lena = datasets.lena()
+        import dtcwt.plotting as plotting
+        import dtcwt.backend.backend_numpy as backend
 
-        In [0]: lena_t = transform2d.forward(lena, nlevels=3)
+        lena = datasets.lena()
 
-        In [0]: figure()
+        transform2d = backend.Transform2d()
+        lena_t = transform2d.forward(lena, nlevels=3)
 
-        @savefig gen-overlay_quiver_DTCWT.png
-        In [0]: dtcwtplt.overlay_quiver_DTCWT(lena, lena_t.subbands[-1], 3, 0.5)
+        plotting.overlay_quiver_DTCWT(lena, lena_t.subbands[-1], 3, 0.5)
 
     .. codeauthor:: R. Anderson, 2005 (MATLAB)
     .. codeauthor:: S. C. Forshaw, 2014 (Python)

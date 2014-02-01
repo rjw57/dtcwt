@@ -50,35 +50,39 @@ Example
 
 Working on the Lena image, the standard 2-D DTCWT achieves perfect reconstruction:
 
-.. code-block:: console
+.. plot::
+    :include-source: true
+
+    image = datasets.lena()
 
     # Perform the standard 2-D DTCWT
-    Yl, Yh = dtcwt.dtwavexfm2(image, tfmlevel, 'near_sym_b', 'qshift_b')
+    Yl, Yh = dtcwt.dtwavexfm2(image, nlevels=4, biort='near_sym_b', qshift='qshift_b')
 
     # Perform the inverse transform
     Z = dtcwt.dtwaveifm2(Yl, Yh, biort='near_sym_b', qshift='qshift_b')
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)
-
-.. figure:: lena_no_error.png
+    colorbar()
 
 The error signal appears to be just noise, which we can attribute to floating-point precision.
 
 
 Using the modified wavelets yields the following result:
 
-.. code-block:: console
+.. plot::
+    :include-source: true
 
-    # Perform the symmetry-modified 2-D DTCWT
-    Yl, Yh = dtcwt.dtwavexfm2b(image, tfmlevel, 'near_sym_b_bp', 'qshift_b_bp')
-    
+    image = datasets.lena()
+
+    # Perform the standard 2-D DTCWT
+    Yl, Yh = dtcwt.dtwavexfm2(image, nlevels=4, biort='near_sym_b_bp', qshift='qshift_b_bp')
+
     # Perform the inverse transform
-    Z = dtcwt.dtwaveifm2b(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
+    Z = dtcwt.dtwaveifm2(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)
-
-.. figure:: lena_error.png
+    colorbar()
 
 As we would expect, the error is more significant, but only near 45 and 135 degree edge features.

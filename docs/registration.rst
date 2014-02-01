@@ -233,7 +233,7 @@ transform and progressively refined with finer-scale levels.
 
 The following flow diagram, taken from the paper, illustrates the algorithm.
 
-.. image:: registration-flow.svg
+.. image:: registration-flow.png
     :class: align-center
 
 The pair of images to be registered are first transformed by the DTCWT and

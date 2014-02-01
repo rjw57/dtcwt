@@ -53,13 +53,17 @@ Working on the Lena image, the standard 2-D DTCWT achieves perfect reconstructio
 .. plot::
     :include-source: true
 
+    import dtcwt.backend.backend_numpy as backend
+
+    # Use the standard 2-D DTCWT
+    transform = backend.Transform2d(biort='near_sym_b', qshift='qshift_b')
+
+    # Forward transform
     image = datasets.lena()
+    image_t = transform.forward(image)
 
-    # Perform the standard 2-D DTCWT
-    Yl, Yh = dtcwt.dtwavexfm2(image, nlevels=4, biort='near_sym_b', qshift='qshift_b')
-
-    # Perform the inverse transform
-    Z = dtcwt.dtwaveifm2(Yl, Yh, biort='near_sym_b', qshift='qshift_b')
+    # Inverse transform
+    Z = transform.inverse(image_t).value
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)
@@ -73,13 +77,17 @@ Using the modified wavelets yields the following result:
 .. plot::
     :include-source: true
 
+    import dtcwt.backend.backend_numpy as backend
+
+    # Use the modified 2-D DTCWT
+    transform = backend.Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
+
+    # Forward transform
     image = datasets.lena()
+    image_t = transform.forward(image)
 
-    # Perform the standard 2-D DTCWT
-    Yl, Yh = dtcwt.dtwavexfm2(image, nlevels=4, biort='near_sym_b_bp', qshift='qshift_b_bp')
-
-    # Perform the inverse transform
-    Z = dtcwt.dtwaveifm2(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
+    # Inverse transform
+    Z = transform.inverse(image_t).value
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)

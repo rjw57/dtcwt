@@ -73,7 +73,7 @@ def register_frames(filename):
     colorbar()
     title('Magnitude of computed velocity (median subtracted)')
 
-    savefig(os.path.splitext(os.path.basename(filename))[0] + '-registration.png')
+    # savefig(os.path.splitext(os.path.basename(filename))[0] + '-registration.png')
 
 register_frames('traffic')
 register_frames('tennis')

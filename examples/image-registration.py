@@ -22,12 +22,12 @@ from dtcwt.registration import *
 
 logging.basicConfig(level=logging.INFO)
 
+import datasets
+
 def register_frames(filename):
     # Load test images
     logging.info('Loading frames from "{0}"'.format(filename))
-    test_frames = np.load(filename)
-    f1 = test_frames['f1']
-    f2 = test_frames['f2']
+    f1, f2 = datasets.regframes(filename)
 
     # Take the DTCWT of both frames.
     logging.info('Taking DTCWT')
@@ -75,7 +75,5 @@ def register_frames(filename):
 
     savefig(os.path.splitext(os.path.basename(filename))[0] + '-registration.png')
 
-register_frames(os.path.join(os.path.dirname(__file__), '..', 'tests', 'traffic.npz'))
-register_frames(os.path.join(os.path.dirname(__file__), '..', 'tests', 'tennis.npz'))
-
-show()
+register_frames('traffic')
+register_frames('tennis')

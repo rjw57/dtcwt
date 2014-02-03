@@ -43,6 +43,5 @@ traffic at a road junction.
 It will attempt to register two image pairs: a challenging sequence from a
 video sequence and a sequence from a traffic camera. The result is shown below.
 
-.. image:: tennis-registration.png
+.. plot:: ../examples/image-registration.py
 
-.. image:: traffic-registration.png

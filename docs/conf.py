@@ -29,6 +29,9 @@ release = setup_cfg.get('metadata', 'version')
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
+# Add the 'tests' directory to the path so that we may import from the util module..
+sys.path.insert(0, os.path.abspath(os.path.join('..', 'tests')))
+
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -36,7 +39,15 @@ release = setup_cfg.get('metadata', 'version')
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.coverage', 'sphinx.ext.mathjax']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.todo',
+    'sphinx.ext.coverage',
+    'sphinx.ext.mathjax',
+    'matplotlib.sphinxext.ipython_directive',
+    'matplotlib.sphinxext.plot_directive',
+    'IPython.sphinxext.ipython_console_highlighting',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -169,6 +180,10 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'dtcwtdoc'
 
+# On read the docs we need to use a different CDN URL for MathJax which loads
+# over HTTPS.
+if os.environ.get('READTHEDOCS', None) == 'True':
+    mathjax_path = 'https://c328740.ssl.cf1.rackcdn.com/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'
 
 # -- Options for LaTeX output --------------------------------------------------
 
@@ -243,3 +258,10 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
+
+# -- Plotting -------------------------------------------------------------------
+plot_pre_code = '''
+from pylab import *
+import datasets
+import dtcwt
+'''

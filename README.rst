@@ -8,6 +8,22 @@ transforms and their inverse in Python.
 .. image:: https://travis-ci.org/rjw57/dtcwt.png?branch=master
     :target: https://travis-ci.org/rjw57/dtcwt
 
+.. image:: https://coveralls.io/repos/rjw57/dtcwt/badge.png?branch=master
+    :target: https://coveralls.io/r/rjw57/dtcwt?branch=master
+    :alt: Coverage
+
+.. image:: https://pypip.in/license/dtcwt/badge.png
+    :target: https://pypi.python.org/pypi/dtcwt/
+    :alt: License
+
+.. image:: https://pypip.in/v/dtcwt/badge.png
+    :target: https://pypi.python.org/pypi/dtcwt/
+    :alt: Latest Version
+
+.. image:: https://pypip.in/d/dtcwt/badge.png
+    :target: https://pypi.python.org/pypi//dtcwt/
+    :alt: Downloads
+
 Installation
 ````````````
 
@@ -52,6 +68,20 @@ MATLAB toolbox.
 Changes
 ```````
 
+<<<<<<< HEAD
+0.9.0
+'''''
+
+0.8.0
+'''''
+
+* Verified the highpass re-sampling routines in ``dtcwt.sampling`` against the
+  existing MATLAB implementation.
+* Added experimental image registration routines.
+* Re-organised documentation.
+
+=======
+>>>>>>> b71d984217a4cd51cd7507378a842454051acd4d
 0.7.2
 '''''
 

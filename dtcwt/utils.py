@@ -100,29 +100,18 @@ def reflect(x, minx, maxx):
     converted into a waveform which ramps linearly up and down between *minx* and
     *maxx*.  If *x* contains integers and *minx* and *maxx* are (integers + 0.5), the
     ramps will have repeated max and min samples.
-   
+
     .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
     .. codeauthor:: Nick Kingsbury, Cambridge University, January 1999.
-    
+
     """
-
-    # Copy x to avoid in-place modification
-    y = np.array(x, copy=True)
-
-    # Reflect y in maxx.
-    t = y > maxx
-    y[t] = (2*maxx - y[t]).astype(y.dtype)
-
-    while np.any(y < minx):
-        # Reflect y in minx.
-        t = y < minx
-        y[t] = (2*minx - y[t]).astype(y.dtype)
-
-        # Reflect y in maxx.
-        t = y > maxx
-        y[t] = (2*maxx - y[t]).astype(y.dtype)
-
-    return y
+    x = np.asanyarray(x)
+    rng = maxx - minx
+    rng_by_2 = 2 * rng
+    mod = np.fmod(x - minx, rng_by_2)
+    normed_mod = np.where(mod < 0, mod + rng_by_2, mod)
+    out = np.where(normed_mod >= rng, rng_by_2 - normed_mod, normed_mod) + minx
+    return np.array(out, dtype=x.dtype)
 
 # note that this decorator ignores **kwargs
 # From https://wiki.python.org/moin/PythonDecoratorLibrary#Alternate_memoize_as_nested_functions
@@ -135,3 +124,48 @@ def memoize(obj):
             cache[args] = obj(*args, **kwargs)
         return cache[args]
     return memoizer
+
+def stacked_2d_matrix_vector_prod(mats, vecs):
+    """
+    Interpret *mats* and *vecs* as arrays of 2D matrices and vectors. I.e.
+    *mats* has shape PxQxNxM and *vecs* has shape PxQxM. The result
+    is a PxQxN array equivalent to:
+
+    .. code::
+
+        result[i,j,:] = mats[i,j,:,:].dot(vecs[i,j,:])
+
+    for all valid row and column indices *i* and *j*.
+    """
+    return np.einsum('...ij,...j->...i', mats, vecs)
+
+def stacked_2d_vector_matrix_prod(vecs, mats):
+    """
+    Interpret *mats* and *vecs* as arrays of 2D matrices and vectors. I.e.
+    *mats* has shape PxQxNxM and *vecs* has shape PxQxN. The result
+    is a PxQxM array equivalent to:
+
+    .. code::
+
+        result[i,j,:] = mats[i,j,:,:].T.dot(vecs[i,j,:])
+
+    for all valid row and column indices *i* and *j*.
+    """
+    vecshape = np.array(vecs.shape + (1,))
+    vecshape[-1:-3:-1] = vecshape[-2:]
+    outshape = mats.shape[:-2] + (mats.shape[-1],)
+    return stacked_2d_matrix_matrix_prod(vecs.reshape(vecshape), mats).reshape(outshape)
+
+def stacked_2d_matrix_matrix_prod(mats1, mats2):
+    """
+    Interpret *mats1* and *mats2* as arrays of 2D matrices. I.e.
+    *mats1* has shape PxQxNxM and *mats2* has shape PxQxMxR. The result
+    is a PxQxNxR array equivalent to:
+
+    .. code::
+
+        result[i,j,:,:] = mats1[i,j,:,:].dot(mats2[i,j,:,:])
+
+    for all valid row and column indices *i* and *j*.
+    """
+    return np.einsum('...ij,...jk->...ik', mats1, mats2)

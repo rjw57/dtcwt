@@ -56,15 +56,15 @@ class Transform2d(Transform2dBase):
         else:
             raise ValueError('Biort wavelet must have 6 or 4 components.')
 
-        # If qshift has 10 elements instead of 8, then it's a modified
+        # If qshift has 12 elements instead of 8, then it's a modified
         # rotationally symmetric wavelet
         # FIXME: there's probably a nicer way to do this
         if len(self.qshift) == 8:
             h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
-        elif len(self.qshift) == 10:
-            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = self.qshift
+        elif len(self.qshift) == 12:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = self.qshift[:10]
         else:
-            raise ValueError('Qshift wavelet must have 10 or 8 components.')
+            raise ValueError('Qshift wavelet must have 12 or 8 components.')
 
         X = np.atleast_2d(asfarray(X))
         original_size = X.shape
@@ -136,7 +136,7 @@ class Transform2d(Transform2dBase):
             # Do even Qshift filters on rows.
             Lo = _BACKEND.coldfilt(LoLo,h0b,h0a).T
             Hi = _BACKEND.coldfilt(LoLo,h1b,h1a).T
-            if len(self.qshift) >= 10:
+            if len(self.qshift) >= 12:
                 Ba = _BACKEND.coldfilt(LoLo,h2b,h2a).T
 
             # Do even Qshift filters on columns.
@@ -145,7 +145,7 @@ class Transform2d(Transform2dBase):
             Yh[level] = np.zeros((LoLo.shape[0]>>1, LoLo.shape[1]>>1, 6), dtype=complex_dtype)
             Yh[level][:,:,0:6:5] = q2c(_BACKEND.coldfilt(Hi,h0b,h0a).T)  # Horizontal
             Yh[level][:,:,2:4:1] = q2c(_BACKEND.coldfilt(Lo,h1b,h1a).T)  # Vertical
-            if len(self.qshift) >= 10:
+            if len(self.qshift) >= 12:
                 Yh[level][:,:,1:5:3] = q2c(_BACKEND.coldfilt(Ba,h2b,h2a).T)  # Diagonal   
             else:
                 Yh[level][:,:,1:5:3] = q2c(_BACKEND.coldfilt(Hi,h1b,h1a).T)  # Diagonal   
@@ -220,15 +220,15 @@ class Transform2d(Transform2dBase):
         else:
             raise ValueError('Biort wavelet must have 6 or 4 components.')
 
-        # If qshift has 10 elements instead of 8, then it's a modified
+        # If qshift has 12 elements instead of 8, then it's a modified
         # rotationally symmetric wavelet
         # FIXME: there's probably a nicer way to do this
         if len(self.qshift) == 8:
             h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
-        elif len(self.qshift) == 10:
-            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = self.qshift
+        elif len(self.qshift) == 12:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b, g2a, g2b = self.qshift
         else:
-            raise ValueError('Qshift wavelet must have 10 or 8 components.')
+            raise ValueError('Qshift wavelet must have 12 or 8 components.')
 
         current_level = a
         Z = Yl
@@ -240,10 +240,18 @@ class Transform2d(Transform2dBase):
 
             # Do even Qshift filters on columns.
             y1 = _BACKEND.colifilt(Z,g0b,g0a) + _BACKEND.colifilt(lh,g1b,g1a)
-            y2 = _BACKEND.colifilt(hl,g0b,g0a) + _BACKEND.colifilt(hh,g1b,g1a)
 
-            # Do even Qshift filters on rows.
-            Z = (_BACKEND.colifilt(y1.T,g0b,g0a) + _BACKEND.colifilt(y2.T,g1b,g1a)).T
+            if len(self.qshift) >= 12:
+                y2 = _BACKEND.colifilt(hl,g0b,g0a)
+                y2bp = _BACKEND.colifilt(hh,g2b,g2a)
+
+                # Do even Qshift filters on rows.
+                Z = (_BACKEND.colifilt(y1.T,g0b,g0a) + _BACKEND.colifilt(y2.T,g1b,g1a) + _BACKEND.colifilt(y2bp.T, g2b, g2a)).T
+            else:
+                y2 = _BACKEND.colifilt(hl,g0b,g0a) + _BACKEND.colifilt(hh,g1b,g1a)
+
+                # Do even Qshift filters on rows.
+                Z = (_BACKEND.colifilt(y1.T,g0b,g0a) + _BACKEND.colifilt(y2.T,g1b,g1a)).T
 
             # Check size of Z and crop as required
             [row_size, col_size] = Z.shape
@@ -266,7 +274,7 @@ class Transform2d(Transform2dBase):
             # Do odd top-level filters on columns.
             y1 = _BACKEND.colfilter(Z,g0o) + _BACKEND.colfilter(lh,g1o)
 
-            if len(self.qshift) >= 10:
+            if len(self.biort) >= 6:
                 y2 = _BACKEND.colfilter(hl,g0o)
                 y2bp = _BACKEND.colfilter(hh,g2o)
 

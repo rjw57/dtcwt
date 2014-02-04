@@ -68,6 +68,7 @@ MATLAB toolbox.
 Changes
 ```````
 
+<<<<<<< HEAD
 0.9.0
 '''''
 
@@ -79,6 +80,8 @@ Changes
 * Added experimental image registration routines.
 * Re-organised documentation.
 
+=======
+>>>>>>> b71d984217a4cd51cd7507378a842454051acd4d
 0.7.2
 '''''
 

@@ -267,14 +267,14 @@ def warptransform(t, avecs, levels, method=None):
     # Clone the transform
     return backend_numpy.TransformDomainSignal(t.lowpass, tuple(warped_subbands), t.scales)
 
-def estimatereg(reference, target):
+def estimatereg(source, reference):
     """
-    Estimate registration from reference image to target.
+    Estimate registration from which will map *source* to *reference*.
 
+    :param source: transformed source image
     :param reference: transformed reference image
-    :param target: transformed target image
 
-    The *reference* and *transform* parameters should support the same API as
+    The *reference* and *source* parameters should support the same API as
     :py:class:`dtcwt.backend.base.TransformDomainSignal`.
 
     The local affine distortion is estimated at at 8x8 pixel scales.
@@ -286,15 +286,15 @@ def estimatereg(reference, target):
 
     """
     # Extract number of levels and shape of level 3 subband
-    nlevels = len(reference.subbands)
-    avecs_shape = reference.subbands[2].shape[:2] + (6,)
+    nlevels = len(source.subbands)
+    avecs_shape = source.subbands[2].shape[:2] + (6,)
 
     # Initialise matrix of 'a' vectors
     avecs = np.zeros(avecs_shape)
 
     # Compute initial global transform
     levels = list(x for x in xrange(nlevels-1, nlevels-3, -1) if x>=0)
-    Qt_mats = list(np.sum(np.sum(x, axis=0), axis=0) for x in qtildematrices(reference, target, levels))
+    Qt_mats = list(np.sum(np.sum(x, axis=0), axis=0) for x in qtildematrices(source, reference, levels))
     Qt = np.sum(Qt_mats, axis=0)
 
     a = solvetransform(Qt)
@@ -309,10 +309,10 @@ def estimatereg(reference, target):
             continue
 
         # Warp the levels we'll be looking at with the current best-guess transform
-        warped = warptransform(reference, avecs, levels, method='bilinear')
+        warped = warptransform(source, avecs, levels, method='bilinear')
 
         qts = np.sum(list(dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='bilinear')
-                          for x in qtildematrices(warped, target, levels)),
+                          for x in qtildematrices(warped, reference, levels)),
                      axis=0)
 
         avecs += solvetransform(qts)

@@ -24,14 +24,17 @@ and frequency responses[1].
 .. figure:: modified_wavelets.png
 
 
-Usage is very similar to the standard 2-D transform function, but the only supported parameters are 
-'near_sym_b_bp', 'qshift_b_bp'. These arguments are optional, but it is best practice to include them
-so that your intentions are clear (and because it is easier for others to spot than the difference 
-between 2() and 2b().
+Usage is very similar to the standard 2-D transform function, but one uses the
+'near_sym_b_bp' and 'qshift_b_bp' wavelets.
 
-.. code-block:: console
+.. code-block::
 
-    Yl, Yh = dtcwt.dtwavexfm2b(image, tfmlevel, 'near_sym_b_bp', 'qshift_b_bp')
+    import dtcwt.backend.backend_numpy as backend
+    transform = backend.Transform2d(biort='near_sym_bp', qshift='qshift_bp')
+
+    # .. load image and select number of levels ...
+
+    image_t = transform.foward(image, nlevels=nlevels)
 
 
 While the Hilbert transform property of the DTCWT is preserved, perfect reconstruction is lost.
@@ -50,35 +53,47 @@ Example
 
 Working on the Lena image, the standard 2-D DTCWT achieves perfect reconstruction:
 
-.. code-block:: console
+.. plot::
+    :include-source: true
 
-    # Perform the standard 2-D DTCWT
-    Yl, Yh = dtcwt.dtwavexfm2(image, tfmlevel, 'near_sym_b', 'qshift_b')
+    import dtcwt.backend.backend_numpy as backend
 
-    # Perform the inverse transform
-    Z = dtcwt.dtwaveifm2(Yl, Yh, biort='near_sym_b', qshift='qshift_b')
+    # Use the standard 2-D DTCWT
+    transform = backend.Transform2d(biort='near_sym_b', qshift='qshift_b')
+
+    # Forward transform
+    image = datasets.lena()
+    image_t = transform.forward(image)
+
+    # Inverse transform
+    Z = transform.inverse(image_t).value
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)
-
-.. figure:: lena_no_error.png
+    colorbar()
 
 The error signal appears to be just noise, which we can attribute to floating-point precision.
 
 
 Using the modified wavelets yields the following result:
 
-.. code-block:: console
+.. plot::
+    :include-source: true
 
-    # Perform the symmetry-modified 2-D DTCWT
-    Yl, Yh = dtcwt.dtwavexfm2b(image, tfmlevel, 'near_sym_b_bp', 'qshift_b_bp')
-    
-    # Perform the inverse transform
-    Z = dtcwt.dtwaveifm2b(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
+    import dtcwt.backend.backend_numpy as backend
+
+    # Use the modified 2-D DTCWT
+    transform = backend.Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
+
+    # Forward transform
+    image = datasets.lena()
+    image_t = transform.forward(image)
+
+    # Inverse transform
+    Z = transform.inverse(image_t).value
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)
-
-.. figure:: lena_error.png
+    colorbar()
 
 As we would expect, the error is more significant, but only near 45 and 135 degree edge features.

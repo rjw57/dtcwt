@@ -8,6 +8,7 @@ from dtcwt.lowlevel import coldfilt, colifilt
 from dtcwt.sampling import rescale_highpass
 
 from .util import assert_almost_equal, summarise_mat, assert_percentile_almost_equal
+import tests.datasets as datasets
 
 ## IMPORTANT NOTE ##
 
@@ -43,7 +44,7 @@ def assert_percentile_almost_equal_to_summary(a, summary, *args, **kwargs):
 
 def setup():
     global lena
-    lena = np.load(os.path.join(os.path.dirname(__file__), 'lena.npz'))['lena']
+    lena = datasets.lena()
 
     global verif
     verif = np.load(os.path.join(os.path.dirname(__file__), 'verification.npz'))

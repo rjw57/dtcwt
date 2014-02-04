@@ -38,7 +38,7 @@ setup(
     install_requires=[ 'numpy', 'six', ],
 
     extras_require={
-        'docs': [ 'sphinx', 'docutils', ],
+        'docs': [ 'sphinx', 'docutils', 'matplotlib', 'ipython', ],
         'opencl': [ 'pyopencl', ],
     },
 

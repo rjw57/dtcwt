@@ -41,7 +41,7 @@ class Transform3d(Transform3dNumPy):
         super(Transform3d, self).__init__(biort=biort, qshift=qshift, ext_mode=ext_mode)
         self.queue = to_queue(queue)
 
-    def forward(self, X, nlevels=3, discard_level_1=False):
+    def forward(self, X, nlevels=3, include_scale=False, discard_level_1=False):
         """Perform a *n*-level DTCWT-3D decompostion on a 3D matrix *X*.
         
         :param X: 3D real array-like object
@@ -114,16 +114,30 @@ class Transform3d(Transform3dNumPy):
         Yl = X
         Yh = [None,] * nlevels
 
+        if include_scale:
+            # this is only required if the user specifies a third output component.
+            Yscale = [None,] * nlevels
+
         # level is 0-indexed
         for level in xrange(nlevels):
             # Transform
             if level == 0 and discard_level_1:
                 Yl = _level1_xfm_no_highpass(Yl, h0o, h1o, self.ext_mode)
+                if include_scale:
+                    Yscale[0] = Yl
             elif level == 0 and not discard_level_1:
                 Yl, Yh[level] = _level1_xfm(Yl, h0o, h1o, self.ext_mode)
+                if include_scale:
+                    Yscale[0] = Yl
             else:
                 Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b, self.ext_mode)
+                if include_scale:
+                    Yscale[level] = Yl
         #FIXME: need some way to separate the Yscale component to include the scale when necessary.
+        if include_scale:
+            return TransformDomainSignal(Yl, tuple(Yh), tuple(Yscale))
+        else: 
+            return TransformDomainSignal(Yl, tuple(Yh))
         return TransformDomainSignal(Yl, tuple(Yh))
 
     def inverse(self, td_signal):

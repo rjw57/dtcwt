@@ -10,6 +10,7 @@ from dtcwt.lowlevel import coldfilt, colifilt
 from dtcwt.sampling import rescale_highpass
 
 from dtcwt.backend.base import TransformDomainSignal, ReconstructedSignal
+from dtcwt.backend.backend_numpy import Transform3d
 
 from .util import assert_almost_equal, summarise_mat, summarise_cube, assert_percentile_almost_equal
 
@@ -115,7 +116,6 @@ def test_rescale_highpass():
     assert_percentile_almost_equal_to_summary(Xrescale, verif['lena_upsample'], 60, tolerance=TOLERANCE)
 
 def test_transform3d_numpy():
-    from dtcwt.backend.backend_numpy import Transform3d
     transform = Transform3d(biort='near_sym_a',qshift='qshift_b')
     td_signal = transform.forward(qbgn, nlevels=3, include_scale=True, discard_level_1=False)
     Yl, Yh, Yscale = td_signal.lowpass, td_signal.subbands, td_signal.scales

@@ -37,7 +37,7 @@ The three-element homogeneous displacement vector at location
 
 .. math::
 
-    \mathbf{\tilde{v}}(\mathbf{x}) \triangleq \begin{bmatrix}
+    \mathbf{\tilde{v}}(\mathbf{x}) \equiv \begin{bmatrix}
         \mathbf{v}(\mathbf{x}) \\ 1
     \end{bmatrix}
 
@@ -58,7 +58,7 @@ therefore write
     \frac{\partial \theta_d}{\partial t} =
     \nabla_\mathbf{x} \theta_d \cdot \mathbf{v}(\mathbf{x})
 
-where :math:`\nabla_\mathbf{x} \theta_d \triangleq [(\partial \theta_d/\partial
+where :math:`\nabla_\mathbf{x} \theta_d \equiv [(\partial \theta_d/\partial
 x) \, (\partial \theta_d/\partial y)]^T` and represents the phase gradient at
 :math:`\mathbf{x}` for subband :math:`d` in both of the :math:`x` and :math:`y`
 directions.
@@ -118,19 +118,19 @@ The model is represented via the six parameters :math:`a_1 \dots a_6` such that
     \begin{bmatrix}
     a_1 \\ \vdots \\ a_6
     \end{bmatrix}
-    \triangleq
+    \equiv
     \mathbf{K}(\mathbf{x}) \, \mathbf{a}.
 
 We then make the following definitions:
 
 .. math::
 
-    \mathbf{\tilde{K}}(\mathbf{x}) \triangleq \begin{bmatrix}
+    \mathbf{\tilde{K}}(\mathbf{x}) \equiv \begin{bmatrix}
         \mathbf{K}(\mathbf{x}) & \mathbf{0} \\
         \mathbf{0} & 1
     \end{bmatrix},
     \quad
-    \mathbf{\tilde{a}} \triangleq \begin{bmatrix}
+    \mathbf{\tilde{a}} \equiv \begin{bmatrix}
         \mathbf{a} \\ 1
     \end{bmatrix}
 
@@ -168,7 +168,7 @@ where
 
 .. math::
 
-    \mathbf{\tilde{Q}}(\mathbf{x}) \triangleq \sum_{d=1}^6
+    \mathbf{\tilde{Q}}(\mathbf{x}) \equiv \sum_{d=1}^6
         \mathbf{\tilde{K}}^T(\mathbf{x}) \, \mathbf{c}_d(\mathbf{x})
         \mathbf{c}^T_d(\mathbf{x}) \, \mathbf{\tilde{K}}(\mathbf{x}).
 

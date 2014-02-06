@@ -97,7 +97,6 @@ class Transform3d(Transform3dBase):
             h0o, g0o, h1o, g1o, h2o, g2o = self.biort
         else:
             raise ValueError('Biort wavelet must have 6 or 4 components.')
-        
         # If qshift has 12 elements instead of 8, then it's a modified
         # rotationally symmetric wavelet
         # FIXME: there's probably a nicer way to do this
@@ -125,16 +124,14 @@ class Transform3d(Transform3dBase):
             # Transform
             if level == 0 and discard_level_1:
                 Yl = _level1_xfm_no_highpass(Yl, h0o, h1o, self.ext_mode)
-                if include_scale:
-                    Yscale[0] = Yl
             elif level == 0 and not discard_level_1:
                 Yl, Yh[level] = _level1_xfm(Yl, h0o, h1o, self.ext_mode)
-                if include_scale:
-                    Yscale[0] = Yl
             else:
                 Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b, self.ext_mode)
-                if include_scale:
-                    Yscale[level] = Yl
+            if include_scale:
+                Yscale[level] = Yl.copy()
+        
+                #Yh[nlevels+1]=1 #to throw an error for debugging in nose
         if include_scale:
             return TransformDomainSignal(Yl, tuple(Yh), tuple(Yscale))
         else: 
@@ -272,7 +269,6 @@ def _level1_xfm(X, h0o, h1o, ext_mode):
     for f in xrange(work.shape[1] >> 1):
         # extract slice
         y = work[s0a, f, x2a].T
-
         # Do odd top-level filters on 3rd dim. The order here is important
         # since the second filtering will modify the elements of y as well
         # since y is merely a view onto work.
@@ -288,6 +284,8 @@ def _level1_xfm(X, h0o, h1o, ext_mode):
         # Do odd top-level filters on columns.
         work[s0a, :, f] = _BACKEND.colfilter(y2, h0o)
         work[s0b, :, f] = _BACKEND.colfilter(y2, h1o)
+        #if f==2:
+        #work[:,:,work.shape[2]+1]=1 #to throw an error so we can inspect y in the unit test
 
     # Return appropriate slices of output
     return (
@@ -299,7 +297,7 @@ def _level1_xfm(X, h0o, h1o, ext_mode):
             cube2c(work[x0a, x1a, x2b]),    # LLH
             cube2c(work[x0a, x1b, x2b]),    # HLH
             cube2c(work[x0b, x1a, x2b]),    # LHH
-            cube2c(work[x0b, x1b, x2b]),    # HLH
+            cube2c(work[x0b, x1b, x2b]),    # HHH
             ), axis=3)
         )
 
@@ -567,36 +565,14 @@ def cube2c(y):
     # IEEE TRANSACTIONS ON IMAGE PROCESSING, VOL. 21, NO. 1, JANUARY 2012
     # eqs. (6) to (9)
 
-    A = y[1::2, 1::2, 1::2]
-    B = y[1::2, 1::2, 0::2]
-    C = y[1::2, 0::2, 1::2]
-    D = y[1::2, 0::2, 0::2]
-    E = y[0::2, 1::2, 1::2]
-    F = y[0::2, 1::2, 0::2]
-    G = y[0::2, 0::2, 1::2]
-    H = y[0::2, 0::2, 0::2]
-
-    # TODO: check if the above should be the below and, if so, fix c2cube
-    #
-    #A = y[0::2, 0::2, 0::2]
-    #B = y[0::2, 0::2, 1::2]
-    #C = y[0::2, 1::2, 0::2]
-    #D = y[0::2, 1::2, 1::2]
-    #E = y[1::2, 0::2, 0::2]
-    #F = y[1::2, 0::2, 1::2]
-    #G = y[1::2, 1::2, 0::2]
-    #H = y[1::2, 1::2, 1::2]
-
-    # TODO: check if the above should be the below and, if so, fix c2cube
-    #
-    #A = y[0::2, 0::2, 0::2]
-    #B = y[0::2, 1::2, 0::2]
-    #C = y[1::2, 0::2, 0::2]
-    #D = y[1::2, 1::2, 0::2]
-    #E = y[0::2, 0::2, 1::2]
-    #F = y[0::2, 1::2, 1::2]
-    #G = y[1::2, 0::2, 1::2]
-    #H = y[1::2, 1::2, 1::2]
+    A = y[0::2, 0::2, 0::2]
+    B = y[0::2, 1::2, 0::2]
+    C = y[1::2, 0::2, 0::2]
+    D = y[1::2, 1::2, 0::2]
+    E = y[0::2, 0::2, 1::2]
+    F = y[0::2, 1::2, 1::2]
+    G = y[1::2, 0::2, 1::2]
+    H = y[1::2, 1::2, 1::2]
 
     # Combine to form subbands
     p = ( A-G-D-F) * j2[0] + ( B-H+C+E) * j2[1]
@@ -604,6 +580,7 @@ def cube2c(y):
     r = ( A+G+D-F) * j2[0] + ( B+H-C+E) * j2[1]
     s = ( A+G-D+F) * j2[0] + (-B-H-C+E) * j2[1]
 
+    #j2[2]=1 #to throw an error
     # Form the 2 subbands in z.
     z = np.concatenate((
         p[:,:,:,np.newaxis],
@@ -635,22 +612,22 @@ def c2cube(z):
     r = z[:,:,:,2]
     s = z[:,:,:,3]
 
-    pr, pi = p.real, p.imag
-    qr, qi = q.real, q.imag
-    rr, ri = r.real, r.imag
-    sr, si = s.real, s.imag
+    pr, pi = p.real, p.imag #A,E
+    qr, qi = q.real, q.imag #B,F
+    rr, ri = r.real, r.imag #C,G
+    sr, si = s.real, s.imag #D,H
 
     y = np.zeros(np.asanyarray(z.shape[:3])*2, dtype=z.real.dtype)
 
-    y[1::2, 1::2, 1::2] = ( pr+qr+rr+sr)
-    y[0::2, 0::2, 1::2] = (-pr-qr+rr+sr)
-    y[1::2, 0::2, 0::2] = (-pr+qr+rr-sr)
-    y[0::2, 1::2, 0::2] = (-pr+qr-rr+sr)
+    y[0::2, 0::2, 0::2] = ( pr+qr+rr+sr)
+    y[1::2, 0::2, 1::2] = (-pr-qr+rr+sr)
+    y[1::2, 1::2, 0::2] = (-pr+qr+rr-sr)
+    y[0::2, 1::2, 1::2] = (-pr+qr-rr+sr)
 
-    y[1::2, 1::2, 0::2] = ( pi-qi+ri-si)
-    y[0::2, 0::2, 0::2] = (-pi+qi+ri-si)
-    y[1::2, 0::2, 1::2] = ( pi+qi-ri-si)
-    y[0::2, 1::2, 1::2] = ( pi+qi+ri+si)
+    y[0::2, 1::2, 0::2] = ( pi-qi+ri-si)
+    y[1::2, 1::2, 1::2] = (-pi+qi+ri-si)
+    y[1::2, 0::2, 0::2] = ( pi+qi-ri-si)
+    y[0::2, 0::2, 1::2] = ( pi+qi+ri+si)
 
     return y * scale
 

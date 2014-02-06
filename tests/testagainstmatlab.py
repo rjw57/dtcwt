@@ -116,10 +116,10 @@ def test_rescale_highpass():
     assert_percentile_almost_equal_to_summary(Xrescale, verif['lena_upsample'], 60, tolerance=TOLERANCE)
 
 def test_transform3d_numpy():
-    transform = Transform3d(biort='near_sym_a',qshift='qshift_b')
+    transform = Transform3d(biort='near_sym_b',qshift='qshift_b')
     td_signal = transform.forward(qbgn, nlevels=3, include_scale=True, discard_level_1=False)
     Yl, Yh, Yscale = td_signal.lowpass, td_signal.subbands, td_signal.scales
-    #assert_almost_equal_to_summary_cube(Yl, verif['qbgn_Yl'], tolerance=TOLERANCE)
+    assert_almost_equal_to_summary_cube(Yl, verif['qbgn_Yl'], tolerance=TOLERANCE)
     for idx, a in enumerate(Yh):
         assert_almost_equal_to_summary_cube(a, verif['qbgn_Yh_{0}'.format(idx)], tolerance=TOLERANCE)
 

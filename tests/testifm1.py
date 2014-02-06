@@ -3,7 +3,7 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm, dtwaveifm
+from dtcwt.compat import dtwavexfm, dtwaveifm
 
 TOLERANCE = 1e-12
 

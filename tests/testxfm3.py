@@ -3,7 +3,8 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm3, dtwaveifm3, biort, qshift
+from dtcwt.compat import dtwavexfm3, dtwaveifm3
+from dtcwt.coeffs import biort, qshift
 
 GRID_SIZE=32
 SPHERE_RAD=0.4 * GRID_SIZE

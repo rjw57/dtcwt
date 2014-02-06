@@ -3,7 +3,8 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm2, dtwaveifm2, dtwavexfm2b, dtwaveifm2b, biort, qshift
+from dtcwt.compat import dtwavexfm2, dtwaveifm2, dtwavexfm2b, dtwaveifm2b
+from dtcwt.coeffs import biort, qshift
 from dtcwt.lowlevel import coldfilt, colifilt
 from dtcwt.sampling import rescale_highpass
 

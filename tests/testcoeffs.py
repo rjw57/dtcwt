@@ -1,4 +1,4 @@
-from dtcwt import biort, qshift
+from dtcwt.coeffs import biort, qshift
 
 from nose.tools import raises
 

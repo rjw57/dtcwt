@@ -3,8 +3,8 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import biort, qshift
-from dtcwt import dtwavexfm2 as dtwavexfm2_np, dtwaveifm2
+from dtcwt.coeffs import biort, qshift
+from dtcwt.compat import dtwavexfm2 as dtwavexfm2_np, dtwaveifm2
 from dtcwt.opencl.transform2d import dtwavexfm2 as dtwavexfm2_cl
 
 from .util import assert_almost_equal, skip_if_no_cl

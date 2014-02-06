@@ -6,7 +6,7 @@ the ``dtcwt`` library itself::
 
     import numpy as np
     from matplotlib.pyplot import *
-    from dtcwt import *
+    from dtcwt.compat import *
 
 We can demonstrate the 3D transform by generating a 64x64x64 array which
 contains the image of a sphere::

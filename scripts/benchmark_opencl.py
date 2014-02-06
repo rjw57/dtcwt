@@ -84,7 +84,7 @@ def main():
 
     print('Running NumPy dtwavexfm2...')
     a = benchmark('dtwavexfm2(lena)',
-            'from dtcwt import dtwavexfm2; from __main__ import lena')
+            'from dtcwt.compat import dtwavexfm2; from __main__ import lena')
     print('Running OpenCL dtwavexfm2...')
     b = benchmark('dtwavexfm2(lena)',
             'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
@@ -93,7 +93,7 @@ def main():
 
     print('Running NumPy dtwavexfm2 (non-POT)...')
     a = benchmark('dtwavexfm2(lena[:510,:480])',
-            'from dtcwt import dtwavexfm2; from __main__ import lena')
+            'from dtcwt.compat import dtwavexfm2; from __main__ import lena')
     print('Running OpenCL dtwavexfm2 (non-POT)...')
     b = benchmark('dtwavexfm2(lena[:510,:480])',
             'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')

@@ -16,7 +16,8 @@ from matplotlib.pyplot import *
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from dtcwt import dtwavexfm3, dtwaveifm3, biort, qshift
+from dtcwt.compat import dtwavexfm3, dtwaveifm3
+from dtcwt.coeffs import biort, qshift
 
 # Specify details about sphere and grid size
 GRID_SIZE = 128

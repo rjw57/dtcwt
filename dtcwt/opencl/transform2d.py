@@ -4,7 +4,7 @@ import logging
 import numpy as np
 from six.moves import xrange
 
-from dtcwt import biort as _biort, qshift as _qshift
+from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import appropriate_complex_type_for, asfarray, memoize
 from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt

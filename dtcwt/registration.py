@@ -1,8 +1,12 @@
 """
-NumPy implementation of image registration
+.. note::
+  This module is experimental. It's API may change between versions.
+
+This module implements function for DTCWT-based image registration as outlined in
+`[1] <http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=5936113>`_.
+These functions are 2D-only for the moment.
 
 """
-
 from __future__ import division, absolute_import
 
 import itertools

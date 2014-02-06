@@ -113,7 +113,7 @@ The model is represented via the six parameters :math:`a_1 \dots a_6` such that
     \mathbf{v}(\mathbf{x}) =
     \begin{bmatrix}
         1 & 0 & x & 0 & y & 0 \\
-        0 & 1 & 0 & x & 0 & y \\
+        0 & 1 & 0 & x & 0 & y
     \end{bmatrix}
     \begin{bmatrix}
     a_1 \\ \vdots \\ a_6

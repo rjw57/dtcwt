@@ -267,7 +267,7 @@ def warptransform(t, avecs, levels, method=None):
     # Clone the transform
     return backend_numpy.TransformDomainSignal(t.lowpass, tuple(warped_subbands), t.scales)
 
-def estimatereg(source, reference):
+def estimatereg(source, reference, regshape=None):
     """
     Estimate registration from which will map *source* to *reference*.
 
@@ -287,7 +287,10 @@ def estimatereg(source, reference):
     """
     # Extract number of levels and shape of level 3 subband
     nlevels = len(source.subbands)
-    avecs_shape = source.subbands[2].shape[:2] + (6,)
+    if regshape is None:
+        avecs_shape = source.subbands[2].shape[:2] + (6,)
+    else:
+        avecs_shape = tuple(regshape[:2]) + (6,)
 
     # Initialise matrix of 'a' vectors
     avecs = np.zeros(avecs_shape)
@@ -302,9 +305,10 @@ def estimatereg(source, reference):
         avecs[:,:,idx] = a[idx]
 
     # Refine estimate
-    for it in xrange(2 * (nlevels-3) - 1):
-        s, e = nlevels - 2, nlevels - 2 - (it+1)//2
-        levels = list(x for x in xrange(s, e-1, -1) if x>=2 and x<nlevels)
+    for it in xrange(2 * (nlevels - 1)):
+        s, e = nlevels, nlevels - 1 - it//2
+        levels = list(x for x in xrange(s, e-1, -1)
+                      if x>=2 and x<nlevels and source.subbands[x].shape[0] <= 2*avecs.shape[0] and source.subbands[x].shape[1] <= 2*avecs.shape[1])
         if len(levels) == 0:
             continue
 

@@ -16,29 +16,17 @@ These functions provide API-level compatibility with MATLAB.
 .. automodule:: dtcwt
     :members:
 
-Backends
-````````
-
-.. automodule:: dtcwt.backend
-    :members:
-
-Base classes
-''''''''''''
-
-.. automodule:: dtcwt.backend.base
-    :members:
-
 NumPy
 '''''
 
-.. automodule:: dtcwt.backend.backend_numpy
+.. automodule:: dtcwt.numpy
     :members:
     :inherited-members:
 
 OpenCL
 ''''''
 
-.. automodule:: dtcwt.backend.backend_opencl
+.. automodule:: dtcwt.opencl
     :inherited-members:
 
 Keypoint analysis

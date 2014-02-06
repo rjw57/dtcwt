@@ -18,7 +18,7 @@ import logging
 import cv2
 from docopt import docopt
 import dtcwt
-from dtcwt.backend.backend_numpy import Transform2d
+from dtcwt.numpy import Transform2d
 import dtcwt.registration as reg
 import dtcwt.sampling
 import numpy as np

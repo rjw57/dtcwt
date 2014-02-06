@@ -10,7 +10,7 @@ import itertools
 from six.moves import xrange
 
 import dtcwt
-from dtcwt.backend import backend_numpy
+import dtcwt.numpy
 import dtcwt.sampling
 import dtcwt.utils
 import numpy as np
@@ -102,7 +102,7 @@ def qtildematrices(t_ref, t_target, levels):
     :returns: a tuple of :math:`\tilde{Q}` matrices for each index in *levels*
 
     Both *t_ref* and *t_target* should be
-    :py:class:`dtcwt.backend.base.TransformDomainSignal`-compatible objects.
+    :py:class:`dtcwt.TransformDomainSignal`-compatible objects.
     Indices in *levels* are 0-based.
 
     The returned matrices are NxMx27 where NxM is the shape of the
@@ -246,7 +246,7 @@ def warptransform(t, avecs, levels, method=None):
     :param levels: a sequence of 0-based indices specifying which levels to act on
 
     *t* should be a
-    :py:class:`dtcwt.backend.base.TransformDomainSignal`-compatible instance.
+    :py:class:`dtcwt.TransformDomainSignal`-compatible instance.
 
     The *method* parameter is interpreted as in :py:func:`dtcwt.sampling.rescale` and
     is the sampling method used to resize *avecs* to *shape*.
@@ -265,7 +265,7 @@ def warptransform(t, avecs, levels, method=None):
         warped_subbands[l] = warphighpass(warped_subbands[l], avecs, method=method)
 
     # Clone the transform
-    return backend_numpy.TransformDomainSignal(t.lowpass, tuple(warped_subbands), t.scales)
+    return dtcwt.numpy.TransformDomainSignal(t.lowpass, tuple(warped_subbands), t.scales)
 
 def estimatereg(source, reference, regshape=None):
     """
@@ -275,7 +275,7 @@ def estimatereg(source, reference, regshape=None):
     :param reference: transformed reference image
 
     The *reference* and *source* parameters should support the same API as
-    :py:class:`dtcwt.backend.base.TransformDomainSignal`.
+    :py:class:`dtcwt.TransformDomainSignal`.
 
     The local affine distortion is estimated at at 8x8 pixel scales.
     Return a NxMx6 array where the 6-element vector at (N,M) corresponds to the

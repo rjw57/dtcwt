@@ -35,7 +35,7 @@ def overlay_quiver_DTCWT(image, vectorField, level, offset):
         :include-source: true
 
         import dtcwt.plotting as plotting
-        import dtcwt.backend.backend_numpy as backend
+        import dtcwt.numpy as backend
 
         lena = datasets.lena()
 

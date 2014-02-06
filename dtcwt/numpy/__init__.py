@@ -4,7 +4,7 @@ be available.
 
 """
 
-from .transform2d import TransformDomainSignal, Transform2d
+from .transform2d import TransformDomainSignal, Transform2d, ReconstructedSignal
 
 __all__ = [
     'TransformDomainSignal',

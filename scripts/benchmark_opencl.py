@@ -12,7 +12,7 @@ import timeit
 import numpy as np
 
 from dtcwt.coeffs import biort, qshift
-from dtcwt.backend.backend_opencl.lowlevel import NoCLPresentError, get_default_queue
+from dtcwt.opencl.lowlevel import NoCLPresentError, get_default_queue
 
 lena = np.load(os.path.join(os.path.dirname(__file__), '..', 'tests', 'lena.npz'))['lena']
 h0o, g0o, h1o, g1o = biort('near_sym_b')
@@ -60,7 +60,7 @@ def main():
             'from dtcwt.lowlevel import colfilter; from __main__ import lena, h1o')
     print('Running OpenCL colfilter...')
     b = benchmark('colfilter(lena, h1o)',
-            'from dtcwt.backend.backend_opencl.lowlevel import colfilter; from __main__ import lena, h1o')
+            'from dtcwt.opencl.lowlevel import colfilter; from __main__ import lena, h1o')
     print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 
@@ -69,7 +69,7 @@ def main():
             'from dtcwt.lowlevel import coldfilt; from __main__ import lena, h0b, h0a')
     print('Running OpenCL coldfilt...')
     b = benchmark('coldfilt(lena, h0b, h0a)',
-            'from dtcwt.backend.backend_opencl.lowlevel import coldfilt; from __main__ import lena, h0b, h0a')
+            'from dtcwt.opencl.lowlevel import coldfilt; from __main__ import lena, h0b, h0a')
     print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 
@@ -78,7 +78,7 @@ def main():
             'from dtcwt.lowlevel import colifilt; from __main__ import lena, h0b, h0a')
     print('Running OpenCL colifilt...')
     b = benchmark('colifilt(lena, h0b, h0a)',
-            'from dtcwt.backend.backend_opencl.lowlevel import colifilt; from __main__ import lena, h0b, h0a')
+            'from dtcwt.opencl.lowlevel import colifilt; from __main__ import lena, h0b, h0a')
     print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 
@@ -87,7 +87,7 @@ def main():
             'from dtcwt import dtwavexfm2; from __main__ import lena')
     print('Running OpenCL dtwavexfm2...')
     b = benchmark('dtwavexfm2(lena)',
-            'from dtcwt.backend.backend_opencl.transform2d import dtwavexfm2; from __main__ import lena')
+            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
     print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 
@@ -96,7 +96,7 @@ def main():
             'from dtcwt import dtwavexfm2; from __main__ import lena')
     print('Running OpenCL dtwavexfm2 (non-POT)...')
     b = benchmark('dtwavexfm2(lena[:510,:480])',
-            'from dtcwt.backend.backend_opencl.transform2d import dtwavexfm2; from __main__ import lena')
+            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
     print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 

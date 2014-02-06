@@ -15,7 +15,7 @@ wavelet coefficients:
     figure(1)
     imshow(lena, cmap=cm.gray, clim=(0,1))
 
-    import dtcwt.backend.backend_numpy as backend
+    import dtcwt.numpy as backend
     transform = backend.Transform2d()
 
     # Compute two levels of dtcwt with the defaul wavelet family

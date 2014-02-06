@@ -46,23 +46,25 @@ def overlay_quiver_DTCWT(image, vectorField, level, offset):
     .. codeauthor:: S. C. Forshaw, 2014 (Python)
     """
 
-    # You may wish to uncomment the following so that imshow() uses the full range of greyscale values
-    imshow(image, cmap=cm.gray, clim=(0,1))
-
+    # Make sure imshow() uses the full range of greyscale values
+    imshow(image, cmap=cm.gray, clim=(0,255))
+    hold(True)
+       
     # Set up the grid for the quiver plot
     g1 = np.kron(np.arange(0, vectorField[:,:,0].shape[0]).T, np.ones((1,vectorField[:,:,0].shape[1])))
     g2 = np.kron(np.ones((vectorField[:,:,0].shape[0], 1)), np.arange(0, vectorField[:,:,0].shape[1]))
 
     # Choose a coloUrmap
-    cmap = cm.jet
-    scalefactor = vectorField[-1,-1,:] = np.max(np.max(np.max(np.max(np.abs(vectorField)))))
-
+    cmap = cm.spectral
+    scalefactor = np.max(np.max(np.max(np.max(np.abs(vectorField)))))
+    vectorField[-1,-1,:] = scalefactor
+        
     for sb in range(0, vectorField.shape[2]):
+        hold(True)
         thiscolour = cmap(sb / float(vectorField.shape[2])) # Select colour for this subband
         hq = quiver(g2*(2**level) + offset*(2**level), g1*(2**level) + offset*(2**level), np.real(vectorField[:,:,sb]), \
         np.imag(vectorField[:,:,sb]), color=thiscolour, scale=scalefactor*2**level)
-        quiverkey(hq, image.shape[1]+75, 50 + sb*50, 1, "subband " + np.str(sb), coordinates='data', color=thiscolour)
-        hold(True)
+        quiverkey(hq, 1.05, 0.9-0.05*sb, 0, "subband " + np.str(sb), coordinates='axes', color=thiscolour, labelcolor=thiscolour, labelpos='E')
 
+    hold(False)
     return hq
-

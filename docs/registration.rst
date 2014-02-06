@@ -154,7 +154,7 @@ affine parameters in :math:`\mathbf{\tilde{a}}`. We can solve for
 :math:`\epsilon(\mathbf{x})`:
 
 .. math::
-    \begin{align}
+    \begin{aligned}
         \epsilon(\mathbf{x}) &= \sum_{d=1}^6 \left\|
             \mathbf{c}_d^T(\mathbf{x}) \mathbf{\tilde{K}}(\mathbf{x}) \mathbf{\tilde{a}}
         \right\|^2 \\
@@ -162,7 +162,7 @@ affine parameters in :math:`\mathbf{\tilde{a}}`. We can solve for
             \mathbf{\tilde{a}}^T \, \mathbf{\tilde{K}}^T(\mathbf{x}) \, \mathbf{c}_d(\mathbf{x})
             \mathbf{c}^T_d(\mathbf{x}) \, \mathbf{\tilde{K}}(\mathbf{x}) \, \mathbf{\tilde{a}} \\
         &= \mathbf{\tilde{a}}^T \mathbf{\tilde{Q}}(\mathbf{x}) \mathbf{\tilde{a}}
-    \end{align}
+    \end{aligned}
 
 where
 

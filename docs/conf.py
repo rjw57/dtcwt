@@ -195,7 +195,9 @@ latex_elements = {
 #'pointsize': '10pt',
 
 # Additional stuff for the LaTeX preamble.
-#'preamble': '',
+'preamble': '''
+    \usepackage{amsmath}
+''',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples

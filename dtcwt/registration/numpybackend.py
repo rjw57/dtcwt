@@ -3,7 +3,7 @@ NumPy implementation of image registration
 
 """
 
-from __future__ import division
+from __future__ import division, absolute_import
 
 import itertools
 

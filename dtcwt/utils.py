@@ -1,5 +1,7 @@
 """ Useful utilities for testing the 2-D DTCWT with synthetic images"""
 
+from __future__ import absolute_import
+
 import functools
 import numpy as np
 

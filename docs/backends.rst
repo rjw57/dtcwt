@@ -56,7 +56,7 @@ example, to compute the 2D DT-CWT of the 2D real array in *X*::
     >>> trans = Transform2d()           # You may optionally specify which wavelets to use here
     >>> Y = trans.forward(X, nlevels=4) # Perform a 4-level transform of X
     >>> imshow(Y.lowpass)               # Show coarsest scale low-pass image
-    >>> imshow(Y.subbands[-1][:,:,0])   # Show first coarsest scale subband
+    >>> imshow(Y.highpasses[-1][:,:,0])   # Show first coarsest scale subband
 
 In this case *Y* is an instance of a class which behaves like
 :py:class:`dtcwt.Pyramid`. Backends are free to

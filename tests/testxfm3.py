@@ -161,7 +161,7 @@ def test_level_4_recon_discarding_level_1():
     assert np.median(np.abs(ellipsoid - ellipsoid_recon)[:]) < 1e-3
 
 def test_level_4_discarding_level_1():
-    # Test that level >= 2 subbands are identical
+    # Test that level >= 2 highpasses are identical
     Yl1, Yh1 = dtwavexfm3(ellipsoid, 4, discard_level_1=True)
     Yl2, Yh2 = dtwavexfm3(ellipsoid, 4, discard_level_1=False)
 

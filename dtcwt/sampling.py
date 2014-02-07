@@ -1,5 +1,5 @@
 """This module contains function for rescaling and re-sampling high- and
-low-pass subbands.
+low-pass highpasses.
 
 .. note::
 

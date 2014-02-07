@@ -24,9 +24,9 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     t = Transform2d(biort=biort, qshift=qshift, queue=queue)
     r = t.forward(X, nlevels=nlevels, include_scale=include_scale)
     if include_scale:
-        return r.lowpass, r.subbands, r.scales
+        return r.lowpass, r.highpasses, r.scales
     else:
-        return r.lowpass, r.subbands
+        return r.lowpass, r.highpasses
 
 class Pyramid(object):
     """
@@ -51,7 +51,7 @@ class Pyramid(object):
 
         The CL array containing the lowpass image.
 
-    .. py:attribute:: cl_subbands
+    .. py:attribute:: cl_highpasses
 
         A tuple of CL arrays containing the subband images.
 
@@ -61,9 +61,9 @@ class Pyramid(object):
         scale.
 
     """
-    def __init__(self, lowpass, subbands, scales=None):
+    def __init__(self, lowpass, highpasses, scales=None):
         self.cl_lowpass = lowpass
-        self.cl_subbands = subbands
+        self.cl_highpasses = highpasses
         self.cl_scales = scales
 
     @property
@@ -73,10 +73,10 @@ class Pyramid(object):
         return self._lowpass
 
     @property
-    def subbands(self):
-        if not hasattr(self, '_subbands'):
-            self._subbands = tuple(to_array(x) for x in self.cl_subbands) if self.cl_subbands is not None else None
-        return self._subbands
+    def highpasses(self):
+        if not hasattr(self, '_highpasses'):
+            self._highpasses = tuple(to_array(x) for x in self.cl_highpasses) if self.cl_highpasses is not None else None
+        return self._highpasses
 
     @property
     def scales(self):

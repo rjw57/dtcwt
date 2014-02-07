@@ -46,9 +46,9 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     res = trans.forward(X, nlevels, include_scale)
 
     if include_scale:
-        return res.lowpass, res.subbands, res.scales
+        return res.lowpass, res.highpasses, res.scales
     else:
-        return res.lowpass, res.subbands
+        return res.lowpass, res.highpasses
 
 def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
     """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D

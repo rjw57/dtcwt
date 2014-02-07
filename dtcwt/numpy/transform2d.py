@@ -26,7 +26,7 @@ class Pyramid(object):
         
         A NumPy-compatible array containing the coarsest scale lowpass signal.
 
-    .. py:attribute:: subbands
+    .. py:attribute:: highpasses
         
         A tuple where each element is the complex subband coefficients for
         corresponding scales finest to coarsest.
@@ -38,9 +38,9 @@ class Pyramid(object):
         coarsest. This is not required for the inverse and may be *None*.
 
     """
-    def __init__(self, lowpass, subbands, scales=None):
+    def __init__(self, lowpass, highpasses, scales=None):
         self.lowpass = asfarray(lowpass)
-        self.subbands = tuple(asfarray(x) for x in subbands)
+        self.highpasses = tuple(asfarray(x) for x in highpasses)
         self.scales = tuple(asfarray(x) for x in scales) if scales is not None else None
 
 class Transform2d(object):
@@ -231,7 +231,7 @@ class Transform2d(object):
 
         """
         Yl = td_signal.lowpass
-        Yh = td_signal.subbands
+        Yh = td_signal.highpasses
 
         a = len(Yh) # No of levels.
 
@@ -292,7 +292,7 @@ class Transform2d(object):
                 Z = Z[:,1:-1]
 
             if np.any(np.array(Z.shape) != S[:2]):
-                raise ValueError('Sizes of subbands are not valid for DTWAVEIFM2')
+                raise ValueError('Sizes of highpasses are not valid for DTWAVEIFM2')
             
             current_level = current_level - 1
 
@@ -339,7 +339,7 @@ def q2c(y):
     p = y[0::2, 0::2]*j2[0] + y[0::2, 1::2]*j2[1] # p = (a + jb) / sqrt(2)
     q = y[1::2, 1::2]*j2[0] - y[1::2, 0::2]*j2[1] # q = (d - jc) / sqrt(2)
 
-    # Form the 2 subbands in z.
+    # Form the 2 highpasses in z.
     z = np.dstack((p-q,p+q))
 
     return z
@@ -348,7 +348,7 @@ def c2q(w,gain):
     """Scale by gain and convert from complex w(:,:,1:2) to real quad-numbers
     in z.
 
-    Arrange pixels from the real and imag parts of the 2 subbands
+    Arrange pixels from the real and imag parts of the 2 highpasses
     into 4 separate subimages .
      A----B     Re   Im of w(:,:,1)
      |    |

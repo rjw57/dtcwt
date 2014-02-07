@@ -113,26 +113,26 @@ def qtildematrices(t_ref, t_target, levels):
     corresponding level's highpass subbands.
 
     """
-    # Extract subbands
-    Yh1 = t_ref.subbands
-    Yh2 = t_target.subbands
+    # Extract highpasses
+    Yh1 = t_ref.highpasses
+    Yh2 = t_target.highpasses
 
     # A list of arrays of \tilde{Q} matrices for each level
     Qt_mats = []
 
     for level in levels:
-        subbands1, subbands2 = Yh1[level], Yh2[level]
-        xs, ys = np.meshgrid(np.arange(0,1,1/subbands1.shape[1]),
-                             np.arange(0,1,1/subbands1.shape[0]))
+        highpasses1, highpasses2 = Yh1[level], Yh2[level]
+        xs, ys = np.meshgrid(np.arange(0,1,1/highpasses1.shape[1]),
+                             np.arange(0,1,1/highpasses1.shape[0]))
 
         Qt_mat_sum = None
-        for subband in xrange(subbands1.shape[2]):
-            C_d = confidence(subbands1[:,:,subband], subbands2[:,:,subband])
-            dy, dx, dt = phasegradient(subbands1[:,:,subband], subbands2[:,:,subband],
+        for subband in xrange(highpasses1.shape[2]):
+            C_d = confidence(highpasses1[:,:,subband], highpasses2[:,:,subband])
+            dy, dx, dt = phasegradient(highpasses1[:,:,subband], highpasses2[:,:,subband],
                                             EXPECTED_SHIFTS[subband,:])
 
-            dx *= subbands1.shape[1]
-            dy *= subbands1.shape[0]
+            dx *= highpasses1.shape[1]
+            dy *= highpasses1.shape[0]
 
             # This is the equivalent of the following for each member of the array
             #  Kt_mat = np.array(((1, 0, s*x, 0, s*y, 0, 0), (0, 1, 0, s*x, 0, s*y, 0), (0,0,0,0,0,0,1)))
@@ -262,14 +262,14 @@ def warptransform(t, avecs, levels, method=None):
         deep-copied and warped.
 
     """
-    warped_subbands = list(t.subbands)
+    warped_highpasses = list(t.highpasses)
 
     # Warp specified levels
     for l in levels:
-        warped_subbands[l] = warphighpass(warped_subbands[l], avecs, method=method)
+        warped_highpasses[l] = warphighpass(warped_highpasses[l], avecs, method=method)
 
     # Clone the transform
-    return dtcwt.numpy.Pyramid(t.lowpass, tuple(warped_subbands), t.scales)
+    return dtcwt.numpy.Pyramid(t.lowpass, tuple(warped_highpasses), t.scales)
 
 def estimatereg(source, reference, regshape=None):
     """
@@ -290,9 +290,9 @@ def estimatereg(source, reference, regshape=None):
 
     """
     # Extract number of levels and shape of level 3 subband
-    nlevels = len(source.subbands)
+    nlevels = len(source.highpasses)
     if regshape is None:
-        avecs_shape = source.subbands[2].shape[:2] + (6,)
+        avecs_shape = source.highpasses[2].shape[:2] + (6,)
     else:
         avecs_shape = tuple(regshape[:2]) + (6,)
 
@@ -312,7 +312,7 @@ def estimatereg(source, reference, regshape=None):
     for it in xrange(2 * (nlevels - 1)):
         s, e = nlevels, nlevels - 1 - it//2
         levels = list(x for x in xrange(s, e-1, -1)
-                      if x>=2 and x<nlevels and source.subbands[x].shape[0] <= 2*avecs.shape[0] and source.subbands[x].shape[1] <= 2*avecs.shape[1])
+                      if x>=2 and x<nlevels and source.highpasses[x].shape[0] <= 2*avecs.shape[0] and source.highpasses[x].shape[1] <= 2*avecs.shape[1])
         if len(levels) == 0:
             continue
 

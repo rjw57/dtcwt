@@ -41,9 +41,9 @@ def overlay_quiver_DTCWT(image, vectorField, level, offset):
         lena = datasets.lena()
 
         transform2d = dtcwt.Transform2d()
-        lena_t = transform2d.forward(lena, nlevels=3)
+        lena_t = transform2d.forward(lena, nlevels=5)
 
-        plotting.overlay_quiver_DTCWT(lena*255, lena_t.highpasses[-1], 3, 0.5)
+        plotting.overlay_quiver_DTCWT(lena*255, lena_t.highpasses[-1], 5, 0.5)
 
     .. codeauthor:: R. Anderson, 2005 (MATLAB)
     .. codeauthor:: S. C. Forshaw, 2014 (Python)

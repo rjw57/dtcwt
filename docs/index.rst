@@ -17,6 +17,7 @@ Contents
     algorithms
     examples
     reference
+    implementations
 
 Features of note
 ````````````````

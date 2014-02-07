@@ -7,19 +7,6 @@ Main interface
 .. automodule:: dtcwt
     :members:
 
-NumPy
-'''''
-
-.. automodule:: dtcwt.numpy
-    :members:
-    :inherited-members:
-
-OpenCL
-''''''
-
-.. automodule:: dtcwt.opencl
-    :inherited-members:
-
 Keypoint analysis
 `````````````````
 
@@ -57,9 +44,6 @@ A normal user should not need to call these functions but they are documented
 here just in case you do.
 
 .. automodule:: dtcwt.coeffs
-    :members:
-
-.. automodule:: dtcwt.lowlevel
     :members:
 
 .. automodule:: dtcwt.utils

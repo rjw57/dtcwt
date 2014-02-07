@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 from dtcwt.coeffs import biort, qshift
-from dtcwt.lowlevel import colfilter
+from dtcwt.numpy.lowlevel import colfilter
 
 import tests.datasets as datasets
 

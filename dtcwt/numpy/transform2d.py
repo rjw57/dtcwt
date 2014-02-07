@@ -9,10 +9,7 @@ from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import appropriate_complex_type_for, asfarray
 
-from dtcwt.numpy.lowlevel import LowLevelBackendNumPy
-
-# Use the NumPy low-level backend
-_BACKEND = LowLevelBackendNumPy()
+from dtcwt.numpy.lowlevel import *
 
 class Pyramid(object):
     """A representation of a transform domain signal.
@@ -135,20 +132,20 @@ class Transform2d(object):
 
         if nlevels >= 1:
             # Do odd top-level filters on cols.
-            Lo = _BACKEND.colfilter(X,h0o).T
-            Hi = _BACKEND.colfilter(X,h1o).T
+            Lo = colfilter(X,h0o).T
+            Hi = colfilter(X,h1o).T
             if len(self.biort) >= 6:
-                Ba = _BACKEND.colfilter(X,h2o).T
+                Ba = colfilter(X,h2o).T
 
             # Do odd top-level filters on rows.
-            LoLo = _BACKEND.colfilter(Lo,h0o).T
+            LoLo = colfilter(Lo,h0o).T
             Yh[0] = np.zeros((LoLo.shape[0] >> 1, LoLo.shape[1] >> 1, 6), dtype=complex_dtype)
-            Yh[0][:,:,0:6:5] = q2c(_BACKEND.colfilter(Hi,h0o).T)     # Horizontal pair
-            Yh[0][:,:,2:4:1] = q2c(_BACKEND.colfilter(Lo,h1o).T)     # Vertical pair
+            Yh[0][:,:,0:6:5] = q2c(colfilter(Hi,h0o).T)     # Horizontal pair
+            Yh[0][:,:,2:4:1] = q2c(colfilter(Lo,h1o).T)     # Vertical pair
             if len(self.biort) >= 6:
-                Yh[0][:,:,1:5:3] = q2c(_BACKEND.colfilter(Ba,h2o).T)     # Diagonal pair
+                Yh[0][:,:,1:5:3] = q2c(colfilter(Ba,h2o).T)     # Diagonal pair
             else:
-                Yh[0][:,:,1:5:3] = q2c(_BACKEND.colfilter(Hi,h1o).T)     # Diagonal pair
+                Yh[0][:,:,1:5:3] = q2c(colfilter(Hi,h1o).T)     # Diagonal pair
 
             if include_scale:
                 Yscale[0] = LoLo
@@ -164,21 +161,21 @@ class Transform2d(object):
                 LoLo = np.hstack((LoLo[:,:1], LoLo, LoLo[:,-1:]))
 
             # Do even Qshift filters on rows.
-            Lo = _BACKEND.coldfilt(LoLo,h0b,h0a).T
-            Hi = _BACKEND.coldfilt(LoLo,h1b,h1a).T
+            Lo = coldfilt(LoLo,h0b,h0a).T
+            Hi = coldfilt(LoLo,h1b,h1a).T
             if len(self.qshift) >= 12:
-                Ba = _BACKEND.coldfilt(LoLo,h2b,h2a).T
+                Ba = coldfilt(LoLo,h2b,h2a).T
 
             # Do even Qshift filters on columns.
-            LoLo = _BACKEND.coldfilt(Lo,h0b,h0a).T
+            LoLo = coldfilt(Lo,h0b,h0a).T
 
             Yh[level] = np.zeros((LoLo.shape[0]>>1, LoLo.shape[1]>>1, 6), dtype=complex_dtype)
-            Yh[level][:,:,0:6:5] = q2c(_BACKEND.coldfilt(Hi,h0b,h0a).T)  # Horizontal
-            Yh[level][:,:,2:4:1] = q2c(_BACKEND.coldfilt(Lo,h1b,h1a).T)  # Vertical
+            Yh[level][:,:,0:6:5] = q2c(coldfilt(Hi,h0b,h0a).T)  # Horizontal
+            Yh[level][:,:,2:4:1] = q2c(coldfilt(Lo,h1b,h1a).T)  # Vertical
             if len(self.qshift) >= 12:
-                Yh[level][:,:,1:5:3] = q2c(_BACKEND.coldfilt(Ba,h2b,h2a).T)  # Diagonal   
+                Yh[level][:,:,1:5:3] = q2c(coldfilt(Ba,h2b,h2a).T)  # Diagonal   
             else:
-                Yh[level][:,:,1:5:3] = q2c(_BACKEND.coldfilt(Hi,h1b,h1a).T)  # Diagonal   
+                Yh[level][:,:,1:5:3] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
 
             if include_scale:
                 Yscale[level] = LoLo
@@ -269,19 +266,19 @@ class Transform2d(object):
             hh = c2q(Yh[current_level-1][:,:,[1, 4]], gain_mask[[1, 4], current_level-1])
 
             # Do even Qshift filters on columns.
-            y1 = _BACKEND.colifilt(Z,g0b,g0a) + _BACKEND.colifilt(lh,g1b,g1a)
+            y1 = colifilt(Z,g0b,g0a) + colifilt(lh,g1b,g1a)
 
             if len(self.qshift) >= 12:
-                y2 = _BACKEND.colifilt(hl,g0b,g0a)
-                y2bp = _BACKEND.colifilt(hh,g2b,g2a)
+                y2 = colifilt(hl,g0b,g0a)
+                y2bp = colifilt(hh,g2b,g2a)
 
                 # Do even Qshift filters on rows.
-                Z = (_BACKEND.colifilt(y1.T,g0b,g0a) + _BACKEND.colifilt(y2.T,g1b,g1a) + _BACKEND.colifilt(y2bp.T, g2b, g2a)).T
+                Z = (colifilt(y1.T,g0b,g0a) + colifilt(y2.T,g1b,g1a) + colifilt(y2bp.T, g2b, g2a)).T
             else:
-                y2 = _BACKEND.colifilt(hl,g0b,g0a) + _BACKEND.colifilt(hh,g1b,g1a)
+                y2 = colifilt(hl,g0b,g0a) + colifilt(hh,g1b,g1a)
 
                 # Do even Qshift filters on rows.
-                Z = (_BACKEND.colifilt(y1.T,g0b,g0a) + _BACKEND.colifilt(y2.T,g1b,g1a)).T
+                Z = (colifilt(y1.T,g0b,g0a) + colifilt(y2.T,g1b,g1a)).T
 
             # Check size of Z and crop as required
             [row_size, col_size] = Z.shape
@@ -302,19 +299,19 @@ class Transform2d(object):
             hh = c2q(Yh[current_level-1][:,:,[1, 4]],gain_mask[[1, 4],current_level-1])
 
             # Do odd top-level filters on columns.
-            y1 = _BACKEND.colfilter(Z,g0o) + _BACKEND.colfilter(lh,g1o)
+            y1 = colfilter(Z,g0o) + colfilter(lh,g1o)
 
             if len(self.biort) >= 6:
-                y2 = _BACKEND.colfilter(hl,g0o)
-                y2bp = _BACKEND.colfilter(hh,g2o)
+                y2 = colfilter(hl,g0o)
+                y2bp = colfilter(hh,g2o)
 
                 # Do odd top-level filters on rows.
-                Z = (_BACKEND.colfilter(y1.T,g0o) + _BACKEND.colfilter(y2.T,g1o) + _BACKEND.colfilter(y2bp.T, g2o)).T
+                Z = (colfilter(y1.T,g0o) + colfilter(y2.T,g1o) + colfilter(y2bp.T, g2o)).T
             else:
-                y2 = _BACKEND.colfilter(hl,g0o) + _BACKEND.colfilter(hh,g1o)
+                y2 = colfilter(hl,g0o) + colfilter(hh,g1o)
 
                 # Do odd top-level filters on rows.
-                Z = (_BACKEND.colfilter(y1.T,g0o) + _BACKEND.colfilter(y2.T,g1o)).T
+                Z = (colfilter(y1.T,g0o) + colfilter(y2.T,g1o)).T
 
         return Z
 

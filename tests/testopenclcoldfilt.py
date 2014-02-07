@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-from dtcwt.lowlevel import coldfilt as coldfilt_gold
+from dtcwt.numpy.lowlevel import coldfilt as coldfilt_gold
 from dtcwt.opencl.lowlevel import coldfilt, NoCLPresentError
 from dtcwt.coeffs import biort, qshift
 

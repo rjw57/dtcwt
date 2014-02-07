@@ -46,4 +46,17 @@ for sb=1:6
     lena_upsample(:,:,sb) = tmp;
 end
 
-save('verification.mat', 'lena_coldfilt', 'lena_colifilt', 'lena_Yl', 'lena_Yh', 'lena_Yscale', 'lena_Ylb', 'lena_Yhb', 'lena_Yscaleb', 'lena_upsample');
+%% Generate quantized bandlimited gaussian noise (gbgn) phantom
+strFilePath=[fileparts(which(mfilename('fullpath'))) '/'];
+addpath([strFilePath 'qbgn/']);
+%generate quantized band-limited gaussian noise, and case to 8-bit to save space
+qbgn = uint8(gen_qbgn(128,128));
+%take the 3D wavelet transform, which defaults to near_sym_a (5,7) and qshift_b (14 taps)
+[qbgn_Yl, qbgn_Yh, qbgn_Yscale] = dtwavexfm3(double(qbgn), 3);
+%now re-arrange the coefficients to form complex-valued high-pass subbands instead of alternating real/imag parts
+qbgn_Yh = ri2c(qbgn_Yh);
+
+save('../tests/qbgn.mat','qbgn');
+
+save('verification.mat', 'lena_coldfilt', 'lena_colifilt', 'lena_Yl', 'lena_Yh', 'lena_Yscale', ...
+     'lena_Ylb', 'lena_Yhb', 'lena_Yscaleb', 'lena_upsample', 'qbgn_Yl', 'qbgn_Yh', 'qbgn_Yscale');

@@ -90,7 +90,6 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mod
             Yl, Yh[level] = _level1_xfm(Yl, h0o, h1o, ext_mode)
         else:
             Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b, ext_mode)
-
     return Yl, tuple(Yh)
 
 def dtwaveifm3(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
@@ -511,25 +510,14 @@ def cube2c(y):
     # IEEE TRANSACTIONS ON IMAGE PROCESSING, VOL. 21, NO. 1, JANUARY 2012
     # eqs. (6) to (9)
 
-    A = y[1::2, 1::2, 1::2]
-    B = y[1::2, 1::2, 0::2]
-    C = y[1::2, 0::2, 1::2]
-    D = y[1::2, 0::2, 0::2]
-    E = y[0::2, 1::2, 1::2]
-    F = y[0::2, 1::2, 0::2]
-    G = y[0::2, 0::2, 1::2]
-    H = y[0::2, 0::2, 0::2]
-
-    # TODO: check if the above should be the below and, if so, fix c2cube
-    #
-    # A = y[0::2, 0::2, 0::2]
-    # B = y[0::2, 0::2, 1::2]
-    # C = y[0::2, 1::2, 0::2]
-    # D = y[0::2, 1::2, 1::2]
-    # E = y[1::2, 0::2, 0::2]
-    # F = y[1::2, 0::2, 1::2]
-    # G = y[1::2, 1::2, 0::2]
-    # H = y[1::2, 1::2, 1::2]
+    A = y[0::2, 0::2, 0::2]
+    B = y[0::2, 1::2, 0::2]
+    C = y[1::2, 0::2, 0::2]
+    D = y[1::2, 1::2, 0::2]
+    E = y[0::2, 0::2, 1::2]
+    F = y[0::2, 1::2, 1::2]
+    G = y[1::2, 0::2, 1::2]
+    H = y[1::2, 1::2, 1::2]
 
     # Combine to form subbands
     p = ( A-G-D-F) * j2[0] + ( B-H+C+E) * j2[1]
@@ -575,15 +563,15 @@ def c2cube(z):
 
     y = np.zeros(np.asanyarray(z.shape[:3])*2, dtype=z.real.dtype)
 
-    y[1::2, 1::2, 1::2] = ( pr+qr+rr+sr)
-    y[0::2, 0::2, 1::2] = (-pr-qr+rr+sr)
-    y[1::2, 0::2, 0::2] = (-pr+qr+rr-sr)
-    y[0::2, 1::2, 0::2] = (-pr+qr-rr+sr)
+    y[0::2, 0::2, 0::2] = ( pr+qr+rr+sr)
+    y[1::2, 0::2, 1::2] = (-pr-qr+rr+sr)
+    y[1::2, 1::2, 0::2] = (-pr+qr+rr-sr)
+    y[0::2, 1::2, 1::2] = (-pr+qr-rr+sr)
 
-    y[1::2, 1::2, 0::2] = ( pi-qi+ri-si)
-    y[0::2, 0::2, 0::2] = (-pi+qi+ri-si)
-    y[1::2, 0::2, 1::2] = ( pi+qi-ri-si)
-    y[0::2, 1::2, 1::2] = ( pi+qi+ri+si)
+    y[0::2, 1::2, 0::2] = ( pi-qi+ri-si)
+    y[1::2, 1::2, 1::2] = (-pi+qi+ri-si)
+    y[1::2, 0::2, 0::2] = ( pi+qi-ri-si)
+    y[0::2, 0::2, 1::2] = ( pi+qi+ri+si)
 
     return y * scale
 

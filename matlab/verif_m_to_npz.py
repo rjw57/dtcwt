@@ -14,6 +14,11 @@ def _mean(a, axis=None, *args, **kwargs):
 
     return rv
 
+def centre_indices(ndim=2,apron=8):
+    """Returns the centre indices for the correct number of dimension
+    """
+    return tuple([slice(apron,-apron) for i in xrange(ndim)])
+
 def summarise_mat(M, apron=8):
     """HACK to provide a 'summary' matrix consisting of the corners of the
     matrix and summed versions of the sub matrices.
@@ -30,8 +35,17 @@ def summarise_mat(M, apron=8):
         np.hstack((M[-apron:,:apron,...], _mean(M[-apron:,apron:-apron,...], axis=1), M[-apron:,-apron:,...])),
     ))
 
-verif = loadmat('verification.mat')
-verif = dict((k,v) for k, v in verif.iteritems() if not k.startswith('_'))
+def summarise_cube(M, apron=4):
+    """Provide a summary cube, extending  summarise_mat to 3D
+    """
+    return np.dstack(
+        [summarise_mat(M[:,:,i,...], apron) for i in xrange(M.shape[-2])]
+    )    
+    
+verif_temp = loadmat('verification.mat')
+verif = dict((k,v) for k, v in verif_temp.iteritems() if (not k.startswith('_') and not k.startswith('qbgn')))
+verif_cube = dict((k,v) for k, v in verif_temp.iteritems() if (not k.startswith('_') and k.startswith('qbgn')))
+del verif_temp
 
 for idx, v in enumerate(verif['lena_Yh']):
     verif['lena_Yh_{0}'.format(idx)] = v[0]
@@ -49,6 +63,16 @@ for idx, v in enumerate(verif['lena_Yscaleb']):
     verif['lena_Yscaleb_{0}'.format(idx)] = v[0]
 del verif['lena_Yscaleb']
 
-summaries = dict((k, summarise_mat(v)) for k, v in verif.iteritems())
+for idx, v in enumerate(verif_cube['qbgn_Yh']):
+    verif_cube['qbgn_Yh_{0}'.format(idx)] = v[0]
+del verif_cube['qbgn_Yh']
 
+for idx, v in enumerate(verif_cube['qbgn_Yscale']):
+    verif_cube['qbgn_Yscale_{0}'.format(idx)] = v[0]
+del verif_cube['qbgn_Yscale']
+
+summaries = dict((k, summarise_mat(v)) for k, v in verif.iteritems())
+for k,v in verif_cube.iteritems():
+    summaries[k] = summarise_cube(v)
+    
 savez('../tests/verification.npz', **summaries)

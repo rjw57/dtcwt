@@ -62,7 +62,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-copyright = u'2013, Rich Wareham, Nick Kingsbury, Cian Shaffrey'
+copyright = u'2013, 2014, Rich Wareham, Nick Kingsbury, Cian Shaffrey'
 
 # Project version and release are set in setup.py
 

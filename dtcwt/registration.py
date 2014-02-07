@@ -292,7 +292,7 @@ def estimatereg(source, reference, regshape=None):
     # Extract number of levels and shape of level 3 subband
     nlevels = len(source.highpasses)
     if regshape is None:
-        avecs_shape = source.highpasses[2].shape[:2] + (6,)
+        avecs_shape = source.highpasses[3].shape[:2] + (6,)
     else:
         avecs_shape = tuple(regshape[:2]) + (6,)
 
@@ -312,7 +312,7 @@ def estimatereg(source, reference, regshape=None):
     for it in xrange(2 * (nlevels - 1)):
         s, e = nlevels, nlevels - 1 - it//2
         levels = list(x for x in xrange(s, e-1, -1)
-                      if x>=2 and x<nlevels and source.highpasses[x].shape[0] <= 2*avecs.shape[0] and source.highpasses[x].shape[1] <= 2*avecs.shape[1])
+                      if x>=3 and x<nlevels and source.highpasses[x].shape[0] <= 2*avecs.shape[0] and source.highpasses[x].shape[1] <= 2*avecs.shape[1])
         if len(levels) == 0:
             continue
 

@@ -27,7 +27,7 @@ and frequency responses[1].
 Usage is very similar to the standard 2-D transform function, but one uses the
 'near_sym_b_bp' and 'qshift_b_bp' wavelets.
 
-.. code-block::
+.. code:: python
 
     import dtcwt.numpy as backend
     transform = backend.Transform2d(biort='near_sym_bp', qshift='qshift_bp')

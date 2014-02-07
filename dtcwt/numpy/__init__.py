@@ -4,9 +4,12 @@ be available.
 
 """
 
-from .transform2d import Pyramid, Transform2d
+from .common import Pyramid
+from .transform1d import Transform1d
+from .transform2d import Transform2d
 
 __all__ = [
     'Pyramid',
+    'Transform1d',
     'Transform2d',
 ]

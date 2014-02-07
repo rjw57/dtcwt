@@ -13,11 +13,10 @@ MATLAB scripts but shouldn't be used in new projects.
 """
 from __future__ import absolute_import
 
-from dtcwt.transform1d import dtwavexfm, dtwaveifm
 from dtcwt.transform3d import dtwavexfm3, dtwaveifm3
 
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.numpy import Transform2d, Pyramid
+from dtcwt.numpy import Transform1d, Transform2d, Pyramid
 
 __all__ = [
     'dtwavexfm',
@@ -31,6 +30,81 @@ __all__ = [
     'dtwavexfm3',
     'dtwaveifm3',
 ]
+
+def dtwavexfm(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
+    """Perform a *n*-level DTCWT decompostion on a 1D column vector *X* (or on
+    the columns of a matrix *X*).
+
+    :param X: 1D real array or 2D real array whose columns are to be transformed
+    :param nlevels: Number of levels of wavelet decomposition
+    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+
+    :returns Yl: The real lowpass image from the final level
+    :returns Yh: A tuple containing the (N, M, 6) shape complex highpass subimages for each level.
+    :returns Yscale: If *include_scale* is True, a tuple containing real lowpass coefficients for every scale.
+
+    If *biort* or *qshift* are strings, they are used as an argument to the
+    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+    interpreted as tuples of vectors giving filter coefficients. In the *biort*
+    case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
+    be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
+
+    Example::
+
+        # Performs a 5-level transform on the real image X using the 13,19-tap
+        # filters for level 1 and the Q-shift 14-tap filters for levels >= 2.
+        Yl, Yh = dtwavexfm(X,5,'near_sym_b','qshift_b')
+
+    .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
+    .. codeauthor:: Nick Kingsbury, Cambridge University, May 2002
+    .. codeauthor:: Cian Shaffrey, Cambridge University, May 2002
+
+    """
+    trans = Transform1d(biort, qshift)
+    res = trans.forward(X, nlevels, include_scale)
+
+    if include_scale:
+        return res.lowpass, res.highpasses, res.scales
+    else:
+        return res.lowpass, res.highpasses
+
+def dtwaveifm(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, gain_mask=None):
+    """Perform an *n*-level dual-tree complex wavelet (DTCWT) 1D
+    reconstruction.
+
+    :param Yl: The real lowpass subband from the final level
+    :param Yh: A sequence containing the complex highpass subband for each level.
+    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+    :param gain_mask: Gain to be applied to each subband.
+
+    :returns Z: Reconstructed real array.
+
+    The *l*-th element of *gain_mask* is gain for wavelet subband at level l.
+    If gain_mask[l] == 0, no computation is performed for band *l*. Default
+    *gain_mask* is all ones. Note that *l* is 0-indexed.
+
+    If *biort* or *qshift* are strings, they are used as an argument to the
+    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+    interpreted as tuples of vectors giving filter coefficients. In the *biort*
+    case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
+    be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
+
+    Example::
+
+        # Performs a reconstruction from Yl,Yh using the 13,19-tap filters
+        # for level 1 and the Q-shift 14-tap filters for levels >= 2.
+        Z = dtwaveifm(Yl, Yh, 'near_sym_b', 'qshift_b')
+
+    .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
+    .. codeauthor:: Nick Kingsbury, Cambridge University, May 2002
+    .. codeauthor:: Cian Shaffrey, Cambridge University, May 2002
+
+    """
+    trans = Transform1d(biort, qshift)
+    res = trans.inverse(Pyramid(Yl, Yh), gain_mask=gain_mask)
+    return res
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.

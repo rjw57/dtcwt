@@ -87,8 +87,7 @@ class Pyramid(object):
 class Transform2d(Transform2dNumPy):
     """
     An implementation of the 2D DT-CWT via OpenCL. *biort* and *qshift* are the
-    wavelets which parameterise the transform. Valid values are documented in
-    :py:func:`dtcwt.dtwavexfm2`.
+    wavelets which parameterise the transform.
 
     If *queue* is non-*None* it is an instance of
     :py:class:`pyopencl.CommandQueue` which is used to compile and execute the

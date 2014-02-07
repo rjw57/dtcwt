@@ -43,8 +43,7 @@ class Pyramid(object):
 class Transform2d(object):
     """
     An implementation of the 2D DT-CWT via NumPy. *biort* and *qshift* are the
-    wavelets which parameterise the transform. Valid values are documented in
-    :py:func:`dtcwt.dtwavexfm2`.
+    wavelets which parameterise the transform.
 
     If *biort* or *qshift* are strings, they are used as an argument to the
     :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift` functions.

@@ -46,6 +46,12 @@ class Transform2d(object):
     wavelets which parameterise the transform. Valid values are documented in
     :py:func:`dtcwt.dtwavexfm2`.
 
+    If *biort* or *qshift* are strings, they are used as an argument to the
+    :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift` functions.
+    Otherwise, they are interpreted as tuples of vectors giving filter
+    coefficients. In the *biort* case, this should be (h0o, g0o, h1o, g1o). In
+    the *qshift* case, this should be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
+
     """
     def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT):
         # Load bi-orthogonal wavelets

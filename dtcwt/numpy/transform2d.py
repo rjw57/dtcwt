@@ -43,20 +43,6 @@ class TransformDomainSignal(object):
         self.subbands = tuple(asfarray(x) for x in subbands)
         self.scales = tuple(asfarray(x) for x in scales) if scales is not None else None
 
-class ReconstructedSignal(object):
-    """
-    A representation of the reconstructed signal from the inverse transform. A
-    backend is free to implement their own version of this class providing it
-    corresponds to the interface documented.
-
-    .. py:attribute:: value
-
-        A NumPy-compatible array containing the reconstructed signal.
-
-    """
-    def __init__(self, value):
-        self.value = asfarray(value)
-
 class Transform2d(object):
     """
     An implementation of the 2D DT-CWT via NumPy. *biort* and *qshift* are the
@@ -232,7 +218,7 @@ class Transform2d(object):
         :param td_signal: A :py:class:`dtcwt.TransformDomainSignal`-like class holding the transform domain representation to invert.
         :param gain_mask: Gain to be applied to each subband.
 
-        :returns: A :py:class:`dtcwt.ReconstructedSignal` compatible instance with the reconstruction.
+        :returns: A numpy-array compatible instance with the reconstruction.
 
         The (*d*, *l*)-th element of *gain_mask* is gain for subband with direction
         *d* at level *l*. If gain_mask[d,l] == 0, no computation is performed for
@@ -330,7 +316,7 @@ class Transform2d(object):
                 # Do odd top-level filters on rows.
                 Z = (_BACKEND.colfilter(y1.T,g0o) + _BACKEND.colfilter(y2.T,g1o)).T
 
-        return ReconstructedSignal(Z)
+        return Z
 
 #==========================================================================================
 #                       **********    INTERNAL FUNCTIONS    **********

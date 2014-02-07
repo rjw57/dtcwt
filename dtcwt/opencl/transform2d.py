@@ -11,7 +11,7 @@ from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty
 
-from dtcwt.numpy import TransformDomainSignal, ReconstructedSignal
+from dtcwt.numpy import TransformDomainSignal
 from dtcwt.numpy import Transform2d as Transform2dNumPy
 
 try:

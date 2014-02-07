@@ -66,7 +66,7 @@ Working on the Lena image, the standard 2-D DTCWT achieves perfect reconstructio
     image_t = transform.forward(image)
 
     # Inverse transform
-    Z = transform.inverse(image_t).value
+    Z = transform.inverse(image_t)
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)
@@ -90,7 +90,7 @@ Using the modified wavelets yields the following result:
     image_t = transform.forward(image)
 
     # Inverse transform
-    Z = transform.inverse(image_t).value
+    Z = transform.inverse(image_t)
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)

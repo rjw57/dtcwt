@@ -86,7 +86,7 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
     """
     trans = Transform2d(biort, qshift)
     res = trans.inverse(TransformDomainSignal(Yl, Yh), gain_mask=gain_mask)
-    return res.value
+    return res
 
 # BACKWARDS COMPATIBILITY: add a dtwave{i,x}fm2b function which is a copy of
 # dtwave{i,x}fm2b. The functionality of the ...b variant is rolled into the

@@ -288,9 +288,9 @@ To register the images we first take the DTCWT:
 .. ipython::
     :doctest:
 
-    In [5]: import dtcwt.numpy as backend
+    In [5]: import dtcwt
 
-    In [6]: transform = backend.Transform2d()
+    In [6]: transform = dtcwt.Transform2d()
 
     In [7]: ref_t = transform.forward(ref, nlevels=6)
 

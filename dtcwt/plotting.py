@@ -34,12 +34,12 @@ def overlay_quiver_DTCWT(image, vectorField, level, offset):
     .. plot::
         :include-source: true
 
+        import dtcwt
         import dtcwt.plotting as plotting
-        import dtcwt.numpy as backend
 
         lena = datasets.lena()
 
-        transform2d = backend.Transform2d()
+        transform2d = dtcwt.Transform2d()
         lena_t = transform2d.forward(lena, nlevels=3)
 
         plotting.overlay_quiver_DTCWT(lena, lena_t.highpasses[-1], 3, 0.5)

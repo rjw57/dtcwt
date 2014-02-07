@@ -1,9 +1,6 @@
 The dtcwt library
 =================
 
-Contents
-````````
-
 .. toctree::
     :maxdepth: 2
 

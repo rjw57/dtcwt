@@ -31,10 +31,10 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
 class TransformDomainSignal(object):
     """
     An interface-compatible version of
-    :py:class:`dtcwt.backend.TransformDomainSignal` where the initialiser
+    :py:class:`dtcwt.TransformDomainSignal` where the initialiser
     arguments are assumed to by :py:class:`pyopencl.array.Array` instances.
 
-    The attributes defined in :py:class:`dtcwt.backend.TransformDomainSignal`
+    The attributes defined in :py:class:`dtcwt.TransformDomainSignal`
     are implemented via properties. The original OpenCL arrays may be accessed
     via the ``cl_...`` attributes.
 
@@ -111,7 +111,7 @@ class Transform2d(Transform2dNumPy):
         :param X: 2D real array
         :param nlevels: Number of levels of wavelet decomposition
 
-        :returns: A :py:class:`dtcwt.backend.TransformDomainSignal` compatible object representing the transform-domain signal
+        :returns: A :py:class:`dtcwt.TransformDomainSignal` compatible object representing the transform-domain signal
 
         .. note::
 

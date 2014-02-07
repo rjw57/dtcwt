@@ -11,6 +11,7 @@ NumPy
 
 .. automodule:: dtcwt.numpy
     :members:
+    :inherited-members:
 
 .. automodule:: dtcwt.numpy.lowlevel
     :members:
@@ -20,6 +21,7 @@ OpenCL
 
 .. automodule:: dtcwt.opencl
     :members:
+    :inherited-members:
 
 .. automodule:: dtcwt.opencl.lowlevel
     :members:

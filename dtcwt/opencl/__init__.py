@@ -4,9 +4,9 @@ PyOpenCL be installed.
 
 """
 
-from .transform2d import TransformDomainSignal, Transform2d
+from .transform2d import Pyramid, Transform2d
 
 __all__ = [
-    'TransformDomainSignal',
+    'Pyramid',
     'Transform2d',
 ]

@@ -11,7 +11,7 @@ from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty
 
-from dtcwt.numpy import TransformDomainSignal
+from dtcwt.numpy import Pyramid
 from dtcwt.numpy import Transform2d as Transform2dNumPy
 
 try:
@@ -28,13 +28,13 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     else:
         return r.lowpass, r.subbands
 
-class TransformDomainSignal(object):
+class Pyramid(object):
     """
     An interface-compatible version of
-    :py:class:`dtcwt.TransformDomainSignal` where the initialiser
+    :py:class:`dtcwt.Pyramid` where the initialiser
     arguments are assumed to by :py:class:`pyopencl.array.Array` instances.
 
-    The attributes defined in :py:class:`dtcwt.TransformDomainSignal`
+    The attributes defined in :py:class:`dtcwt.Pyramid`
     are implemented via properties. The original OpenCL arrays may be accessed
     via the ``cl_...`` attributes.
 
@@ -111,7 +111,7 @@ class Transform2d(Transform2dNumPy):
         :param X: 2D real array
         :param nlevels: Number of levels of wavelet decomposition
 
-        :returns: A :py:class:`dtcwt.TransformDomainSignal` compatible object representing the transform-domain signal
+        :returns: A :py:class:`dtcwt.Pyramid` compatible object representing the transform-domain signal
 
         .. note::
 
@@ -182,9 +182,9 @@ class Transform2d(Transform2dNumPy):
 
         if nlevels == 0:
             if include_scale:
-                return TransformDomainSignal(X, (), ())
+                return Pyramid(X, (), ())
             else:
-                return TransformDomainSignal(X, ())
+                return Pyramid(X, ())
 
         # initialise
         Yh = [None,] * nlevels
@@ -278,6 +278,6 @@ class Transform2d(Transform2dNumPy):
                 'The rightmost column has been duplicated, prior to decomposition.')
 
         if include_scale:
-            return TransformDomainSignal(Yl, tuple(Yh), tuple(Yscale))
+            return Pyramid(Yl, tuple(Yh), tuple(Yscale))
         else:
-            return TransformDomainSignal(Yl, tuple(Yh))
+            return Pyramid(Yl, tuple(Yh))

@@ -14,7 +14,7 @@ from dtcwt.numpy.lowlevel import LowLevelBackendNumPy
 # Use the NumPy low-level backend
 _BACKEND = LowLevelBackendNumPy()
 
-class TransformDomainSignal(object):
+class Pyramid(object):
     """A representation of a transform domain signal.
 
     Backends are free to implement any class which respects this interface for
@@ -69,7 +69,7 @@ class Transform2d(object):
         :param X: 2D real array
         :param nlevels: Number of levels of wavelet decomposition
 
-        :returns: A :py:class:`dtcwt.TransformDomainSignal` compatible object representing the transform-domain signal
+        :returns: A :py:class:`dtcwt.Pyramid` compatible object representing the transform-domain signal
 
         .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
         .. codeauthor:: Nick Kingsbury, Cambridge University, Sept 2001
@@ -121,9 +121,9 @@ class Transform2d(object):
 
         if nlevels == 0:
             if include_scale:
-                return TransformDomainSignal(X, (), ())
+                return Pyramid(X, (), ())
             else:
-                return TransformDomainSignal(X, ())
+                return Pyramid(X, ())
 
         # initialise
         Yh = [None,] * nlevels
@@ -207,15 +207,15 @@ class Transform2d(object):
                 'The rightmost column has been duplicated, prior to decomposition.')
 
         if include_scale:
-            return TransformDomainSignal(Yl, tuple(Yh), tuple(Yscale))
+            return Pyramid(Yl, tuple(Yh), tuple(Yscale))
         else:
-            return TransformDomainSignal(Yl, tuple(Yh))
+            return Pyramid(Yl, tuple(Yh))
 
     def inverse(self, td_signal, gain_mask=None):
         """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D
         reconstruction.
 
-        :param td_signal: A :py:class:`dtcwt.TransformDomainSignal`-like class holding the transform domain representation to invert.
+        :param td_signal: A :py:class:`dtcwt.Pyramid`-like class holding the transform domain representation to invert.
         :param gain_mask: Gain to be applied to each subband.
 
         :returns: A numpy-array compatible instance with the reconstruction.

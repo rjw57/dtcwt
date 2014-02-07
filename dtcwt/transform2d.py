@@ -10,7 +10,7 @@ from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.utils import appropriate_complex_type_for, asfarray
 
-from dtcwt.numpy import Transform2d, TransformDomainSignal
+from dtcwt.numpy import Transform2d, Pyramid
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
@@ -85,7 +85,7 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
 
     """
     trans = Transform2d(biort, qshift)
-    res = trans.inverse(TransformDomainSignal(Yl, Yh), gain_mask=gain_mask)
+    res = trans.inverse(Pyramid(Yl, Yh), gain_mask=gain_mask)
     return res
 
 # BACKWARDS COMPATIBILITY: add a dtwave{i,x}fm2b function which is a copy of

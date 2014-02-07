@@ -1,9 +1,11 @@
+from __future__ import absolute_import
+
 import numpy as np
 import logging
 
 from six.moves import xrange
 
-from dtcwt import biort as _biort, qshift as _qshift
+from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.utils import asfarray

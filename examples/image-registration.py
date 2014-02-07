@@ -16,7 +16,7 @@ from matplotlib.pyplot import *
 import numpy as np
 
 import dtcwt
-from dtcwt.backend.backend_numpy import Transform2d
+from dtcwt.numpy import Transform2d
 import dtcwt.sampling
 from dtcwt.registration import *
 

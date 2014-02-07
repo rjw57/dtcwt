@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 import dtcwt
-from dtcwt.backend.backend_numpy import Transform2d
+from dtcwt.numpy import Transform2d
 from dtcwt.registration import *
 
 import tests.datasets as datasets

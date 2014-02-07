@@ -3,6 +3,8 @@ Convenience functions for plotting DTCWT-related objects.
 
 """
 
+from __future__ import absolute_import
+
 import numpy as np
 from matplotlib.pyplot import *
 
@@ -33,7 +35,7 @@ def overlay_quiver_DTCWT(image, vectorField, level, offset):
         :include-source: true
 
         import dtcwt.plotting as plotting
-        import dtcwt.backend.backend_numpy as backend
+        import dtcwt.numpy as backend
 
         lena = datasets.lena()
 

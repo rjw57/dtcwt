@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 
 # Wrap importing of pyopencl in a try/except block since it is not an error to
 # not have OpenCL installed when using dtcwt.

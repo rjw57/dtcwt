@@ -18,8 +18,8 @@ import logging
 
 from docopt import docopt
 import dtcwt
-from dtcwt.backend.backend_opencl import Transform2d as CLTransform2d
-from dtcwt.backend.backend_numpy import Transform2d as NumPyTransform2d
+from dtcwt.opencl import Transform2d as CLTransform2d
+from dtcwt.numpy import Transform2d as NumPyTransform2d
 import dtcwt.registration as reg
 import dtcwt.sampling
 from PIL import Image # Use 'Pillow', the PIL fork

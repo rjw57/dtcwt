@@ -29,7 +29,7 @@ Usage is very similar to the standard 2-D transform function, but one uses the
 
 .. code-block::
 
-    import dtcwt.backend.backend_numpy as backend
+    import dtcwt.numpy as backend
     transform = backend.Transform2d(biort='near_sym_bp', qshift='qshift_bp')
 
     # .. load image and select number of levels ...
@@ -56,7 +56,7 @@ Working on the Lena image, the standard 2-D DTCWT achieves perfect reconstructio
 .. plot::
     :include-source: true
 
-    import dtcwt.backend.backend_numpy as backend
+    import dtcwt.numpy as backend
 
     # Use the standard 2-D DTCWT
     transform = backend.Transform2d(biort='near_sym_b', qshift='qshift_b')
@@ -80,7 +80,7 @@ Using the modified wavelets yields the following result:
 .. plot::
     :include-source: true
 
-    import dtcwt.backend.backend_numpy as backend
+    import dtcwt.numpy as backend
 
     # Use the modified 2-D DTCWT
     transform = backend.Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')

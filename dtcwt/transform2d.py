@@ -1,15 +1,16 @@
+from __future__ import absolute_import
+
 import numpy as np
 import logging
 
 from six.moves import xrange
 
-from dtcwt import biort as _biort, qshift as _qshift
+from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.utils import appropriate_complex_type_for, asfarray
 
-from dtcwt.backend.base import TransformDomainSignal
-from dtcwt.backend.backend_numpy import Transform2d
+from dtcwt.numpy import Transform2d, TransformDomainSignal
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import numpy as np
 from six.moves import xrange
 from dtcwt.utils import as_column_vector, asfarray, appropriate_complex_type_for, reflect

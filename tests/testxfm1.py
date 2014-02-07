@@ -3,7 +3,8 @@ from nose.tools import raises
 from nose.plugins.attrib import attr
 
 import numpy as np
-from dtcwt import dtwavexfm, dtwaveifm, biort, qshift
+from dtcwt.compat import dtwavexfm, dtwaveifm
+from dtcwt.coeffs import biort, qshift
 
 TOLERANCE = 1e-12
 

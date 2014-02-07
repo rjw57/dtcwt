@@ -1,19 +1,63 @@
+from __future__ import absolute_import
+
 import numpy as np
 import logging
 
 from six.moves import xrange
 
-from dtcwt.backend.base import TransformDomainSignal, ReconstructedSignal, Transform2d as Transform2dBase
 from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import appropriate_complex_type_for, asfarray
 
-from dtcwt.backend.backend_numpy.lowlevel import LowLevelBackendNumPy
+from dtcwt.numpy.lowlevel import LowLevelBackendNumPy
 
 # Use the NumPy low-level backend
 _BACKEND = LowLevelBackendNumPy()
 
-class Transform2d(Transform2dBase):
+class TransformDomainSignal(object):
+    """A representation of a transform domain signal.
+
+    Backends are free to implement any class which respects this interface for
+    storing transform-domain signals. The inverse transform may accept a
+    backend-specific version of this class but should always accept any class
+    which corresponds to this interface.
+
+    .. py:attribute:: lowpass
+        
+        A NumPy-compatible array containing the coarsest scale lowpass signal.
+
+    .. py:attribute:: subbands
+        
+        A tuple where each element is the complex subband coefficients for
+        corresponding scales finest to coarsest.
+
+    .. py:attribute:: scales
+        
+        *(optional)* A tuple where each element is a NumPy-compatible array
+        containing the lowpass signal for corresponding scales finest to
+        coarsest. This is not required for the inverse and may be *None*.
+
+    """
+    def __init__(self, lowpass, subbands, scales=None):
+        self.lowpass = asfarray(lowpass)
+        self.subbands = tuple(asfarray(x) for x in subbands)
+        self.scales = tuple(asfarray(x) for x in scales) if scales is not None else None
+
+class ReconstructedSignal(object):
+    """
+    A representation of the reconstructed signal from the inverse transform. A
+    backend is free to implement their own version of this class providing it
+    corresponds to the interface documented.
+
+    .. py:attribute:: value
+
+        A NumPy-compatible array containing the reconstructed signal.
+
+    """
+    def __init__(self, value):
+        self.value = asfarray(value)
+
+class Transform2d(object):
     """
     An implementation of the 2D DT-CWT via NumPy. *biort* and *qshift* are the
     wavelets which parameterise the transform. Valid values are documented in

@@ -1,8 +1,8 @@
 import os
 
 import numpy as np
-from dtcwt import biort, qshift
-from dtcwt.backend.backend_opencl.lowlevel import colfilter
+from dtcwt.coeffs import biort, qshift
+from dtcwt.opencl.lowlevel import colfilter
 from dtcwt.lowlevel import colfilter as colfilter_gold
 
 from .util import assert_almost_equal, skip_if_no_cl

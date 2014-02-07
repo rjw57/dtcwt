@@ -10,6 +10,5 @@ The dtcwt library
     algorithms
     examples
     reference
-    implementations
 
 .. vim:sw=4:sts=4:et

@@ -16,6 +16,7 @@ def overlay_quiver_DTCWT(image, vectorField, level, offset):
     """Overlays nicely coloured quiver plot of complex coefficients over original full-size image,
     providing a useful phase visualisation.
 
+    :param image: array holding grayscale values on the interval [0, 255] to display
     :param vectorField: a single [MxNx6] numpy array of DTCWT coefficients
     :param level: the transform level (1-indexed) of *vectorField*.
     :param offset: Offset for DTCWT coefficients (typically 0.5)
@@ -42,7 +43,7 @@ def overlay_quiver_DTCWT(image, vectorField, level, offset):
         transform2d = dtcwt.Transform2d()
         lena_t = transform2d.forward(lena, nlevels=3)
 
-        plotting.overlay_quiver_DTCWT(lena, lena_t.highpasses[-1], 3, 0.5)
+        plotting.overlay_quiver_DTCWT(lena*255, lena_t.highpasses[-1], 3, 0.5)
 
     .. codeauthor:: R. Anderson, 2005 (MATLAB)
     .. codeauthor:: S. C. Forshaw, 2014 (Python)

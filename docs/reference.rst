@@ -7,6 +7,9 @@ Main interface
 .. automodule:: dtcwt
     :members:
 
+.. automodule:: dtcwt.coeffs
+    :members:
+
 Keypoint analysis
 `````````````````
 
@@ -31,20 +34,14 @@ Plotting functions
 .. automodule:: dtcwt.plotting
     :members:
 
+Miscellaneous and low-level support functions
+`````````````````````````````````````````````
+
+.. automodule:: dtcwt.utils
+    :members:
+
 Compatibility with MATLAB
 `````````````````````````
 
 .. automodule:: dtcwt.compat
-    :members:
-
-Miscellaneous and low-level support functions
-`````````````````````````````````````````````
-
-A normal user should not need to call these functions but they are documented
-here just in case you do.
-
-.. automodule:: dtcwt.coeffs
-    :members:
-
-.. automodule:: dtcwt.utils
     :members:

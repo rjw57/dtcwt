@@ -185,11 +185,11 @@ class Transform2d(object):
         else:
             return Pyramid(Yl, tuple(Yh))
 
-    def inverse(self, td_signal, gain_mask=None):
+    def inverse(self, pyramid, gain_mask=None):
         """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D
         reconstruction.
 
-        :param td_signal: A :py:class:`dtcwt.Pyramid`-like class holding the transform domain representation to invert.
+        :param pyramid: A :py:class:`dtcwt.Pyramid`-like class holding the transform domain representation to invert.
         :param gain_mask: Gain to be applied to each subband.
 
         :returns: A numpy-array compatible instance with the reconstruction.
@@ -204,8 +204,8 @@ class Transform2d(object):
         .. codeauthor:: Cian Shaffrey, Cambridge University, May 2002
 
         """
-        Yl = td_signal.lowpass
-        Yh = td_signal.highpasses
+        Yl = pyramid.lowpass
+        Yh = pyramid.highpasses
 
         a = len(Yh) # No of levels.
 

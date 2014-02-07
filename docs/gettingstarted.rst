@@ -1,6 +1,10 @@
 Getting Started
 ===============
 
+This library provides support for computing 1D, 2D and 3D dual-tree complex
+wavelet transforms and their inverse in Python along with some signal
+processing algorithms which make use of the DTCWT.
+
 This section will guide you through using the ``dtcwt`` library.  See
 :doc:`reference` for full details on the library's API.
 

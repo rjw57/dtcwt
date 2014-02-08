@@ -74,6 +74,9 @@ Changes
 * MATLAB-style functions such as ``dtwavexfm2`` have been moved into a separate
   ``dtcwt.compat`` module.
 * Backends moved to ``dtcwt.numpy`` and ``dtcwt.opencl`` modules.
+* Removed ``dtcwt.base.ReconstructedSignal`` which was a needless wrapper
+  around NumPy arrays.
+* Rename ``TransformDomainSignal`` to ``Pyramid``.
 
 0.8.0
 '''''

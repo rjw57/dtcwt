@@ -6,13 +6,13 @@ from dtcwt.sampling import upsample_highpass, upsample
 
 __all__ = [ 'find_keypoints' ]
 
-def find_keypoints(highpass_subbands, method=None,
+def find_keypoints(highpass_highpasses, method=None,
         alpha=1.0, beta=0.4, kappa=1.0/6.0,
         threshold=None, max_points=None,
-        upsample_keypoint_energy=None, upsample_subbands=None,
+        upsample_keypoint_energy=None, upsample_highpasses=None,
         refine_positions=True, skip_levels=1):
     """
-    :param highpass_subbands: (NxMx6) matrix of highpass subband images
+    :param highpass_highpasses: (NxMx6) matrix of highpass subband images
     :param method: *(optional)* string specifying which keypoint energy method to use
     :param alpha: *(optional)* scale parameter for ``'fauqueur'`` method
     :param beta: *(optional)* shape parameter for ``'fauqueur'`` method
@@ -50,7 +50,7 @@ def find_keypoints(highpass_subbands, method=None,
     1 or 2. If *skip_levels* is 0 then all levels will be used to compute
     keypoint energy.
 
-    The *upsample_subbands* and *upsample_keypoint_energy* parameters are used
+    The *upsample_highpasses* and *upsample_keypoint_energy* parameters are used
     to control whether the individual subband coefficients and/org the keypoint
     energy map are upscaled by 2 before finding keypoints. If these parameters
     are None then no corresponding upscaling is performed. If non-None they
@@ -64,7 +64,7 @@ def find_keypoints(highpass_subbands, method=None,
     =========== ======================================= ======================
     fauqueur    Geometric mean of absolute values[1]    *alpha*, *beta*
     bendale     Minimum absolute value[2]               none
-    kingsbury   Cross-product of orthogonal subbands    *kappa*
+    kingsbury   Cross-product of orthogonal highpasses    *kappa*
     =========== ======================================= ======================
 
     [1] Julien Fauqueur, Nick Kingsbury, and Ryan Anderson. *Multiscale
@@ -83,20 +83,20 @@ def find_keypoints(highpass_subbands, method=None,
         method = 'fauqueur'
 
     # Skip levels
-    highpass_subbands = highpass_subbands[skip_levels:]
+    highpass_highpasses = highpass_highpasses[skip_levels:]
 
     # Compute contribution to scale from upsampling
     upsample_scale = 1
-    if upsample_subbands is not None:
+    if upsample_highpasses is not None:
         upsample_scale <<= 1
     if upsample_keypoint_energy is not None:
         upsample_scale <<= 1
 
     # Find keypoint energy map for each level
     kp_energies = []
-    for subband in highpass_subbands:
-        if upsample_subbands is not None:
-            subband = upsample_highpass(subband, upsample_subbands)
+    for subband in highpass_highpasses:
+        if upsample_highpasses is not None:
+            subband = upsample_highpass(subband, upsample_highpasses)
 
         if method == 'fauqueur':
             kp_energies.append(_keypoint_energy_fauqueur(subband, alpha, beta))

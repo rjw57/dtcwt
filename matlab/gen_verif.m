@@ -30,7 +30,7 @@ qshift_b_bp = load('qshift_b_bp');
 
 [lena_Ylb, lena_Yhb, lena_Yscaleb] = dtwavexfm2b(lena, 4, 'near_sym_b_bp', 'qshift_b_bp');
 
-%% 3x interpolation of subbands
+%% 3x interpolation of highpasses
 x = lena_Yh{3};
 sx = size(x);
 nx = sx(2)*3; ny = sx(1)*3;

@@ -7,18 +7,8 @@ Main interface
 .. automodule:: dtcwt
     :members:
 
-NumPy
-'''''
-
-.. automodule:: dtcwt.numpy
+.. automodule:: dtcwt.coeffs
     :members:
-    :inherited-members:
-
-OpenCL
-''''''
-
-.. automodule:: dtcwt.opencl
-    :inherited-members:
 
 Keypoint analysis
 `````````````````
@@ -44,23 +34,43 @@ Plotting functions
 .. automodule:: dtcwt.plotting
     :members:
 
+Miscellaneous and low-level support functions
+`````````````````````````````````````````````
+
+.. automodule:: dtcwt.utils
+    :members:
+
 Compatibility with MATLAB
 `````````````````````````
 
 .. automodule:: dtcwt.compat
     :members:
 
-Miscellaneous and low-level support functions
-`````````````````````````````````````````````
+Backends
+````````
 
-A normal user should not need to call these functions but they are documented
-here just in case you do.
+The following modules provide backend-specific implementations. Usually you
+won't need to import these modules directly; the main API will use an
+appropriate implementation. Occasionally, however, you may want to benchmark
+one implementation against the other.
 
-.. automodule:: dtcwt.coeffs
+NumPy
+'''''
+
+.. automodule:: dtcwt.numpy
+    :members:
+    :inherited-members:
+
+.. automodule:: dtcwt.numpy.lowlevel
     :members:
 
-.. automodule:: dtcwt.lowlevel
+OpenCL
+''''''
+
+.. automodule:: dtcwt.opencl
+    :members:
+    :inherited-members:
+
+.. automodule:: dtcwt.opencl.lowlevel
     :members:
 
-.. automodule:: dtcwt.utils
-    :members:

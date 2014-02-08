@@ -7,7 +7,7 @@ from six.moves import xrange
 
 from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.lowlevel import colfilter, coldfilt, colifilt
+from dtcwt.numpy.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.utils import asfarray
 
 def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4, discard_level_1=False):

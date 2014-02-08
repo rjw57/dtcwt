@@ -35,8 +35,8 @@ subband coefficients::
 
     >>> print(Yl.shape)
     (16, 16, 16)
-    >>> for subbands in Yh:
-    ...     print(subbands.shape)
+    >>> for highpasses in Yh:
+    ...     print(highpasses.shape)
     (32, 32, 32, 28)
     (16, 16, 16, 28)
     (8, 8, 8, 28)

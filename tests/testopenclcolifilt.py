@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 from dtcwt.opencl.lowlevel import colifilt
-from dtcwt.lowlevel import colifilt as colifilt_gold
+from dtcwt.numpy.lowlevel import colifilt as colifilt_gold
 from dtcwt.coeffs import biort, qshift
 
 from nose.tools import raises

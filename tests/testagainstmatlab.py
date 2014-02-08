@@ -5,7 +5,7 @@ from nose.plugins.attrib import attr
 import numpy as np
 from dtcwt.compat import dtwavexfm2, dtwaveifm2, dtwavexfm2b, dtwaveifm2b
 from dtcwt.coeffs import biort, qshift
-from dtcwt.lowlevel import coldfilt, colifilt
+from dtcwt.numpy.lowlevel import coldfilt, colifilt
 from dtcwt.sampling import rescale_highpass
 
 from .util import assert_almost_equal, summarise_mat, assert_percentile_almost_equal

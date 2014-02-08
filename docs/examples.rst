@@ -17,8 +17,8 @@ in an interactive figure using matplotlib. A screenshot is reproduced below:
 
 There are some points to note about this diagram. Each subband is labeled sich
 that '1' refers to the first subband, '5' the fifth and so forth. On this
-diagram the subbands are all four apart reflecting the fact that, for example,
-subbands 2, 3 and 4 are positioned in the other four quadrants of the upper
+diagram the highpasses are all four apart reflecting the fact that, for example,
+highpasses 2, 3 and 4 are positioned in the other four quadrants of the upper
 hemisphere reflecting the position of subband 1. There are seven visible
 subband directions in the +ve quadrant of the hemisphere and hence there are 28
 directions in total over all four quadrants.

@@ -27,10 +27,10 @@ and frequency responses[1].
 Usage is very similar to the standard 2-D transform function, but one uses the
 'near_sym_b_bp' and 'qshift_b_bp' wavelets.
 
-.. code-block::
+.. code:: python
 
-    import dtcwt.numpy as backend
-    transform = backend.Transform2d(biort='near_sym_bp', qshift='qshift_bp')
+    import dtcwt
+    transform = dtcwt.Transform2d(biort='near_sym_bp', qshift='qshift_bp')
 
     # .. load image and select number of levels ...
 
@@ -56,17 +56,17 @@ Working on the Lena image, the standard 2-D DTCWT achieves perfect reconstructio
 .. plot::
     :include-source: true
 
-    import dtcwt.numpy as backend
+    import dtcwt
 
     # Use the standard 2-D DTCWT
-    transform = backend.Transform2d(biort='near_sym_b', qshift='qshift_b')
+    transform = dtcwt.Transform2d(biort='near_sym_b', qshift='qshift_b')
 
     # Forward transform
     image = datasets.lena()
     image_t = transform.forward(image)
 
     # Inverse transform
-    Z = transform.inverse(image_t).value
+    Z = transform.inverse(image_t)
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)
@@ -80,17 +80,17 @@ Using the modified wavelets yields the following result:
 .. plot::
     :include-source: true
 
-    import dtcwt.numpy as backend
+    import dtcwt
 
     # Use the modified 2-D DTCWT
-    transform = backend.Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
+    transform = dtcwt.Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
 
     # Forward transform
     image = datasets.lena()
     image_t = transform.forward(image)
 
     # Inverse transform
-    Z = transform.inverse(image_t).value
+    Z = transform.inverse(image_t)
 
     # Show the error
     imshow(Z-image, cmap=cm.gray)

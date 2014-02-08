@@ -106,33 +106,33 @@ def qtildematrices(t_ref, t_target, levels):
     :returns: a tuple of :math:`\tilde{Q}` matrices for each index in *levels*
 
     Both *t_ref* and *t_target* should be
-    :py:class:`dtcwt.TransformDomainSignal`-compatible objects.
+    :py:class:`dtcwt.Pyramid`-compatible objects.
     Indices in *levels* are 0-based.
 
     The returned matrices are NxMx27 where NxM is the shape of the
     corresponding level's highpass subbands.
 
     """
-    # Extract subbands
-    Yh1 = t_ref.subbands
-    Yh2 = t_target.subbands
+    # Extract highpasses
+    Yh1 = t_ref.highpasses
+    Yh2 = t_target.highpasses
 
     # A list of arrays of \tilde{Q} matrices for each level
     Qt_mats = []
 
     for level in levels:
-        subbands1, subbands2 = Yh1[level], Yh2[level]
-        xs, ys = np.meshgrid(np.arange(0,1,1/subbands1.shape[1]),
-                             np.arange(0,1,1/subbands1.shape[0]))
+        highpasses1, highpasses2 = Yh1[level], Yh2[level]
+        xs, ys = np.meshgrid(np.arange(0,1,1/highpasses1.shape[1]),
+                             np.arange(0,1,1/highpasses1.shape[0]))
 
         Qt_mat_sum = None
-        for subband in xrange(subbands1.shape[2]):
-            C_d = confidence(subbands1[:,:,subband], subbands2[:,:,subband])
-            dy, dx, dt = phasegradient(subbands1[:,:,subband], subbands2[:,:,subband],
+        for subband in xrange(highpasses1.shape[2]):
+            C_d = confidence(highpasses1[:,:,subband], highpasses2[:,:,subband])
+            dy, dx, dt = phasegradient(highpasses1[:,:,subband], highpasses2[:,:,subband],
                                             EXPECTED_SHIFTS[subband,:])
 
-            dx *= subbands1.shape[1]
-            dy *= subbands1.shape[0]
+            dx *= highpasses1.shape[1]
+            dy *= highpasses1.shape[0]
 
             # This is the equivalent of the following for each member of the array
             #  Kt_mat = np.array(((1, 0, s*x, 0, s*y, 0, 0), (0, 1, 0, s*x, 0, s*y, 0), (0,0,0,0,0,0,1)))
@@ -250,7 +250,7 @@ def warptransform(t, avecs, levels, method=None):
     :param levels: a sequence of 0-based indices specifying which levels to act on
 
     *t* should be a
-    :py:class:`dtcwt.TransformDomainSignal`-compatible instance.
+    :py:class:`dtcwt.Pyramid`-compatible instance.
 
     The *method* parameter is interpreted as in :py:func:`dtcwt.sampling.rescale` and
     is the sampling method used to resize *avecs* to *shape*.
@@ -262,14 +262,14 @@ def warptransform(t, avecs, levels, method=None):
         deep-copied and warped.
 
     """
-    warped_subbands = list(t.subbands)
+    warped_highpasses = list(t.highpasses)
 
     # Warp specified levels
     for l in levels:
-        warped_subbands[l] = warphighpass(warped_subbands[l], avecs, method=method)
+        warped_highpasses[l] = warphighpass(warped_highpasses[l], avecs, method=method)
 
     # Clone the transform
-    return dtcwt.numpy.TransformDomainSignal(t.lowpass, tuple(warped_subbands), t.scales)
+    return dtcwt.numpy.Pyramid(t.lowpass, tuple(warped_highpasses), t.scales)
 
 def estimatereg(source, reference, regshape=None):
     """
@@ -279,7 +279,7 @@ def estimatereg(source, reference, regshape=None):
     :param reference: transformed reference image
 
     The *reference* and *source* parameters should support the same API as
-    :py:class:`dtcwt.TransformDomainSignal`.
+    :py:class:`dtcwt.Pyramid`.
 
     The local affine distortion is estimated at at 8x8 pixel scales.
     Return a NxMx6 array where the 6-element vector at (N,M) corresponds to the
@@ -290,9 +290,9 @@ def estimatereg(source, reference, regshape=None):
 
     """
     # Extract number of levels and shape of level 3 subband
-    nlevels = len(source.subbands)
+    nlevels = len(source.highpasses)
     if regshape is None:
-        avecs_shape = source.subbands[2].shape[:2] + (6,)
+        avecs_shape = source.highpasses[2].shape[:2] + (6,)
     else:
         avecs_shape = tuple(regshape[:2]) + (6,)
 
@@ -309,10 +309,9 @@ def estimatereg(source, reference, regshape=None):
         avecs[:,:,idx] = a[idx]
 
     # Refine estimate
-    for it in xrange(2 * (nlevels - 1)):
-        s, e = nlevels, nlevels - 1 - it//2
-        levels = list(x for x in xrange(s, e-1, -1)
-                      if x>=2 and x<nlevels and source.subbands[x].shape[0] <= 2*avecs.shape[0] and source.subbands[x].shape[1] <= 2*avecs.shape[1])
+    for it in xrange(2 * (nlevels-3) - 1):
+        s, e = nlevels, nlevels - 2 - (it+1)//2
+        levels = list(x for x in xrange(s, e-1, -1) if x>=2 and x<nlevels)
         if len(levels) == 0:
             continue
 

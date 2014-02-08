@@ -57,7 +57,7 @@ def main():
 
     print('Running NumPy colfilter...')
     a = benchmark('colfilter(lena, h1o)',
-            'from dtcwt.lowlevel import colfilter; from __main__ import lena, h1o')
+            'from dtcwt.numpy.lowlevel import colfilter; from __main__ import lena, h1o')
     print('Running OpenCL colfilter...')
     b = benchmark('colfilter(lena, h1o)',
             'from dtcwt.opencl.lowlevel import colfilter; from __main__ import lena, h1o')
@@ -66,7 +66,7 @@ def main():
 
     print('Running NumPy coldfilt...')
     a = benchmark('coldfilt(lena, h0b, h0a)',
-            'from dtcwt.lowlevel import coldfilt; from __main__ import lena, h0b, h0a')
+            'from dtcwt.numpy.lowlevel import coldfilt; from __main__ import lena, h0b, h0a')
     print('Running OpenCL coldfilt...')
     b = benchmark('coldfilt(lena, h0b, h0a)',
             'from dtcwt.opencl.lowlevel import coldfilt; from __main__ import lena, h0b, h0a')
@@ -75,7 +75,7 @@ def main():
 
     print('Running NumPy colifilt...')
     a = benchmark('colifilt(lena, h0b, h0a)',
-            'from dtcwt.lowlevel import colifilt; from __main__ import lena, h0b, h0a')
+            'from dtcwt.numpy.lowlevel import colifilt; from __main__ import lena, h0b, h0a')
     print('Running OpenCL colifilt...')
     b = benchmark('colifilt(lena, h0b, h0a)',
             'from dtcwt.opencl.lowlevel import colifilt; from __main__ import lena, h0b, h0a')

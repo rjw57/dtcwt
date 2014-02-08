@@ -1,18 +1,12 @@
 Getting Started
 ===============
 
-This section will guide you through using the ``dtcwt`` library.  Once
-installed, you are most likely to use one of these functions:
+This library provides support for computing 1D, 2D and 3D dual-tree complex
+wavelet transforms and their inverse in Python along with some signal
+processing algorithms which make use of the DTCWT.
 
-* :py:func:`dtcwt.dtwavexfm` -- 1D DT-CWT transform.
-* :py:func:`dtcwt.dtwaveifm` -- Inverse 1D DT-CWT transform.
-* :py:func:`dtcwt.dtwavexfm2` -- 2D DT-CWT transform.
-* :py:func:`dtcwt.dtwaveifm2` -- Inverse 2D DT-CWT transform.
-* :py:func:`dtcwt.dtwavexfm3` -- 3D DT-CWT transform.
-* :py:func:`dtcwt.dtwaveifm3` -- Inverse 3D DT-CWT transform.
-
-See :doc:`reference` for full details on how to call these functions. We shall
-present some simple usage below.
+This section will guide you through using the ``dtcwt`` library.  See
+:doc:`reference` for full details on the library's API.
 
 Installation
 ------------

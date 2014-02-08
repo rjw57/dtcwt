@@ -56,11 +56,11 @@ example, to compute the 2D DT-CWT of the 2D real array in *X*::
     >>> trans = Transform2d()           # You may optionally specify which wavelets to use here
     >>> Y = trans.forward(X, nlevels=4) # Perform a 4-level transform of X
     >>> imshow(Y.lowpass)               # Show coarsest scale low-pass image
-    >>> imshow(Y.subbands[-1][:,:,0])   # Show first coarsest scale subband
+    >>> imshow(Y.highpasses[-1][:,:,0])   # Show first coarsest scale subband
 
 In this case *Y* is an instance of a class which behaves like
-:py:class:`dtcwt.TransformDomainSignal`. Backends are free to
+:py:class:`dtcwt.Pyramid`. Backends are free to
 return whatever result they like as long as the result can be used like this
 base class. (For example, the OpenCL backend returns a
-:py:class:`dtcwt.opencl.TransformDomainSignal` instance which
+:py:class:`dtcwt.opencl.Pyramid` instance which
 keeps the device-side results available.)

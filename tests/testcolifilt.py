@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-from dtcwt.lowlevel import colifilt
+from dtcwt.numpy.lowlevel import colifilt
 
 from nose.tools import raises
 

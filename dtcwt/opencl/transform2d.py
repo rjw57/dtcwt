@@ -11,7 +11,7 @@ from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty
 
-from dtcwt.numpy import TransformDomainSignal, ReconstructedSignal
+from dtcwt.numpy import Pyramid
 from dtcwt.numpy import Transform2d as Transform2dNumPy
 
 try:
@@ -24,17 +24,17 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     t = Transform2d(biort=biort, qshift=qshift, queue=queue)
     r = t.forward(X, nlevels=nlevels, include_scale=include_scale)
     if include_scale:
-        return r.lowpass, r.subbands, r.scales
+        return r.lowpass, r.highpasses, r.scales
     else:
-        return r.lowpass, r.subbands
+        return r.lowpass, r.highpasses
 
-class TransformDomainSignal(object):
+class Pyramid(object):
     """
     An interface-compatible version of
-    :py:class:`dtcwt.backend.TransformDomainSignal` where the initialiser
+    :py:class:`dtcwt.Pyramid` where the initialiser
     arguments are assumed to by :py:class:`pyopencl.array.Array` instances.
 
-    The attributes defined in :py:class:`dtcwt.backend.TransformDomainSignal`
+    The attributes defined in :py:class:`dtcwt.Pyramid`
     are implemented via properties. The original OpenCL arrays may be accessed
     via the ``cl_...`` attributes.
 
@@ -51,7 +51,7 @@ class TransformDomainSignal(object):
 
         The CL array containing the lowpass image.
 
-    .. py:attribute:: cl_subbands
+    .. py:attribute:: cl_highpasses
 
         A tuple of CL arrays containing the subband images.
 
@@ -61,9 +61,9 @@ class TransformDomainSignal(object):
         scale.
 
     """
-    def __init__(self, lowpass, subbands, scales=None):
+    def __init__(self, lowpass, highpasses, scales=None):
         self.cl_lowpass = lowpass
-        self.cl_subbands = subbands
+        self.cl_highpasses = highpasses
         self.cl_scales = scales
 
     @property
@@ -73,10 +73,10 @@ class TransformDomainSignal(object):
         return self._lowpass
 
     @property
-    def subbands(self):
-        if not hasattr(self, '_subbands'):
-            self._subbands = tuple(to_array(x) for x in self.cl_subbands) if self.cl_subbands is not None else None
-        return self._subbands
+    def highpasses(self):
+        if not hasattr(self, '_highpasses'):
+            self._highpasses = tuple(to_array(x) for x in self.cl_highpasses) if self.cl_highpasses is not None else None
+        return self._highpasses
 
     @property
     def scales(self):
@@ -87,13 +87,18 @@ class TransformDomainSignal(object):
 class Transform2d(Transform2dNumPy):
     """
     An implementation of the 2D DT-CWT via OpenCL. *biort* and *qshift* are the
-    wavelets which parameterise the transform. Valid values are documented in
-    :py:func:`dtcwt.dtwavexfm2`.
+    wavelets which parameterise the transform.
 
     If *queue* is non-*None* it is an instance of
     :py:class:`pyopencl.CommandQueue` which is used to compile and execute the
     OpenCL kernels which implement the transform. If it is *None*, the first
     available compute device is used.
+
+    If *biort* or *qshift* are strings, they are used as an argument to the
+    :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift` functions.
+    Otherwise, they are interpreted as tuples of vectors giving filter
+    coefficients. In the *biort* case, this should be (h0o, g0o, h1o, g1o). In
+    the *qshift* case, this should be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
 
     .. note::
         
@@ -111,7 +116,7 @@ class Transform2d(Transform2dNumPy):
         :param X: 2D real array
         :param nlevels: Number of levels of wavelet decomposition
 
-        :returns: A :py:class:`dtcwt.backend.TransformDomainSignal` compatible object representing the transform-domain signal
+        :returns: A :py:class:`dtcwt.Pyramid` compatible object representing the transform-domain signal
 
         .. note::
 
@@ -182,9 +187,9 @@ class Transform2d(Transform2dNumPy):
 
         if nlevels == 0:
             if include_scale:
-                return TransformDomainSignal(X, (), ())
+                return Pyramid(X, (), ())
             else:
-                return TransformDomainSignal(X, ())
+                return Pyramid(X, ())
 
         # initialise
         Yh = [None,] * nlevels
@@ -278,6 +283,6 @@ class Transform2d(Transform2dNumPy):
                 'The rightmost column has been duplicated, prior to decomposition.')
 
         if include_scale:
-            return TransformDomainSignal(Yl, tuple(Yh), tuple(Yscale))
+            return Pyramid(Yl, tuple(Yh), tuple(Yscale))
         else:
-            return TransformDomainSignal(Yl, tuple(Yh))
+            return Pyramid(Yl, tuple(Yh))

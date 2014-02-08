@@ -28,6 +28,6 @@ class Pyramid(object):
     """
     def __init__(self, lowpass, highpasses, scales=None):
         self.lowpass = asfarray(lowpass)
-        self.highpasses = tuple(asfarray(x) for x in highpasses)
+        self.highpasses = tuple(asfarray(x) if x is not None else None for x in highpasses)
         self.scales = tuple(asfarray(x) for x in scales) if scales is not None else None
 

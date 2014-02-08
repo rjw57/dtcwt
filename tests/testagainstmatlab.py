@@ -4,7 +4,6 @@ from nose.plugins.attrib import attr
 
 import numpy as np
 
-from scipy.io import loadmat
 from dtcwt.compat import dtwavexfm2, dtwaveifm2, dtwavexfm2b, dtwaveifm2b
 from dtcwt.coeffs import biort, qshift
 from dtcwt.numpy.lowlevel import coldfilt, colifilt
@@ -57,7 +56,7 @@ def setup():
     lena = datasets.lena()
 
     global qbgn
-    qbgn = loadmat(os.path.join(os.path.dirname(__file__), 'qbgn.mat'))['qbgn']
+    qbgn = np.load(os.path.join(os.path.dirname(__file__), 'qbgn.npz'))['qbgn']
 
     global verif
     verif = np.load(os.path.join(os.path.dirname(__file__), 'verification.npz'))

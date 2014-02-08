@@ -16,7 +16,7 @@ class Transform3d(object):
     """
     An implementation of the 3D DT-CWT via NumPy. *biort* and *qshift* are the
     wavelets which parameterise the transform. Valid values are documented in
-    :py:func:`dtcwt.dtwavexfm3`.
+    :py:func:`dtcwt.compat.dtwavexfm3`.
 
     """
     def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
@@ -33,29 +33,29 @@ class Transform3d(object):
             self.qshift = qshift
 
         self.ext_mode = ext_mode
-            
+
     def forward(self, X, nlevels=3, include_scale=False, discard_level_1=False):
         """Perform a *n*-level DTCWT-3D decompostion on a 3D matrix *X*.
-        
+
         :param X: 3D real array-like object
         :param nlevels: Number of levels of wavelet decomposition
         :param biort: Level 1 wavelets to use. See :py:func:`biort`.
         :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
         :param discard_level_1: True if level 1 high-pass bands are to be discarded.
-        
+
         :returns Yl: The real lowpass image from the final level
         :returns Yh: A tuple containing the complex highpass subimages for each level.
-        
+
         Each element of *Yh* is a 4D complex array with the 4th dimension having
         size 28. The 3D slice ``Yh[l][:,:,:,d]`` corresponds to the complex higpass
         coefficients for direction d at level l where d and l are both 0-indexed.
-        
+
         If *biort* or *qshift* are strings, they are used as an argument to the
         :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
         interpreted as tuples of vectors giving filter coefficients. In the *biort*
         case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
         be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
-        
+
         There are two values for *ext_mode*, either 4 or 8. If *ext_mode* = 4,
         check whether 1st level is divisible by 2 (if not we raise a
         ``ValueError``). Also check whether from 2nd level onwards, the coefs can
@@ -64,24 +64,18 @@ class Transform3d(object):
         divisible by 4 (if not we raise a ``ValueError``). Also check whether from
         2nd level onwards, the coeffs can be divided by 8. If any dimension size is
         not a multiple of 8, append extra coeffs by repeating the edges twice.
-        
+
         If *discard_level_1* is True the highpass coefficients at level 1 will not be
         discarded. (And, in fact, will never be calculated.) This turns the
         transform from being 8:1 redundant to being 1:1 redundant at the cost of
         no-longer allowing perfect reconstruction. If this option is selected then
         `Yh[0]` will be `None`. Note that :py:func:`dtwaveifm3` will accepts
         `Yh[0]` being `None` and will treat it as being zero.
-        
-        Example::
-        
-        # Performs a 3-level transform on the real 3D array X using the 13,19-tap
-        # filters for level 1 and the Q-shift 14-tap filters for levels >= 2.
-        Yl, Yh = dtwavexfm3(X, 3, 'near_sym_b', 'qshift_b')
-        
+
         .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
         .. codeauthor:: Huizhong Chen, Jan 2009
         .. codeauthor:: Nick Kingsbury, Cambridge University, July 1999.
-        
+
         """
         X = np.atleast_3d(asfarray(X))
 
@@ -110,7 +104,7 @@ class Transform3d(object):
 
         Yl = X
         Yh = [None,] * nlevels
-        
+
         if include_scale:
             # this is only required if the user specifies a third output component.
             Yscale = [None,] * nlevels
@@ -127,31 +121,31 @@ class Transform3d(object):
                 Yl, Yh[level] = _level2_xfm(Yl, h0a, h0b, h1a, h1b, self.ext_mode)
             if include_scale:
                 Yscale[level] = Yl.copy()
-        
+
                 #Yh[nlevels+1]=1 #to throw an error for debugging in nose
         if include_scale:
             return Pyramid(Yl, tuple(Yh), tuple(Yscale))
-        else: 
+        else:
             return Pyramid(Yl, tuple(Yh))
 
     def inverse(self, td_signal):
         """Perform an *n*-level dual-tree complex wavelet (DTCWT) 3D
         reconstruction.
-        
+
         :param Yl: The real lowpass subband from the final level
         :param Yh: A sequence containing the complex highpass subband for each level.
         :param biort: Level 1 wavelets to use. See :py:func:`biort`.
         :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
         :param ext_mode: Extension mode. See below.
-        
+
         :returns Z: Reconstructed real image matrix.
-        
+
         If *biort* or *qshift* are strings, they are used as an argument to the
         :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
         interpreted as tuples of vectors giving filter coefficients. In the *biort*
         case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
         be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
-        
+
         There are two values for *ext_mode*, either 4 or 8. If *ext_mode* = 4,
         check whether 1st level is divisible by 2 (if not we raise a
         ``ValueError``). Also check whether from 2nd level onwards, the coefs can
@@ -160,17 +154,11 @@ class Transform3d(object):
         divisible by 4 (if not we raise a ``ValueError``). Also check whether from
         2nd level onwards, the coeffs can be divided by 8. If any dimension size is
         not a multiple of 8, append extra coeffs by repeating the edges twice.
-        
-        Example::
-        
-        # Performs a 3-level reconstruction from Yl,Yh using the 13,19-tap
-        # filters for level 1 and the Q-shift 14-tap filters for levels >= 2.
-        Z = dtwaveifm3(Yl, Yh, 'near_sym_b', 'qshift_b')
-        
+
         .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
         .. codeauthor:: Huizhong Chen, Jan 2009
         .. codeauthor:: Nick Kingsbury, Cambridge University, July 1999.
-        
+
         """
         Yl = td_signal.lowpass
         Yh = td_signal.highpasses
@@ -182,7 +170,7 @@ class Transform3d(object):
             h0o, g0o, h1o, g1o, h2o, g2o = self.biort
         else:
             raise ValueError('Biort wavelet must have 6 or 4 components.')
-        
+
         # If qshift has 12 elements instead of 8, then it's a modified
         # rotationally symmetric wavelet
         # FIXME: there's probably a nicer way to do this
@@ -210,7 +198,7 @@ class Transform3d(object):
                     prev_shape = Yh[-level-2].shape
                 else:
                     prev_shape = np.array(Yh[-level-1].shape) * 2
-                    
+
                 Yl = _level2_ifm(Yl, Yh[-level-1], g0a, g0b, g1a, g1b, self.ext_mode, prev_shape)
 
         return Yl
@@ -316,7 +304,7 @@ def _level1_xfm_no_highpass(X, h0o, h1o, ext_mode):
         # extract slice
         y = X[:, f, :].T
         out[:, f, :] = colfilter(y, h0o).T
-        
+
   # Loop over 3rd dimension extracting 2D slice from first and 2nd dimensions
     for f in xrange(X.shape[2]):
         y = colfilter(out[:, :, f].T, h0o).T
@@ -373,7 +361,7 @@ def _level2_xfm(X, h0a, h0b, h1a, h1b, ext_mode):
         # Do even Qshift filters on rows.
         y1 = work[:, :, f].T
         y2 = np.vstack((coldfilt(y1, h0b, h0a), coldfilt(y1, h1b, h1a))).T
-        
+
         # Do even Qshift filters on columns.
         work[s0a, :, f] = coldfilt(y2, h0b, h0a)
         work[s0b, :, f] = coldfilt(y2, h1b, h1a)
@@ -403,7 +391,7 @@ def _level1_ifm(Yl, Yh, g0o, g1o):
     Xshape = np.asanyarray(work.shape) >> 1
     if g0o.shape[0] % 2 == 0:
         # if we have an even length filter, we need to shrink the output by 1
-        # to compensate for the addition of an extra row/column/slice in 
+        # to compensate for the addition of an extra row/column/slice in
         # the forward transform
         Xshape -= 1
 
@@ -414,7 +402,7 @@ def _level1_ifm(Yl, Yh, g0o, g1o):
     s0b = slice(work.shape[0] >> 1, None)
     s1b = slice(work.shape[1] >> 1, None)
     s2b = slice(work.shape[2] >> 1, None)
-      
+
     x0a = slice(None, Xshape[0])
     x1a = slice(None, Xshape[1])
     x2a = slice(None, Xshape[2])

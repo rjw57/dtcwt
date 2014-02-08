@@ -195,8 +195,8 @@ latex_elements = {
 #'pointsize': '10pt',
 
 # Additional stuff for the LaTeX preamble.
-'preamble': '''
-    \usepackage{amsmath}
+'preamble': u'''
+    \\usepackage{amsmath}
 ''',
 }
 

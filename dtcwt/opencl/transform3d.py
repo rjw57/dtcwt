@@ -24,7 +24,7 @@ class Transform3d(Transform3dNumPy):
     """
     An implementation of the 3D DT-CWT via OpenCL. *biort* and *qshift* are the
     wavelets which parameterise the transform. Valid values are documented in
-    :py:func:`dtcwt.dtwavexfm2`.
+    :py:func:`dtcwt.coeffs.biort` and :py:func:`dtcwt.coeffs.qshift`.
 
     If *queue* is non-*None* it is an instance of
     :py:class:`pyopencl.CommandQueue` which is used to compile and execute the

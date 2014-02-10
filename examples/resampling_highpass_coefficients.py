@@ -5,6 +5,7 @@
 import os
 
 import dtcwt
+import dtcwt.compat
 import dtcwt.sampling
 
 # Use an off-screen backend for matplotlib
@@ -41,7 +42,7 @@ def scale_highpass(im):
 lena_direct = scale_direct(lena)
 
 # Transform lena
-lena_l, lena_h = dtcwt.dtwavexfm2(lena, nlevels=4)
+lena_l, lena_h = dtcwt.compat.dtwavexfm2(lena, nlevels=4)
 
 # Re-scale each component and transform back. Do this both with and without
 # shifting back to DC.
@@ -53,8 +54,8 @@ for h in lena_h:
     lena_h_b.append(scale_highpass(h))
 
 # Transform back
-lena_a = dtcwt.dtwaveifm2(lena_l, lena_h_a)
-lena_b = dtcwt.dtwaveifm2(lena_l, lena_h_b)
+lena_a = dtcwt.compat.dtwaveifm2(lena_l, lena_h_a)
+lena_b = dtcwt.compat.dtwaveifm2(lena_l, lena_h_b)
 
 figure(figsize=(10,10))
 

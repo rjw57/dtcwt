@@ -16,7 +16,7 @@ class Transform3d(object):
     """
     An implementation of the 3D DT-CWT via NumPy. *biort* and *qshift* are the
     wavelets which parameterise the transform. Valid values are documented in
-    :py:func:`dtcwt.compat.dtwavexfm3`.
+    :py:func:`dtcwt.coeffs.biort` and :py:func:`dtcwt.coeffs.qshift`.
 
     """
     def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
@@ -39,22 +39,23 @@ class Transform3d(object):
 
         :param X: 3D real array-like object
         :param nlevels: Number of levels of wavelet decomposition
-        :param biort: Level 1 wavelets to use. See :py:func:`biort`.
-        :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+        :param biort: Level 1 wavelets to use. See :py:func:`dtcwt.coeffs.biort`.
+        :param qshift: Level >= 2 wavelets to use. See :py:func:`dtcwt.coeffs.qshift`.
         :param discard_level_1: True if level 1 high-pass bands are to be discarded.
 
-        :returns Yl: The real lowpass image from the final level
-        :returns Yh: A tuple containing the complex highpass subimages for each level.
+        :returns: a :py:class:`dtcwt.Pyramid` instance
 
-        Each element of *Yh* is a 4D complex array with the 4th dimension having
-        size 28. The 3D slice ``Yh[l][:,:,:,d]`` corresponds to the complex higpass
-        coefficients for direction d at level l where d and l are both 0-indexed.
+        Each element of the Pyramid *highpasses* tuple is a 4D complex array
+        with the 4th dimension having size 28. The 3D slice ``[l][:,:,:,d]``
+        corresponds to the complex higpass coefficients for direction d at
+        level l where d and l are both 0-indexed.
 
         If *biort* or *qshift* are strings, they are used as an argument to the
-        :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
-        interpreted as tuples of vectors giving filter coefficients. In the *biort*
-        case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
-        be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
+        :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift`
+        functions. Otherwise, they are interpreted as tuples of vectors giving
+        filter coefficients. In the *biort* case, this should be (h0o, g0o,
+        h1o, g1o). In the *qshift* case, this should be (h0a, h0b, g0a, g0b,
+        h1a, h1b, g1a, g1b).
 
         There are two values for *ext_mode*, either 4 or 8. If *ext_mode* = 4,
         check whether 1st level is divisible by 2 (if not we raise a
@@ -68,9 +69,10 @@ class Transform3d(object):
         If *discard_level_1* is True the highpass coefficients at level 1 will not be
         discarded. (And, in fact, will never be calculated.) This turns the
         transform from being 8:1 redundant to being 1:1 redundant at the cost of
-        no-longer allowing perfect reconstruction. If this option is selected then
-        `Yh[0]` will be `None`. Note that :py:func:`dtwaveifm3` will accepts
-        `Yh[0]` being `None` and will treat it as being zero.
+        no-longer allowing perfect reconstruction. If this option is selected
+        then the first element of the *highpasses* tuple will be `None`. Note
+        that :py:func:`dtcwt.Transform3d.inverse` will accept the first element
+        being `None` and will treat it as being zero.
 
         .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
         .. codeauthor:: Huizhong Chen, Jan 2009
@@ -128,23 +130,23 @@ class Transform3d(object):
         else:
             return Pyramid(Yl, tuple(Yh))
 
-    def inverse(self, td_signal):
+    def inverse(self, pyramid):
         """Perform an *n*-level dual-tree complex wavelet (DTCWT) 3D
         reconstruction.
 
-        :param Yl: The real lowpass subband from the final level
-        :param Yh: A sequence containing the complex highpass subband for each level.
+        :param pyramid: The :py:class:`dtcwt.Pyramid`-like instance representing the transformed signal.
         :param biort: Level 1 wavelets to use. See :py:func:`biort`.
         :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
         :param ext_mode: Extension mode. See below.
 
-        :returns Z: Reconstructed real image matrix.
+        :returns: Reconstructed real image matrix.
 
         If *biort* or *qshift* are strings, they are used as an argument to the
-        :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
-        interpreted as tuples of vectors giving filter coefficients. In the *biort*
-        case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
-        be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
+        :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift`
+        functions. Otherwise, they are interpreted as tuples of vectors giving
+        filter coefficients. In the *biort* case, this should be (h0o, g0o,
+        h1o, g1o). In the *qshift* case, this should be (h0a, h0b, g0a, g0b,
+        h1a, h1b, g1a, g1b).
 
         There are two values for *ext_mode*, either 4 or 8. If *ext_mode* = 4,
         check whether 1st level is divisible by 2 (if not we raise a
@@ -160,8 +162,8 @@ class Transform3d(object):
         .. codeauthor:: Nick Kingsbury, Cambridge University, July 1999.
 
         """
-        Yl = td_signal.lowpass
-        Yh = td_signal.highpasses
+        Yl = pyramid.lowpass
+        Yh = pyramid.highpasses
 
         # Try to load coefficients if biort is a string parameter
         if len(self.biort) == 4:

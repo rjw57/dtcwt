@@ -230,7 +230,7 @@ def axis_convolve(X, h, axis=0, queue=None, output=None):
 
     After convolution, the :py:class:`pyopencl.array.Array` instance holding the
     device-side output is returned. This may be accessed on the host via
-    :pyfunc:`to_array`.
+    :py:func:`to_array`.
 
     The axis of convolution is specified by *axis*. The default direction of
     convolution is column-wise.

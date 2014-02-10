@@ -2,7 +2,7 @@
 
 import numpy as np
 from scipy.io import loadmat
-from numpy import savez
+from numpy import savez_compressed
 
 def _mean(a, axis=None, *args, **kwargs):
     """Equivalent to numpy.mean except that the axis along which the mean is taken is not removed."""
@@ -75,4 +75,7 @@ summaries = dict((k, summarise_mat(v)) for k, v in verif.iteritems())
 for k,v in verif_cube.iteritems():
     summaries[k] = summarise_cube(v)
     
-savez('../tests/verification.npz', **summaries)
+savez_compressed('../tests/verification.npz', **summaries)
+
+# Convert qbgn.mat -> qbgn.npz
+savez_compressed('../tests/qbgn.npz', **loadmat('qbgn.mat'))

@@ -35,15 +35,15 @@ def dtwavexfm(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_
 
     :param X: 1D real array or 2D real array whose columns are to be transformed
     :param nlevels: Number of levels of wavelet decomposition
-    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
-    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+    :param biort: Level 1 wavelets to use. See :py:func:`dtcwt.coeffs.biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`dtcwt.coeffs.qshift`.
 
     :returns Yl: The real lowpass image from the final level
     :returns Yh: A tuple containing the (N, M, 6) shape complex highpass subimages for each level.
     :returns Yscale: If *include_scale* is True, a tuple containing real lowpass coefficients for every scale.
 
     If *biort* or *qshift* are strings, they are used as an argument to the
-    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+    :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift` functions. Otherwise, they are
     interpreted as tuples of vectors giving filter coefficients. In the *biort*
     case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
     be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
@@ -73,8 +73,8 @@ def dtwaveifm(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, gain_mask=None
 
     :param Yl: The real lowpass subband from the final level
     :param Yh: A sequence containing the complex highpass subband for each level.
-    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
-    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+    :param biort: Level 1 wavelets to use. See :py:func:`dtcwt.coeffs.biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`dtcwt.coeffs.qshift`.
     :param gain_mask: Gain to be applied to each subband.
 
     :returns Z: Reconstructed real array.
@@ -84,10 +84,10 @@ def dtwaveifm(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, gain_mask=None
     *gain_mask* is all ones. Note that *l* is 0-indexed.
 
     If *biort* or *qshift* are strings, they are used as an argument to the
-    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
-    interpreted as tuples of vectors giving filter coefficients. In the *biort*
-    case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
-    be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
+    :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift` functions.
+    Otherwise, they are interpreted as tuples of vectors giving filter
+    coefficients. In the *biort* case, this should be (h0o, g0o, h1o, g1o). In
+    the *qshift* case, this should be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
 
     Example::
 
@@ -109,15 +109,15 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
 
     :param X: 2D real array
     :param nlevels: Number of levels of wavelet decomposition
-    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
-    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+    :param biort: Level 1 wavelets to use. See :py:func:`dtcwt.coeffs.biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`dtcwt.coeffs.qshift`.
 
     :returns Yl: The real lowpass image from the final level
     :returns Yh: A tuple containing the complex highpass subimages for each level.
     :returns Yscale: If *include_scale* is True, a tuple containing real lowpass coefficients for every scale.
 
     If *biort* or *qshift* are strings, they are used as an argument to the
-    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+    :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift` functions. Otherwise, they are
     interpreted as tuples of vectors giving filter coefficients. In the *biort*
     case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
     be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
@@ -148,8 +148,8 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
 
     :param Yl: The real lowpass subband from the final level
     :param Yh: A sequence containing the complex highpass subband for each level.
-    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
-    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+    :param biort: Level 1 wavelets to use. See :py:func:`dtcwt.coeffs.biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`dtcwt.coeffs.qshift`.
     :param gain_mask: Gain to be applied to each subband.
 
     :returns Z: Reconstructed real array
@@ -160,7 +160,7 @@ def dtwaveifm2(Yl,Yh,biort=DEFAULT_BIORT,qshift=DEFAULT_QSHIFT,gain_mask=None):
     zero-indexed.
 
     If *biort* or *qshift* are strings, they are used as an argument to the
-    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+    :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift` functions. Otherwise, they are
     interpreted as tuples of vectors giving filter coefficients. In the *biort*
     case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
     be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
@@ -192,8 +192,8 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT,
 
     :param X: 3D real array-like object
     :param nlevels: Number of levels of wavelet decomposition
-    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
-    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+    :param biort: Level 1 wavelets to use. See :py:func:`dtcwt.coeffs.biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`dtcwt.coeffs.qshift`.
     :param ext_mode: Extension mode. See below.
     :param discard_level_1: True if level 1 high-pass bands are to be discarded.
 
@@ -205,7 +205,7 @@ def dtwavexfm3(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT,
     coefficients for direction d at level l where d and l are both 0-indexed.
 
     If *biort* or *qshift* are strings, they are used as an argument to the
-    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
+    :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift` functions. Otherwise, they are
     interpreted as tuples of vectors giving filter coefficients. In the *biort*
     case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
     be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
@@ -251,17 +251,17 @@ def dtwaveifm3(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, ext_mode=4):
 
     :param Yl: The real lowpass subband from the final level
     :param Yh: A sequence containing the complex highpass subband for each level.
-    :param biort: Level 1 wavelets to use. See :py:func:`biort`.
-    :param qshift: Level >= 2 wavelets to use. See :py:func:`qshift`.
+    :param biort: Level 1 wavelets to use. See :py:func:`dtcwt.coeffs.biort`.
+    :param qshift: Level >= 2 wavelets to use. See :py:func:`dtcwt.coeffs.qshift`.
     :param ext_mode: Extension mode. See below.
 
     :returns Z: Reconstructed real image matrix.
 
     If *biort* or *qshift* are strings, they are used as an argument to the
-    :py:func:`biort` or :py:func:`qshift` functions. Otherwise, they are
-    interpreted as tuples of vectors giving filter coefficients. In the *biort*
-    case, this should be (h0o, g0o, h1o, g1o). In the *qshift* case, this should
-    be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
+    :py:func:`dtcwt.coeffs.biort` or :py:func:`dtcwt.coeffs.qshift` functions.
+    Otherwise, they are interpreted as tuples of vectors giving filter
+    coefficients. In the *biort* case, this should be (h0o, g0o, h1o, g1o). In
+    the *qshift* case, this should be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
 
     There are two values for *ext_mode*, either 4 or 8. If *ext_mode* = 4,
     check whether 1st level is divisible by 2 (if not we raise a

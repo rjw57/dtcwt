@@ -47,7 +47,7 @@ def biort(name):
     wavelet filters.
 
     :raises IOError: if name does not correspond to a set of wavelets known to the library.
-    :raises ValueError: if name specifies a :py:func:`qshift` wavelet.
+    :raises ValueError: if name specifies a :py:func:`dtcwt.coeffs.qshift` wavelet.
 
     """
     if name == 'near_sym_b_bp':
@@ -64,7 +64,7 @@ def qshift(name):
     ============ ============================================
     Name         Wavelet
     ============ ============================================
-    qshift_06    Quarter Sample Shift Orthogonal (Q-Shift) 10,10 tap filters, 
+    qshift_06    Quarter Sample Shift Orthogonal (Q-Shift) 10,10 tap filters,
                  (only 6,6 non-zero taps).
     qshift_a     Q-shift 10,10 tap filters,
                  (with 10,10 non-zero taps, unlike qshift_06).
@@ -81,7 +81,7 @@ def qshift(name):
     wavelet filters.
 
     :raises IOError: if name does not correspond to a set of wavelets known to the library.
-    :raises ValueError: if name specifies a :py:func:`biort` wavelet.
+    :raises ValueError: if name specifies a :py:func:`dtcwt.coeffs.biort` wavelet.
 
     """
     if name == 'qshift_b_bp':

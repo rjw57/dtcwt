@@ -78,6 +78,8 @@ Changes
   around NumPy arrays.
 * Rename ``TransformDomainSignal`` to ``Pyramid``.
 * Allow runtime configuration of default backend via ``dtcwt.push_backend`` function.
+* Verified, thanks to @timseries, the NumPy 3D transform implementation against
+  the MATLAB reference implementation.
 
 0.8.0
 '''''

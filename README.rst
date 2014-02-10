@@ -77,6 +77,7 @@ Changes
 * Removed ``dtcwt.base.ReconstructedSignal`` which was a needless wrapper
   around NumPy arrays.
 * Rename ``TransformDomainSignal`` to ``Pyramid``.
+* Allow runtime configuration of default backend via ``dtcwt.push_backend`` function.
 
 0.8.0
 '''''

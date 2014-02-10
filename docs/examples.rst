@@ -33,7 +33,7 @@ The source for the script is shown below:
 This library includes support for 2D image registration modelled after the 3D
 algorithm outlined in the paper `Efficient Registration of Nonrigid 3-D Bodies`_.
 The
-:download:`image-registration.py<../examples/image-registration.py>`
+:download:`image-registration.py<image-registration.py>`
 script in the examples directory shows a complete worked example of using the
 registration API using two sets of source images: a woman playing tennis and some
 traffic at a road junction.
@@ -43,5 +43,5 @@ traffic at a road junction.
 It will attempt to register two image pairs: a challenging sequence from a
 video sequence and a sequence from a traffic camera. The result is shown below.
 
-.. plot:: ../examples/image-registration.py
+.. plot:: image-registration.py
 

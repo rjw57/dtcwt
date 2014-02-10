@@ -297,9 +297,10 @@ class Transform2d(object):
 #==========================================================================================
 
 def q2c(y):
-    """Convert from quads in y to complex numbers in z.
-
     """
+    Convert from quads in y to complex numbers in z.
+    """
+    
     j2 = (np.sqrt(0.5) * np.array([1, 1j])).astype(appropriate_complex_type_for(y))
 
     # Arrange pixels from the corners of the quads into
@@ -319,7 +320,8 @@ def q2c(y):
     return z
 
 def c2q(w,gain):
-    """Scale by gain and convert from complex w(:,:,1:2) to real quad-numbers
+    """
+    Scale by gain and convert from complex w(:,:,1:2) to real quad-numbers
     in z.
 
     Arrange pixels from the real and imag parts of the 2 highpasses

@@ -4,6 +4,8 @@ import numpy as np
 from nose import SkipTest
 from dtcwt.opencl.lowlevel import NoCLPresentError
 
+from six.moves import xrange
+
 TOLERANCE = 1e-6
 
 def assert_almost_equal(a, b, tolerance=TOLERANCE):
@@ -34,6 +36,11 @@ def _mean(a, axis=None, *args, **kwargs):
 
     return rv
 
+def centre_indices(ndim=2,apron=8):
+    """Returns the centre indices for the correct number of dimension
+    """
+    return tuple([slice(apron,-apron) for i in xrange(ndim)])
+
 def summarise_mat(M, apron=8):
     """HACK to provide a 'summary' matrix consisting of the corners of the
     matrix and summed versions of the sub matrices.
@@ -49,6 +56,13 @@ def summarise_mat(M, apron=8):
         np.hstack((_mean(M[apron:-apron,:apron,...], axis=0), centre_sum, _mean(M[apron:-apron,-apron:,...], axis=0))),
         np.hstack((M[-apron:,:apron,...], _mean(M[-apron:,apron:-apron,...], axis=1), M[-apron:,-apron:,...])),
     ))
+
+def summarise_cube(M, apron=4):
+    """Provide a summary cube, extending  summarise_mat to 3D
+    """
+    return np.dstack(
+        [summarise_mat(M[:,:,i,...], apron) for i in xrange(M.shape[-2])]
+    )    
 
 def skip_if_no_cl(f):
     @functools.wraps(f)

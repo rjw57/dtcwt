@@ -104,7 +104,7 @@ def push_backend(name):
 
 def pop_backend():
     """Restore the backend after a call to :py:func:`push_backend`. Calls to
-    :py:func:`pop_backend` and :py:func:`pop_backend` may be neted. This
+    :py:func:`pop_backend` and :py:func:`pop_backend` may be nested. This
     function will undo the most recent call to :py:func:`push_backend`.
 
     :raise IndexError: if one attempts to pop more backends than one has pushed.

@@ -32,7 +32,7 @@ not import-time) exception.
 Which backend should I use?
 '''''''''''''''''''''''''''
 
-The top-level transform routines, such as :py:func:`dtcwt.dtwavexfm2`, will
+The top-level transform routines, such as :py:class`dtcwt.Transform2d`, will
 automatically use the NumPy backend. If you are not primarily focussed on
 speed, this is the correct choice since the NumPy backend has the fullest
 feature support, is the best tested and behaves correctly given single- and
@@ -64,3 +64,36 @@ return whatever result they like as long as the result can be used like this
 base class. (For example, the OpenCL backend returns a
 :py:class:`dtcwt.opencl.Pyramid` instance which
 keeps the device-side results available.)
+
+The default backend used by :py:class:`dtcwt.Transform2d`, etc can be
+manipulated using the :py:func:`dtcwt.push_backend` function. For example, to
+switch to the OpenCL backend::
+
+    dtcwt.push_backend('opencl)'
+    # ... Transform2d, etc now use OpenCL ...
+
+As is suggested by the name, changing the backend manipulates a stack behind
+the scenes and so one can temporarily switch backend using
+:py:func:`dtcwt.push_backend` and :py:func:`dtcwt.pop_backend`::
+
+    # Run benchmark with NumPy
+    my_benchmarking_function()
+
+    # Run benchmark with OpenCL
+    dtcwt.push_backend('opencl')
+    my_benchmarking_function()
+    dtcwt.pop_backend()
+
+It is safer to use the :py:func:`dtcwt.preserve_backend_stack` function. This
+returns a guard object which can be used with the ``with`` statement to save
+the state of the backend stack::
+
+    with dtcwt.preserve_backend_stack():
+        dtcwt.push_backend('opencl')
+        my_benchmarking_function()
+
+    # Outside of the 'with' clause the backend is reset to numpy.
+
+Finally the default backend may be set via the ``DTCWT_BACKEND`` environment
+variable. This is useful to run scripts with different backends without having
+to modify their source.

@@ -164,34 +164,75 @@ def rescale(im, shape, method=None):
 
     return sample(im, sxs, sys, method)
 
-def _phase_image(xs, ys, unwrap=True):
+def _phase_image(xs, ys, unwrap=True, sbs=[0,1,2,3,4,5]):
+    """ Internal function for phase rolling/unrolling of highpass subbands,
+    with subband selection and re-ordering facility.
+
+    Note that it is possible to re-order subbands using the 'sbs' argument 
+    if the indices given are not in ascending order. However, this is best 
+    handled by higher-level functions.
+
+    S.C. Forshaw, Feb 2014.
+    
+    """
     slices = []
-    for ddx, ddy in zip(DTHETA_DX_2D, DTHETA_DY_2D):
-        slice_phase = ddx * xs + ddy * ys
+    
+    for sb in range(0, len(sbs)):        
+        slice_phase = DTHETA_DX_2D[sbs[sb]] * xs + DTHETA_DY_2D[sbs[sb]] * ys
+
         if unwrap:
             slices.append(np.exp(-1j * slice_phase))
         else:
-            slices.append(np.exp(1j * slice_phase))
-    return np.dstack(slices)
+            slices.append(np.exp( 1j * slice_phase))
+    
+    return np.dstack(slices) # flattened array returned, size dependent on length of 'sbs'
 
-def sample_highpass(im, xs, ys, method=None):
+def sample_highpass(im, xs, ys, method=None, sbs=[0,1,2,3,4,5]):
     """As :py:func:`sample` except that the highpass image is first phase
-    shifted to be centred on approximately DC.
+    shifted to be centred on approximately DC, and has additional 'sbs' 
+    input allowing selection and re-ordering of subbands.
+    This is useful mainly when the exact locations one wishes to sample
+    from vary by subband. 
+
+    'sbs' should ordinarily be a numpy array of subband indices, 
+    in ascending order, e.g., np.array([0,2,3,5]) for just subbands 
+    0, 2, 3 and 5; The returned array will be flattened to just 4 subbands.
+    Pass [0,1,2,3,4,5] for all subbands. 
+
+    Take care when re-ordering, preferably keeping the 'sbs' array outside 
+    the scope of this function to keep track of the new indices.
+
+    S. C. Forshaw, Feb 2014.
 
     """
+
     # phase unwrap
     X, Y = np.meshgrid(np.arange(im.shape[1]), np.arange(im.shape[0]))
-    im_unwrap = im * _phase_image(X, Y, True)
     
+    im_unwrap = im[:,:,sbs] * _phase_image(X, Y, True, sbs)
+
     # sample
     im_sampled = sample(im_unwrap, xs, ys, method)
-    
-    # re-wrap
-    return _phase_image(xs, ys, False) * im_sampled
 
-def rescale_highpass(im, shape, method=None):
+    # re-wrap
+    return _phase_image(xs, ys, False, sbs) * im_sampled
+
+def rescale_highpass(im, shape, method=None, sbs=[0,1,2,3,4,5]):
     """As :py:func:`rescale` except that the highpass image is first phase
-    shifted to be centred on approximately DC.
+    shifted to be centred on approximately DC, and has additional 'sbs' 
+    input allowing selection and re-ordering of subbands.
+    This is useful mainly when the exact locations one wishes to sample
+    from vary by subband. 
+
+    'sbs' should ordinarily be a list of subband indices, 
+    in ascending order, e.g., np.array([0,2,3,5]) for just subbands 
+    0, 2, 3 and 5; The returned array will be flattened to just 4 subbands.
+    Pass [0,1,2,3,4,5] for all subbands. 
+
+    Take care when re-ordering, preferably keeping the 'sbs' array outside 
+    the scope of this function to keep track of the new indices.
+
+    S. C. Forshaw, Feb 2014.
 
     """
     # Original width and height (including half pixel)
@@ -221,13 +262,13 @@ def rescale_highpass(im, shape, method=None):
 
     # phase unwrap
     X, Y = np.meshgrid(np.arange(im.shape[1]), np.arange(im.shape[0]))
-    im_unwrap = im * _phase_image(X, Y, True)
+    im_unwrap = im[:,:,sbs] * _phase_image(X, Y, True, sbs)
     
     # sample
     im_sampled = sample(im_unwrap, sxs, sys, method)
     
     # re-wrap
-    return im_sampled * _phase_image(sxs, sys, False)
+    return im_sampled * _phase_image(sxs, sys, False, sbs)
 
 def _upsample_columns(X, method=None):
     """

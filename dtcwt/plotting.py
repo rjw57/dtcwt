@@ -14,28 +14,40 @@ __all__ = (
 
 def overlay_quiver(image, vectorField, level, offset):
     """Overlays nicely coloured quiver plot of complex coefficients over original full-size image,
-    providing a useful phase visualisation. image should be of type UINT8. vectorField is a single 
-    [MxNx6] numpy array of DTCWT coefficients, level specifies the transform level of vectorField. 
-    Offset for DTCWT coefficients is typically 0.5. Should also work with other types of complex 
-    arrays (e.g., SLP coefficients), as long as the format is the same.
-    
+    providing a useful phase visualisation.
+
+    :param image: array holding grayscale values on the interval [0, 255] to display
+    :param vectorField: a single [MxNx6] numpy array of DTCWT coefficients
+    :param level: the transform level (1-indexed) of *vectorField*.
+    :param offset: Offset for DTCWT coefficients (typically 0.5)
+
+    .. note::
+
+    The *level* parameter is 1-indexed meaning that the third level has
+    index "3". This is unusual in Python but is kept for compatibility
+    with similar MATLAB routines.
+
+    Should also work with other types of complex arrays (e.g., SLP
+    coefficients), as long as the format is the same.
+
     Usage example:
-    
-    .. ipython::
-    
-    In [0]: lena = datasets.lena()
-    
-    In [0]: lena_t = transform2d.forward(lena, nlevels=3)
-    
-    In [0]: figure()
-    
-    @savefig gen-overlay_quiver.png
-    In [0]: dtcwtplt.overlay_quiver(lena, lena_t.subbands[-1], 3, 0.5)
-    
+
+    .. plot::
+    :include-source: true
+
+    import dtcwt
+    import dtcwt.plotting as plotting
+
+    lena = datasets.lena()
+
+    transform2d = dtcwt.Transform2d()
+    lena_t = transform2d.forward(lena, nlevels=5)
+
+    plotting.overlay_quiver(lena*255, lena_t.highpasses[-1], 5, 0.5)
+
     .. codeauthor:: R. Anderson, 2005 (MATLAB)
     .. codeauthor:: S. C. Forshaw, 2014 (Python)
     """
-
     # Make sure imshow() uses the full range of greyscale values
     imshow(image, cmap=cm.gray, clim=(0,255))
     hold(True)

@@ -38,7 +38,7 @@ class Pyramid(object):
     via the ``cl_...`` attributes.
 
     .. note::
-    
+
         The copy from device to host is performed *once* and then memoized.
         This makes repeated access to the host-side attributes efficient but
         will mean that any changes to the device-side arrays will not be
@@ -100,7 +100,7 @@ class Transform2d(Transform2dNumPy):
     the *qshift* case, this should be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
 
     .. note::
-        
+
         At the moment *only* the **forward** transform is accelerated. The
         inverse transform uses the NumPy backend.
 

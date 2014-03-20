@@ -218,6 +218,7 @@ class Transform2d(Transform2dNumPy):
                 axis_convolve(Hi,h0o,axis=1,queue=queue),
                 axis_convolve(Lo,h1o,axis=1,queue=queue),
                 diag,
+                queue=queue
             )
 
             if include_scale:
@@ -254,6 +255,7 @@ class Transform2d(Transform2dNumPy):
                 axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue),
                 axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue),
                 diag,
+                queue=queue
             )
 
             if include_scale:

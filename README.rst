@@ -71,6 +71,8 @@ Changes
 0.10.0
 ''''''
 
+* Add queue parameter to low-level OpenCL ``colifilt`` and ``coldfilt`` functions.
+
 0.9.1
 '''''
 

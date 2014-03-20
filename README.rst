@@ -71,6 +71,12 @@ Changes
 0.10.0
 ''''''
 
+0.9.1
+'''''
+
+* The OpenCL 2D transform was not always using the correct queue when one was
+  passed explicitly.
+
 0.9.0
 '''''
 

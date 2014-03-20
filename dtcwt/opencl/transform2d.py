@@ -207,7 +207,7 @@ class Transform2d(Transform2dNumPy):
                 Ba = axis_convolve(X,h2o,axis=0,queue=queue)
 
             # Do odd top-level filters on rows.
-            LoLo = axis_convolve(Lo,h0o,axis=1)
+            LoLo = axis_convolve(Lo,h0o,axis=1,queue=queue)
 
             if len(self.biort) >= 6:
                 diag = axis_convolve(Ba,h2o,axis=1,queue=queue)

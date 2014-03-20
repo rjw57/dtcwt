@@ -46,7 +46,7 @@ def colfilter(X, h):
 
     return to_array(axis_convolve(X, h))
 
-def coldfilt(X, ha, hb):
+def coldfilt(X, ha, hb, queue=None):
     """Filter the columns of image X using the two filters ha and hb =
     reverse(ha).  ha operates on the odd samples of X and hb on the even
     samples.  Both filters should be even length, and h should be approx linear
@@ -76,7 +76,7 @@ def coldfilt(X, ha, hb):
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
 
     """
-    queue = get_default_queue()
+    queue = to_queue(queue)
 
     # Make sure all inputs are arrays
     X = asfarray(X)
@@ -98,7 +98,7 @@ def coldfilt(X, ha, hb):
 
     return to_array(Y)
 
-def colifilt(X, ha, hb):
+def colifilt(X, ha, hb, queue=None):
     """ Filter the columns of image X using the two filters ha and hb =
     reverse(ha).  ha operates on the odd samples of X and hb on the even
     samples.  Both filters should be even length, and h should be approx linear
@@ -125,7 +125,7 @@ def colifilt(X, ha, hb):
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
 
     """
-    queue = get_default_queue()
+    queue = to_queue(queue)
 
     # Make sure all inputs are arrays
     X = asfarray(X)

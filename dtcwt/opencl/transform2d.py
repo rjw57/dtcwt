@@ -7,7 +7,6 @@ from six.moves import xrange
 from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import appropriate_complex_type_for, asfarray, memoize
-from dtcwt.opencl.lowlevel import colfilter, coldfilt, colifilt
 from dtcwt.opencl.lowlevel import axis_convolve, axis_convolve_dfilter, q2c
 from dtcwt.opencl.lowlevel import to_device, to_queue, to_array, empty
 
@@ -39,7 +38,7 @@ class Pyramid(object):
     via the ``cl_...`` attributes.
 
     .. note::
-    
+
         The copy from device to host is performed *once* and then memoized.
         This makes repeated access to the host-side attributes efficient but
         will mean that any changes to the device-side arrays will not be
@@ -101,7 +100,7 @@ class Transform2d(Transform2dNumPy):
     the *qshift* case, this should be (h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b).
 
     .. note::
-        
+
         At the moment *only* the **forward** transform is accelerated. The
         inverse transform uses the NumPy backend.
 
@@ -207,7 +206,7 @@ class Transform2d(Transform2dNumPy):
                 Ba = axis_convolve(X,h2o,axis=0,queue=queue)
 
             # Do odd top-level filters on rows.
-            LoLo = axis_convolve(Lo,h0o,axis=1)
+            LoLo = axis_convolve(Lo,h0o,axis=1,queue=queue)
 
             if len(self.biort) >= 6:
                 diag = axis_convolve(Ba,h2o,axis=1,queue=queue)
@@ -218,6 +217,7 @@ class Transform2d(Transform2dNumPy):
                 axis_convolve(Hi,h0o,axis=1,queue=queue),
                 axis_convolve(Lo,h1o,axis=1,queue=queue),
                 diag,
+                queue=queue
             )
 
             if include_scale:
@@ -254,6 +254,7 @@ class Transform2d(Transform2dNumPy):
                 axis_convolve_dfilter(Hi,h0b,axis=1,queue=queue),
                 axis_convolve_dfilter(Lo,h1b,axis=1,queue=queue),
                 diag,
+                queue=queue
             )
 
             if include_scale:

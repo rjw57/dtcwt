@@ -39,14 +39,14 @@ def colfilter(X, h):
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
 
     """
-    
+
     # Interpret all inputs as arrays
     X = asfarray(X)
     h = as_column_vector(h)
 
     return to_array(axis_convolve(X, h))
 
-def coldfilt(X, ha, hb):
+def coldfilt(X, ha, hb, queue=None):
     """Filter the columns of image X using the two filters ha and hb =
     reverse(ha).  ha operates on the odd samples of X and hb on the even
     samples.  Both filters should be even length, and h should be approx linear
@@ -57,10 +57,10 @@ def coldfilt(X, ha, hb):
 
                           ext        top edge                     bottom edge       ext
         Level 1:        !               |               !               |               !
-        odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b   
+        odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b
         odd filt on .      a   a   a   a   b   b   b   b   b   b   b   b   a   a   a   a
         Level 2:        !               |               !               |               !
-        +q filt on x      b       b       a       a       a       a       b       b       
+        +q filt on x      b       b       a       a       a       a       b       b
         -q filt on o          a       a       b       b       b       b       a       a
 
     The output is decimated by two from the input sample rate and the results
@@ -76,7 +76,7 @@ def coldfilt(X, ha, hb):
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
 
     """
-    queue = get_default_queue()
+    queue = to_queue(queue)
 
     # Make sure all inputs are arrays
     X = asfarray(X)
@@ -98,34 +98,34 @@ def coldfilt(X, ha, hb):
 
     return to_array(Y)
 
-def colifilt(X, ha, hb):
+def colifilt(X, ha, hb, queue=None):
     """ Filter the columns of image X using the two filters ha and hb =
     reverse(ha).  ha operates on the odd samples of X and hb on the even
     samples.  Both filters should be even length, and h should be approx linear
     phase with a quarter sample advance from its mid pt (i.e `:math:`|h(m/2)| >
     |h(m/2 + 1)|`).
-    
+
     .. code-block:: text
 
                           ext       left edge                      right edge       ext
         Level 2:        !               |               !               |               !
-        +q filt on x      b       b       a       a       a       a       b       b       
+        +q filt on x      b       b       a       a       a       a       b       b
         -q filt on o          a       a       b       b       b       b       a       a
         Level 1:        !               |               !               |               !
-        odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b   
+        odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b
         odd filt on .      a   a   a   a   b   b   b   b   b   b   b   b   a   a   a   a
-   
+
     The output is interpolated by two from the input sample rate and the
     results from the two filters, Ya and Yb, are interleaved to give Y.
     Symmetric extension with repeated end samples is used on the composite X
     columns before each filter is applied.
-   
+
     .. codeauthor:: Rich Wareham <rjw57@cantab.net>, August 2013
     .. codeauthor:: Cian Shaffrey, Cambridge University, August 2000
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
 
     """
-    queue = get_default_queue()
+    queue = to_queue(queue)
 
     # Make sure all inputs are arrays
     X = asfarray(X)
@@ -238,7 +238,7 @@ def axis_convolve(X, h, axis=0, queue=None, output=None):
     If *queue* is non-``None``, it should be a :py:class:`pyopencl.CommandQueue`
     instance which is used to perform the computation. If ``None``, a default
     global queue is used.
-    
+
     If *output* is non-``None``, it should be a :py:class:`pyopencl.array.Array`
     instance which the result is written into. If ``None``, an output array is
     created.
@@ -344,7 +344,7 @@ def q2c(X1, X2, X3, queue=None, output=None):
 def _convolve_kernel_for_queue(context):
     """Return a kernel for convolution suitable for use with *context*. The
     return values are memoized.
-    
+
     """
     kern_prog = cl.Program(context, CL_ARRAY_HEADER + CONVOLVE_KERNEL)
     kern_prog.build()
@@ -354,7 +354,7 @@ def _convolve_kernel_for_queue(context):
 def _dfilter_kernel_for_queue(context):
     """Return a kernel for convolution suitable for use with *context*. The
     return values are memoized.
-    
+
     """
     kern_prog = cl.Program(context, CL_ARRAY_HEADER + DFILTER_KERNEL)
     kern_prog.build()
@@ -364,7 +364,7 @@ def _dfilter_kernel_for_queue(context):
 def _ifilter_kernel_for_queue(context):
     """Return a kernel for convolution suitable for use with *context*. The
     return values are memoized.
-    
+
     """
     kern_prog = cl.Program(context, CL_ARRAY_HEADER + IFILTER_KERNEL)
     kern_prog.build()
@@ -374,7 +374,7 @@ def _ifilter_kernel_for_queue(context):
 def _q2c_kernel_for_queue(context):
     """Return a kernel for convolution suitable for use with *context*. The
     return values are memoized.
-    
+
     """
     kern_prog = cl.Program(context, CL_ARRAY_HEADER + Q2C_KERNEL)
     kern_prog.build()
@@ -396,7 +396,7 @@ inline int coord_to_offset(int4 coord, struct array_spec spec)
 }
 
 // magic function to reflect the sampling co-ordinate about the
-// *outer edges* of pixel co-ordinates x_min, x_max. The output will 
+// *outer edges* of pixel co-ordinates x_min, x_max. The output will
 // always be in the range (x_min, x_max].
 int4 reflect(int4 x, int4 x_min, int4 x_max)
 {
@@ -418,7 +418,7 @@ void __kernel convolve_kernel(
     int4 output_coord = { get_global_id(0), get_global_id(1), get_global_id(2), 0 };
     struct array_spec X_spec = { .strides = X_strides, .shape = X_shape, .offset = X_offset };
     struct array_spec Y_spec = { .strides = Y_strides, .shape = Y_shape, .offset = Y_offset };
-    
+
     if(any(output_coord >= Y_spec.shape))
         return;
 
@@ -507,7 +507,7 @@ void __kernel convolve_kernel(
     if(flip_output) {
         output = output.s10;
     }
-        
+
     Y[coord_to_offset(output_coord, Y_spec)] = output.s0;
     Y[coord_to_offset(output_coord + one_px_advance, Y_spec)] = output.s1;
 }

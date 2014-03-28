@@ -1,10 +1,9 @@
 import os
 import sys
 
-import dtcwt.numpy
-import dtcwt.opencl
-
 __all__ = [
+    '__version__',
+
     'Transform1d',
     'Transform2d',
     'Transform3d',
@@ -15,6 +14,11 @@ __all__ = [
     'pop_backend',
     'preserve_backend_stack',
 ]
+
+from dtcwt._version import __version__
+
+import dtcwt.numpy
+import dtcwt.opencl
 
 # An array of dictionaries. Each dictionary stores the top-level module
 # variables for that backend.
@@ -55,7 +59,7 @@ class _BackendGuard(object):
         # passed to throw(), because __exit__() must not raise
         # an exception unless __exit__() itself failed.  But
         # throw() has to raise the exception to signal
-        # propagation, so this fixes the impedance mismatch 
+        # propagation, so this fixes the impedance mismatch
         # between the throw() protocol and the __exit__()
         # protocol.
         #

@@ -1,4 +1,6 @@
 import os
+import re
+
 from setuptools import setup, find_packages
 
 # Utility function to read the README file.
@@ -8,9 +10,13 @@ from setuptools import setup, find_packages
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+# Read metadata from version file
+metadata_file = open(os.path.join(os.path.dirname(__file__), 'dtcwt', '_version.py')).read()
+metadata = dict(re.findall("__([a-z]+)__ = '([^']+)'", metadata_file))
+
 setup(
     name = 'dtcwt',
-    version = '0.10.0dev1',
+    version = metadata['version'],
     author = "Rich Wareham",
     author_email = "rich.dtcwt@richwareham.com",
     description = ("A port of the Dual-Tree Complex Wavelet Transform MATLAB toolbox."),

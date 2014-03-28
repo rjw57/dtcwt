@@ -21,8 +21,10 @@ setup_cfg.read(os.path.join(os.path.dirname(__file__), '..', 'setup.cfg'))
 
 # Load some data from setup.cfg
 project = setup_cfg.get('metadata', 'name')
-version = setup_cfg.get('metadata', 'version')
-release = setup_cfg.get('metadata', 'version')
+
+# Get the version straight from dtcwt
+import dtcwt
+version = release = dtcwt.__version__
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

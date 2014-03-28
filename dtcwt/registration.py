@@ -89,12 +89,53 @@ def confidence(sb1, sb2):
 
     numerator, denominator = 0, 1e-6
 
-    for dx, dy in ((-1,-1), (-1,1), (1,-1), (1,1)):
-        us = dtcwt.sampling.sample(sb1, xs+dx, ys+dy, method='nearest')
-        vs = dtcwt.sampling.sample(sb2, xs+dx, ys+dy, method='nearest')
+    # pixels at -1, -1
+    us = np.vstack((
+        np.hstack((sb1[ :1,:1 ], sb1[:1 ,:-1])),
+        np.hstack((sb1[:-1,:1 ], sb1[:-1,:-1]))
+    ))
+    vs = np.vstack((
+        np.hstack((sb2[ :1,:1 ], sb2[:1 ,:-1])),
+        np.hstack((sb2[:-1,:1 ], sb2[:-1,:-1]))
+    ))
+    numerator += np.power(np.abs(np.conj(us) * vs), 2)
+    denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
 
-        numerator += np.power(np.abs(np.conj(us) * vs), 2)
-        denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
+    # pixels at +1, -1
+    us = np.vstack((
+        np.hstack((sb1[ :1,1: ], sb1[:1 ,-1:])),
+        np.hstack((sb1[:-1,1: ], sb1[:-1,-1:]))
+    ))
+    vs = np.vstack((
+        np.hstack((sb2[ :1,1: ], sb2[:1 ,-1:])),
+        np.hstack((sb2[:-1,1: ], sb2[:-1,-1:]))
+    ))
+    numerator += np.power(np.abs(np.conj(us) * vs), 2)
+    denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
+
+    # pixels at -1, +1
+    us = np.vstack((
+        np.hstack((sb1[ 1:,:1 ], sb1[ 1:,:-1])),
+        np.hstack((sb1[-1:,:1 ], sb1[-1:,:-1]))
+    ))
+    vs = np.vstack((
+        np.hstack((sb2[ 1:,:1 ], sb2[ 1:,:-1])),
+        np.hstack((sb2[-1:,:1 ], sb2[-1:,:-1]))
+    ))
+    numerator += np.power(np.abs(np.conj(us) * vs), 2)
+    denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
+
+    # pixels at +1, +1
+    us = np.vstack((
+        np.hstack((sb1[ 1:,1: ], sb1[ 1:,-1:])),
+        np.hstack((sb1[-1:,1: ], sb1[-1:,-1:]))
+    ))
+    vs = np.vstack((
+        np.hstack((sb2[ 1:,1: ], sb2[ 1:,-1:])),
+        np.hstack((sb2[-1:,1: ], sb2[-1:,-1:]))
+    ))
+    numerator += np.power(np.abs(np.conj(us) * vs), 2)
+    denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
 
     return numerator / denominator
 

@@ -50,19 +50,24 @@ def phasegradient(sb1, sb2, w=None):
     if sb1.size != sb2.size:
         raise ValueError('Subbands should have identical size')
 
-    xs, ys = np.meshgrid(np.arange(sb1.shape[1]), np.arange(sb1.shape[0]))
-
     # Measure horizontal phase gradients by taking the angle of
     # summed conjugate products across horizontal pairs.
-    A = sb1[:,1:] * np.conj(sb1[:,:-1])
-    B = sb2[:,1:] * np.conj(sb2[:,:-1])
-    dx = np.angle(dtcwt.sampling.sample((A+B) * np.exp(-1j * w[0]), xs-0.5, ys, method='bilinear')) + w[0]
+    S = (sb1[:,1:] * np.conj(sb1[:,:-1]) + sb2[:,1:] * np.conj(sb2[:,:-1])) * np.exp(-1j * w[0])
+    #dx = np.angle(dtcwt.sampling.sample(S, xs-0.5, ys, method='bilinear')) + w[0]
+    dx = np.hstack((
+        np.angle(S[:,:1]),
+        np.angle(0.5 * (S[:,:-1] + S[:,1:])),
+        np.angle(S[:,-1:])
+    )) + w[0]
 
     # Measure vertical phase gradients by taking the angle of
     # summed conjugate products across vertical pairs.
-    A = sb1[1:,:] * np.conj(sb1[:-1,:])
-    B = sb2[1:,:] * np.conj(sb2[:-1,:])
-    dy = np.angle(dtcwt.sampling.sample((A+B) * np.exp(-1j * w[1]), xs, ys-0.5, method='bilinear')) + w[1]
+    S = (sb1[1:,:] * np.conj(sb1[:-1,:]) + sb2[1:,:] * np.conj(sb2[:-1,:])) * np.exp(-1j * w[1])
+    dy = np.vstack((
+        np.angle(S[:1,:]),
+        np.angle(0.5 * (S[:-1,:] + S[1:,:])),
+        np.angle(S[-1:,:])
+    )) + w[1]
 
     # Measure temporal phase differences between refh and prevh
     A = sb2 * np.conj(sb1)

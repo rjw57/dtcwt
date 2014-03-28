@@ -75,6 +75,12 @@ def phasegradient(sb1, sb2, w=None):
 
     return dy, dx, dt
 
+def _pow2(a):
+    return a * a
+
+def _pow3(a):
+    return a * a * a
+
 def confidence(sb1, sb2):
     """
     Compute the confidence measure of subbands *sb1* and *sb2* which should be
@@ -99,25 +105,28 @@ def confidence(sb1, sb2):
         np.concatenate((sb2[-1: ,:1], sb2[-1: ,:], sb2[-1: ,-1:]), axis=1),
     ), axis=0)
 
+    us3_abs, vs3_abs = _pow3(np.abs(us)), _pow3(np.abs(vs))
+    prod2_abs = _pow2(np.abs(np.conj(us) * vs))
+
     # pixels at -1, -1
     region = (slice(0,-2), slice(0,-2))
-    numerator += np.power(np.abs(np.conj(us[region]) * vs[region]), 2)
-    denominator += np.power(np.abs(us[region]), 3) + np.power(np.abs(vs[region]), 3)
+    numerator += prod2_abs[region]
+    denominator += us3_abs[region] + vs3_abs[region]
 
     # pixels at +1, -1
     region = (slice(0,-2), slice(2,None))
-    numerator += np.power(np.abs(np.conj(us[region]) * vs[region]), 2)
-    denominator += np.power(np.abs(us[region]), 3) + np.power(np.abs(vs[region]), 3)
+    numerator += prod2_abs[region]
+    denominator += us3_abs[region] + vs3_abs[region]
 
     # pixels at -1, +1
     region = (slice(2,None), slice(0,-2))
-    numerator += np.power(np.abs(np.conj(us[region]) * vs[region]), 2)
-    denominator += np.power(np.abs(us[region]), 3) + np.power(np.abs(vs[region]), 3)
+    numerator += prod2_abs[region]
+    denominator += us3_abs[region] + vs3_abs[region]
 
     # pixels at +1, +1
     region = (slice(2,None), slice(2,None))
-    numerator += np.power(np.abs(np.conj(us[region]) * vs[region]), 2)
-    denominator += np.power(np.abs(us[region]), 3) + np.power(np.abs(vs[region]), 3)
+    numerator += prod2_abs[region]
+    denominator += us3_abs[region] + vs3_abs[region]
 
     return numerator / denominator
 

@@ -85,57 +85,39 @@ def confidence(sb1, sb2):
     if sb1.size != sb2.size:
         raise ValueError('Subbands should have identical size')
 
-    xs, ys = np.meshgrid(np.arange(sb1.shape[1]), np.arange(sb1.shape[0]))
-
     numerator, denominator = 0, 1e-6
 
+    # Pad subbands
+    us = np.concatenate((
+        np.concatenate((sb1[  :1,:1], sb1[  :1,:], sb1[  :1,-1:]), axis=1),
+        np.concatenate((sb1[  : ,:1], sb1        , sb1[  : ,-1:]), axis=1),
+        np.concatenate((sb1[-1: ,:1], sb1[-1: ,:], sb1[-1: ,-1:]), axis=1),
+    ), axis=0)
+    vs = np.concatenate((
+        np.concatenate((sb2[  :1,:1], sb2[  :1,:], sb2[  :1,-1:]), axis=1),
+        np.concatenate((sb2[  : ,:1], sb2        , sb2[  : ,-1:]), axis=1),
+        np.concatenate((sb2[-1: ,:1], sb2[-1: ,:], sb2[-1: ,-1:]), axis=1),
+    ), axis=0)
+
     # pixels at -1, -1
-    us = np.vstack((
-        np.hstack((sb1[ :1,:1 ], sb1[:1 ,:-1])),
-        np.hstack((sb1[:-1,:1 ], sb1[:-1,:-1]))
-    ))
-    vs = np.vstack((
-        np.hstack((sb2[ :1,:1 ], sb2[:1 ,:-1])),
-        np.hstack((sb2[:-1,:1 ], sb2[:-1,:-1]))
-    ))
-    numerator += np.power(np.abs(np.conj(us) * vs), 2)
-    denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
+    region = (slice(0,-2), slice(0,-2))
+    numerator += np.power(np.abs(np.conj(us[region]) * vs[region]), 2)
+    denominator += np.power(np.abs(us[region]), 3) + np.power(np.abs(vs[region]), 3)
 
     # pixels at +1, -1
-    us = np.vstack((
-        np.hstack((sb1[ :1,1: ], sb1[:1 ,-1:])),
-        np.hstack((sb1[:-1,1: ], sb1[:-1,-1:]))
-    ))
-    vs = np.vstack((
-        np.hstack((sb2[ :1,1: ], sb2[:1 ,-1:])),
-        np.hstack((sb2[:-1,1: ], sb2[:-1,-1:]))
-    ))
-    numerator += np.power(np.abs(np.conj(us) * vs), 2)
-    denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
+    region = (slice(0,-2), slice(2,None))
+    numerator += np.power(np.abs(np.conj(us[region]) * vs[region]), 2)
+    denominator += np.power(np.abs(us[region]), 3) + np.power(np.abs(vs[region]), 3)
 
     # pixels at -1, +1
-    us = np.vstack((
-        np.hstack((sb1[ 1:,:1 ], sb1[ 1:,:-1])),
-        np.hstack((sb1[-1:,:1 ], sb1[-1:,:-1]))
-    ))
-    vs = np.vstack((
-        np.hstack((sb2[ 1:,:1 ], sb2[ 1:,:-1])),
-        np.hstack((sb2[-1:,:1 ], sb2[-1:,:-1]))
-    ))
-    numerator += np.power(np.abs(np.conj(us) * vs), 2)
-    denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
+    region = (slice(2,None), slice(0,-2))
+    numerator += np.power(np.abs(np.conj(us[region]) * vs[region]), 2)
+    denominator += np.power(np.abs(us[region]), 3) + np.power(np.abs(vs[region]), 3)
 
     # pixels at +1, +1
-    us = np.vstack((
-        np.hstack((sb1[ 1:,1: ], sb1[ 1:,-1:])),
-        np.hstack((sb1[-1:,1: ], sb1[-1:,-1:]))
-    ))
-    vs = np.vstack((
-        np.hstack((sb2[ 1:,1: ], sb2[ 1:,-1:])),
-        np.hstack((sb2[-1:,1: ], sb2[-1:,-1:]))
-    ))
-    numerator += np.power(np.abs(np.conj(us) * vs), 2)
-    denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
+    region = (slice(2,None), slice(2,None))
+    numerator += np.power(np.abs(np.conj(us[region]) * vs[region]), 2)
+    denominator += np.power(np.abs(us[region]), 3) + np.power(np.abs(vs[region]), 3)
 
     return numerator / denominator
 

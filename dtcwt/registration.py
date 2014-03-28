@@ -314,7 +314,7 @@ def estimatereg(source, reference, regshape=None):
     # Extract number of levels and shape of level 3 subband
     nlevels = len(source.highpasses)
     if regshape is None:
-        avecs_shape = source.highpasses[2].shape[:2] + (6,)
+        avecs_shape = source.highpasses[3].shape[:2] + (6,)
     else:
         avecs_shape = tuple(regshape[:2]) + (6,)
 
@@ -323,7 +323,10 @@ def estimatereg(source, reference, regshape=None):
 
     # Compute initial global transform
     levels = list(x for x in xrange(nlevels-1, nlevels-3, -1) if x>=0)
-    Qt_mats = list(np.sum(np.sum(x, axis=0), axis=0) for x in qtildematrices(source, reference, levels))
+    Qt_mats = list(
+            np.sum(np.sum(x, axis=0), axis=0)
+            for x in qtildematrices(source, reference, levels)
+    )
     Qt = np.sum(Qt_mats, axis=0)
 
     a = solvetransform(Qt)
@@ -347,7 +350,7 @@ def estimatereg(source, reference, regshape=None):
 
         qts = np.zeros(avecs.shape[:2] + all_qts[0].shape[2:])
         for x in all_qts:
-            qts += dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='bilinear')
+            qts += dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='nearest')
 
         avecs += solvetransform(qts)
 

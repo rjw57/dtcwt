@@ -31,7 +31,7 @@ def main():
         ''')
     )
 
-    number = 10
+    number = 20
     try:
         secs = t.timeit(number)
         print('{0:.2f}s for {1} iterations => {2:.2f}s/iteration'.format(

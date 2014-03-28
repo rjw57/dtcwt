@@ -72,6 +72,7 @@ Changes
 ''''''
 
 * Add queue parameter to low-level OpenCL ``colifilt`` and ``coldfilt`` functions.
+* Significantly increase speed of ``dtcwt.registration.estimatereg`` function.
 
 0.9.1
 '''''

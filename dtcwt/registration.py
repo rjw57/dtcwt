@@ -318,7 +318,7 @@ def estimatereg(source, reference, regshape=None):
         # Warp the levels we'll be looking at with the current best-guess transform
         warped = warptransform(source, avecs, levels, method='bilinear')
 
-        qts = np.sum(list(dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='bilinear')
+        qts = np.sum(list(dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='nearest')
                           for x in qtildematrices(warped, reference, levels)),
                      axis=0)
 

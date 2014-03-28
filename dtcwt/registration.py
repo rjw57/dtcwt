@@ -50,25 +50,36 @@ def phasegradient(sb1, sb2, w=None):
     if sb1.size != sb2.size:
         raise ValueError('Subbands should have identical size')
 
-    xs, ys = np.meshgrid(np.arange(sb1.shape[1]), np.arange(sb1.shape[0]))
-
     # Measure horizontal phase gradients by taking the angle of
     # summed conjugate products across horizontal pairs.
-    A = sb1[:,1:] * np.conj(sb1[:,:-1])
-    B = sb2[:,1:] * np.conj(sb2[:,:-1])
-    dx = np.angle(dtcwt.sampling.sample((A+B) * np.exp(-1j * w[0]), xs-0.5, ys, method='bilinear')) + w[0]
+    S = (sb1[:,1:] * np.conj(sb1[:,:-1]) + sb2[:,1:] * np.conj(sb2[:,:-1])) * np.exp(-1j * w[0])
+    #dx = np.angle(dtcwt.sampling.sample(S, xs-0.5, ys, method='bilinear')) + w[0]
+    dx = np.hstack((
+        np.angle(S[:,:1]),
+        np.angle(0.5 * (S[:,:-1] + S[:,1:])),
+        np.angle(S[:,-1:])
+    )) + w[0]
 
     # Measure vertical phase gradients by taking the angle of
     # summed conjugate products across vertical pairs.
-    A = sb1[1:,:] * np.conj(sb1[:-1,:])
-    B = sb2[1:,:] * np.conj(sb2[:-1,:])
-    dy = np.angle(dtcwt.sampling.sample((A+B) * np.exp(-1j * w[1]), xs, ys-0.5, method='bilinear')) + w[1]
+    S = (sb1[1:,:] * np.conj(sb1[:-1,:]) + sb2[1:,:] * np.conj(sb2[:-1,:])) * np.exp(-1j * w[1])
+    dy = np.vstack((
+        np.angle(S[:1,:]),
+        np.angle(0.5 * (S[:-1,:] + S[1:,:])),
+        np.angle(S[-1:,:])
+    )) + w[1]
 
     # Measure temporal phase differences between refh and prevh
     A = sb2 * np.conj(sb1)
     dt = np.angle(A)
 
     return dy, dx, dt
+
+def _pow2(a):
+    return a * a
+
+def _pow3(a):
+    return a * a * a
 
 def confidence(sb1, sb2):
     """
@@ -80,16 +91,42 @@ def confidence(sb1, sb2):
     if sb1.size != sb2.size:
         raise ValueError('Subbands should have identical size')
 
-    xs, ys = np.meshgrid(np.arange(sb1.shape[1]), np.arange(sb1.shape[0]))
-
     numerator, denominator = 0, 1e-6
 
-    for dx, dy in ((-1,-1), (-1,1), (1,-1), (1,1)):
-        us = dtcwt.sampling.sample(sb1, xs+dx, ys+dy, method='nearest')
-        vs = dtcwt.sampling.sample(sb2, xs+dx, ys+dy, method='nearest')
+    # Pad subbands
+    us = np.concatenate((
+        np.concatenate((sb1[  :1,:1], sb1[  :1,:], sb1[  :1,-1:]), axis=1),
+        np.concatenate((sb1[  : ,:1], sb1        , sb1[  : ,-1:]), axis=1),
+        np.concatenate((sb1[-1: ,:1], sb1[-1: ,:], sb1[-1: ,-1:]), axis=1),
+    ), axis=0)
+    vs = np.concatenate((
+        np.concatenate((sb2[  :1,:1], sb2[  :1,:], sb2[  :1,-1:]), axis=1),
+        np.concatenate((sb2[  : ,:1], sb2        , sb2[  : ,-1:]), axis=1),
+        np.concatenate((sb2[-1: ,:1], sb2[-1: ,:], sb2[-1: ,-1:]), axis=1),
+    ), axis=0)
 
-        numerator += np.power(np.abs(np.conj(us) * vs), 2)
-        denominator += np.power(np.abs(us), 3) + np.power(np.abs(vs), 3)
+    us3_abs, vs3_abs = _pow3(np.abs(us)), _pow3(np.abs(vs))
+    prod2_abs = _pow2(np.abs(np.conj(us) * vs))
+
+    # pixels at -1, -1
+    region = (slice(0,-2), slice(0,-2))
+    numerator += prod2_abs[region]
+    denominator += us3_abs[region] + vs3_abs[region]
+
+    # pixels at +1, -1
+    region = (slice(0,-2), slice(2,None))
+    numerator += prod2_abs[region]
+    denominator += us3_abs[region] + vs3_abs[region]
+
+    # pixels at -1, +1
+    region = (slice(2,None), slice(0,-2))
+    numerator += prod2_abs[region]
+    denominator += us3_abs[region] + vs3_abs[region]
+
+    # pixels at +1, +1
+    region = (slice(2,None), slice(2,None))
+    numerator += prod2_abs[region]
+    denominator += us3_abs[region] + vs3_abs[region]
 
     return numerator / denominator
 
@@ -189,34 +226,19 @@ def solvetransform(Qtilde_vec):
     # Want to find a = -Q^{-1} q => Qa = -q
     # The naive way would be: return -np.linalg.inv(Q).dot(q)
     # A less naive way would be: return np.linalg.solve(Q, -q)
-    #
-    # Recall that, given Q is symmetric, we can decompose it at Q = U L U^T with
-    # diagonal L and orthogonal U. Hence:
-    #
-    #   U L U^T a = -q => a = - U L^-1 U^T q
-    #
-    # An even better way is thus to use the specialised eigenvector
-    # calculation for symmetric matrices:
 
     # NumPy >1.8 directly supports using the last two dimensions as a matrix. IF
     # we get a LinAlgError, we assume that we need to fall-back to a NumPy 1.7
     # approach which is *significantly* slower.
     try:
-        l, U = np.linalg.eigh(Q, 'U')
+        rv = np.linalg.solve(Q, -q)
     except np.linalg.LinAlgError:
         # Try the slower fallback
-        l = np.zeros(Qtilde_vec.shape[:-1] + (6,))
-        U = np.zeros(Qtilde_vec.shape[:-1] + (6,6))
+        rv = np.zeros(Qtilde_vec.shape[:-1] + (6,))
         for idx in itertools.product(*list(xrange(s) for s in Qtilde_vec.shape[:-1])):
-            l[idx], U[idx] = np.linalg.eigh(Q[idx], 'U')
+            rv[idx] = np.linalg.solve(Q[idx], -q[idx])
 
-    # Now we have some issue here. If Qtilde_vec is a straightforward vector
-    # then we can just return U.dot((U.T.dot(-q))/l). However if Qtilde_vec is
-    # an array of vectors then the straightforward dot product won't work. We
-    # want to perform matrix multiplication on stacked matrices.
-    return dtcwt.utils.stacked_2d_matrix_vector_prod(
-        U, dtcwt.utils.stacked_2d_vector_matrix_prod(-q, U) / l
-    )
+    return rv
 
 def normsamplehighpass(Yh, xs, ys, method=None):
     """
@@ -292,7 +314,7 @@ def estimatereg(source, reference, regshape=None):
     # Extract number of levels and shape of level 3 subband
     nlevels = len(source.highpasses)
     if regshape is None:
-        avecs_shape = source.highpasses[2].shape[:2] + (6,)
+        avecs_shape = source.highpasses[3].shape[:2] + (6,)
     else:
         avecs_shape = tuple(regshape[:2]) + (6,)
 
@@ -301,7 +323,10 @@ def estimatereg(source, reference, regshape=None):
 
     # Compute initial global transform
     levels = list(x for x in xrange(nlevels-1, nlevels-3, -1) if x>=0)
-    Qt_mats = list(np.sum(np.sum(x, axis=0), axis=0) for x in qtildematrices(source, reference, levels))
+    Qt_mats = list(
+            np.sum(np.sum(x, axis=0), axis=0)
+            for x in qtildematrices(source, reference, levels)
+    )
     Qt = np.sum(Qt_mats, axis=0)
 
     a = solvetransform(Qt)
@@ -318,9 +343,14 @@ def estimatereg(source, reference, regshape=None):
         # Warp the levels we'll be looking at with the current best-guess transform
         warped = warptransform(source, avecs, levels, method='bilinear')
 
-        qts = np.sum(list(dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='bilinear')
-                          for x in qtildematrices(warped, reference, levels)),
-                     axis=0)
+        # Rescale and sample all the Qtilde matrix results
+        all_qts = qtildematrices(warped, reference, levels)
+        if all_qts is None or len(all_qts) < 1:
+            continue
+
+        qts = np.zeros(avecs.shape[:2] + all_qts[0].shape[2:])
+        for x in all_qts:
+            qts += dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='nearest')
 
         avecs += solvetransform(qts)
 

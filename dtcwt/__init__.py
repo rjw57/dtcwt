@@ -18,6 +18,7 @@ __all__ = [
 from dtcwt._version import __version__
 
 import dtcwt.numpy
+import dtcwt.numpy.sampling
 import dtcwt.opencl
 
 # An array of dictionaries. Each dictionary stores the top-level module
@@ -31,12 +32,14 @@ _AVAILABLE_BACKENDS = {
         'Transform2d': dtcwt.numpy.Transform2d,
         'Transform3d': dtcwt.numpy.Transform3d,
         'Pyramid': dtcwt.numpy.Pyramid,
+        '_sampling': dtcwt.numpy.sampling,
     },
     'opencl': {
         'Transform1d': dtcwt.numpy.Transform1d,
         'Transform2d': dtcwt.opencl.Transform2d,
         'Transform3d': dtcwt.numpy.Transform3d,
         'Pyramid': dtcwt.opencl.Pyramid,
+        '_sampling': dtcwt.numpy.sampling,
     },
 }
 

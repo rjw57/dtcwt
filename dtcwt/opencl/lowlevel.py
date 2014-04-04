@@ -408,6 +408,17 @@ int4 reflect(int4 x, int4 x_min, int4 x_max)
     int4 normed_mod = select(mod, mod + rng_by_2, mod < 0);
     return select(normed_mod, rng_by_2 - normed_mod - (int4)(1,1,1,1), normed_mod >= rng) + x_min;
 }
+
+// floating point version of reflect() which matches the numpy version
+float4 reflectf(float4 x, float4 minx, float4 maxx)
+{
+    float4 rng = maxx - minx;
+    float4 rng_by_2 = 2 * rng;
+    float4 mod = fmod(x-minx, rng_by_2);
+    float4 normed_mod = select(mod, mod + rng_by_2, mod < 0);
+    float4 out = select(normed_mod, rng_by_2 - normed_mod, normed_mod >= rng) + minx;
+    return out;
+}
 '''
 
 CONVOLVE_KERNEL = '''

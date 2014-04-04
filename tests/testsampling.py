@@ -46,3 +46,16 @@ def test_rescale_nearest():
 
     # Got back roughly the same thing to within 1% (nearest neighbour should be exact)
     assert np.all(np.abs(X-Xrecon) < 1e-2)
+
+def test_rescale_pixel_centre():
+    # Create random 100x120 image
+    X = np.random.rand(100,120)
+
+    # Re size up
+    Xrs = rescale(X, (200, 240), 'nearest')
+    assert Xrs.shape == (200, 240)
+
+    # Output should be 4x4 blocks identical to original
+    for dx, dy in ((0,0), (0,1), (1,0), (1,1)):
+        Y = Xrs[dx::2,dy::2]
+        assert np.all(np.abs(X-Y) < 1e-8)

@@ -168,7 +168,9 @@ def to_queue(queue):
 
 def to_device(X, queue=None):
     if isinstance(X, cl_array.Array):
-        return X
+        if X.dtype is np.float32:
+            return X
+        return X.astype(np.float32)
     return cl_array.to_device(to_queue(queue), np.array(X, dtype=np.float32, order='C'))
 
 def to_array(a, queue=None):

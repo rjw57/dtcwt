@@ -80,11 +80,15 @@ def test_backend_with_guard_and_exception():
     correctly propagated.
 
     """
-    assert len(dtcwt._BACKEND_STACK) == 1
+    dtcwt.push_backend('numpy')
+    assert len(dtcwt._BACKEND_STACK) == 2
+    assert dtcwt.backend_name == 'numpy'
     def tst():
         with dtcwt.preserve_backend_stack():
-            dtcwt.push_backend('numpy')
-            assert len(dtcwt._BACKEND_STACK) == 2
+            dtcwt.push_backend('opencl')
+            assert dtcwt.backend_name == 'opencl'
+            assert len(dtcwt._BACKEND_STACK) == 3
             raise RuntimeError('test error')
     assert_raises(RuntimeError, tst)
-    assert len(dtcwt._BACKEND_STACK) == 1
+    assert dtcwt.backend_name == 'numpy'
+    assert len(dtcwt._BACKEND_STACK) == 2

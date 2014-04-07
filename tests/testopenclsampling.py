@@ -91,3 +91,45 @@ def test_nearest_against_numpy_3d():
 
     # Sampling should agree to within tolerance
     assert np.all(np.abs(Xsampled-Xsampled_np) < 1e-6)
+
+@skip_if_no_cl
+def test_bilinear_against_numpy_2d():
+    # Create random 100x120 image
+    X = np.random.rand(100,120).astype(np.float32)
+
+    # Generate random sampling co-ords
+    sample_shape = (320, 240)
+    ys = (4 * np.random.rand(*sample_shape) - 2) * X.shape[0]
+    xs = (4 * np.random.rand(*sample_shape) - 2) * X.shape[1]
+
+    # Sample
+    Xsampled = sample(X, xs, ys, 'bilinear')
+    assert Xsampled.shape == sample_shape
+
+    # Sample via numpy
+    Xsampled_np = npsample.sample_bilinear(X, xs, ys)
+    assert Xsampled_np.shape == Xsampled.shape
+
+    # Sampling should agree to within tolerance
+    assert np.all(np.abs(Xsampled-Xsampled_np) < 1e-4)
+
+@skip_if_no_cl
+def test_bilinear_against_numpy_3d():
+    # Create random 100x120x4 image
+    X = np.random.rand(100,120,4)
+
+    # Generate random sampling co-ords
+    sample_shape = (320, 240)
+    ys = (4 * np.random.rand(*sample_shape) - 2) * X.shape[0]
+    xs = (4 * np.random.rand(*sample_shape) - 2) * X.shape[1]
+
+    # Sample
+    Xsampled = sample(X, xs, ys, 'bilinear')
+    assert Xsampled.shape == sample_shape + X.shape[2:]
+
+    # Sample via numpy
+    Xsampled_np = npsample.sample_bilinear(X, xs, ys)
+    assert Xsampled_np.shape == Xsampled.shape
+
+    # Sampling should agree to within tolerance
+    assert np.all(np.abs(Xsampled-Xsampled_np) < 1e-4)

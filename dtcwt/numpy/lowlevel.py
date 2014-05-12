@@ -38,7 +38,7 @@ def _column_convolve(X, h):
 
     out = np.zeros(Xshape, dtype=X.dtype)
     for idx in xrange(h_size):
-        out[idx:(idx+X.shape[0]),...] += X * h[idx]
+        out[idx:(idx+X.shape[0])] += X * h[idx]
 
     outShape = Xshape.copy()
     outShape[0] = abs(X.shape[0] - h_size) + 1

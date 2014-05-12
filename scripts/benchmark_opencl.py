@@ -58,8 +58,7 @@ def main():
         queue = get_default_queue()
         print('Using context: {0}'.format(queue.context))
     except NoCLPresentError:
-        print('Skipping benchmark since OpenCL is not present')
-        return
+        print('Skipping OpenCL benchmark since OpenCL is not present')
 
     print('Running NumPy colfilter...')
     a = benchmark('colfilter(lena, h1o)',

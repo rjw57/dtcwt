@@ -60,7 +60,7 @@ def colfilter(X, h):
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
 
     """
-    
+
     # Interpret all inputs as arrays
     X = asfarray(X)
     h = as_column_vector(h)
@@ -90,10 +90,10 @@ def coldfilt(X, ha, hb):
 
                           ext        top edge                     bottom edge       ext
         Level 1:        !               |               !               |               !
-        odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b   
+        odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b
         odd filt on .      a   a   a   a   b   b   b   b   b   b   b   b   a   a   a   a
         Level 2:        !               |               !               |               !
-        +q filt on x      b       b       a       a       a       a       b       b       
+        +q filt on x      b       b       a       a       a       a       b       b
         -q filt on o          a       a       b       b       b       b       a       a
 
     The output is decimated by two from the input sample rate and the results
@@ -146,8 +146,8 @@ def coldfilt(X, ha, hb):
     else:
        s2 = slice(0, r2, 2)
        s1 = slice(1, r2, 2)
-    
-    # Perform filtering on columns of extended matrix X(xe,:) in 4 ways. 
+
+    # Perform filtering on columns of extended matrix X(xe,:) in 4 ways.
     Y[s1,:] = _column_convolve(X[xe[t-1],:],hao) + _column_convolve(X[xe[t-3],:],hae)
     Y[s2,:] = _column_convolve(X[xe[t],:],hbo) + _column_convolve(X[xe[t-2],:],hbe)
 
@@ -159,22 +159,22 @@ def colifilt(X, ha, hb):
     samples.  Both filters should be even length, and h should be approx linear
     phase with a quarter sample advance from its mid pt (i.e `:math:`|h(m/2)| >
     |h(m/2 + 1)|`).
-    
+
     .. code-block:: text
 
                           ext       left edge                      right edge       ext
         Level 2:        !               |               !               |               !
-        +q filt on x      b       b       a       a       a       a       b       b       
+        +q filt on x      b       b       a       a       a       a       b       b
         -q filt on o          a       a       b       b       b       b       a       a
         Level 1:        !               |               !               |               !
-        odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b   
+        odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b
         odd filt on .      a   a   a   a   b   b   b   b   b   b   b   b   a   a   a   a
-   
+
     The output is interpolated by two from the input sample rate and the
     results from the two filters, Ya and Yb, are interleaved to give Y.
     Symmetric extension with repeated end samples is used on the composite X
     columns before each filter is applied.
-   
+
     .. codeauthor:: Rich Wareham <rjw57@cantab.net>, August 2013
     .. codeauthor:: Cian Shaffrey, Cambridge University, August 2000
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
@@ -207,7 +207,7 @@ def colifilt(X, ha, hb):
         # Set up vector for symmetric extension of X with repeated end samples.
         # Use 'reflect' so r < m2 works OK.
         xe = reflect(np.arange(-m2, r+m2, dtype=np.int), -0.5, r-0.5)
-       
+
         t = np.arange(3, r+m, 2)
         if np.sum(ha*hb) > 0:
             ta = t
@@ -215,16 +215,16 @@ def colifilt(X, ha, hb):
         else:
             ta = t - 1
             tb = t
-       
+
         # Select odd and even samples from ha and hb. Note that due to 0-indexing
         # 'odd' and 'even' are not perhaps what you might expect them to be.
         hao = as_column_vector(ha[0:m:2])
         hae = as_column_vector(ha[1:m:2])
         hbo = as_column_vector(hb[0:m:2])
         hbe = as_column_vector(hb[1:m:2])
-       
+
         s = np.arange(0,r*2,4)
-       
+
         Y[s,:]   = _column_convolve(X[xe[tb-2],:],hae)
         Y[s+1,:] = _column_convolve(X[xe[ta-2],:],hbe)
         Y[s+2,:] = _column_convolve(X[xe[tb  ],:],hao)
@@ -242,16 +242,16 @@ def colifilt(X, ha, hb):
         else:
             ta = t - 1
             tb = t
-       
+
         # Select odd and even samples from ha and hb. Note that due to 0-indexing
         # 'odd' and 'even' are not perhaps what you might expect them to be.
         hao = as_column_vector(ha[0:m:2])
         hae = as_column_vector(ha[1:m:2])
         hbo = as_column_vector(hb[0:m:2])
         hbe = as_column_vector(hb[1:m:2])
-       
+
         s = np.arange(0,r*2,4)
-       
+
         Y[s,:]   = _column_convolve(X[xe[tb],:],hao)
         Y[s+1,:] = _column_convolve(X[xe[ta],:],hbo)
         Y[s+2,:] = _column_convolve(X[xe[tb],:],hae)

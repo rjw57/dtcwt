@@ -260,113 +260,168 @@ As an example, we will register two frames from a video of road traffic.
 Firstly, as boilerplate, import plotting command from pylab and also the
 :py:mod:`datasets` module which is part of the test suite for :py:mod:`dtcwt`.
 
-.. ipython::
+.. code::
 
-    In [0]: from pylab import *
-
-    In [0]: import datasets
+    from pylab import *
+    import datasets
 
 If we show one image in the red channel and one in the green, we can see where
 the images are incorrectly registered by looking for red or green fringes:
 
-.. ipython::
+.. code::
 
-    @doctest
-    In [1]: ref, src = datasets.regframes('traffic')
+    ref, src = datasets.regframes('traffic')
 
-    In [1]: figure()
+    figure()
+    imshow(np.dstack((ref, src, np.zeros_like(ref))))
+    title('Registration input images')
 
-    In [3]: imshow(np.dstack((ref, src, np.zeros_like(ref))))
-    Out[3]: <matplotlib.image.AxesImage at 0x319d9d0>
+.. plot::
 
-    @savefig gen-registration-input.png align=center
-    In [4]: title('Registration input images')
-    Out[4]: <matplotlib.text.Text at 0x3193ad0>
+    from pylab import *
+    import datasets
+
+    ref, src = datasets.regframes('traffic')
+
+    figure()
+    imshow(np.dstack((ref, src, np.zeros_like(ref))))
+    title('Registration input images')
 
 To register the images we first take the DTCWT:
 
-.. ipython::
-    :doctest:
+.. code::
 
-    In [5]: import dtcwt
+    import dtcwt
 
-    In [6]: transform = dtcwt.Transform2d()
-
-    In [7]: ref_t = transform.forward(ref, nlevels=6)
-
-    In [8]: src_t = transform.forward(src, nlevels=6)
+    transform = dtcwt.Transform2d()
+    ref_t = transform.forward(ref, nlevels=6)
+    src_t = transform.forward(src, nlevels=6)
 
 Registration is now performed via the :py:func:`dtcwt.registration.estimatereg`
 function. Once the registration is estimated, we can warp the source image to
 the reference using the :py:func:`dtcwt.registration.warp` function.
 
-.. ipython::
+.. code::
 
-    In [9]: import dtcwt.registration as registration
+    import dtcwt.registration as registration
 
-    @doctest
-    In [10]: reg = registration.estimatereg(src_t, ref_t)
-
-    :doctest:
-    In [13]: warped_src = registration.warp(src, reg, method='bilinear')
+    reg = registration.estimatereg(src_t, ref_t)
+    warped_src = registration.warp(src, reg, method='bilinear')
 
 Plotting the warped and reference image in the green and red channels again
 shows a marked reduction in colour fringes.
 
-.. ipython::
+.. code::
 
-    In [1]: figure()
+    figure()
 
-    In [14]: imshow(np.dstack((ref, warped_src, np.zeros_like(ref))))
-    Out[14]: <matplotlib.image.AxesImage at 0x3186d90>
+    imshow(np.dstack((ref, warped_src, np.zeros_like(ref))))
+    title('Source image warped to reference')
 
-    @savefig gen-registration-warped.png align=center
-    In [15]: title('Source image warped to reference')
+.. plot::
+
+    from pylab import *
+    import datasets
+    ref, src = datasets.regframes('traffic')
+    import dtcwt
+    transform = dtcwt.Transform2d()
+    ref_t = transform.forward(ref, nlevels=6)
+    src_t = transform.forward(src, nlevels=6)
+    import dtcwt.registration as registration
+
+    reg = registration.estimatereg(src_t, ref_t)
+    warped_src = registration.warp(src, reg, method='bilinear')
+    figure()
+
+    imshow(np.dstack((ref, warped_src, np.zeros_like(ref))))
+    title('Source image warped to reference')
 
 The velocity field, in units of image width/height, can be calculated by the
 :py:func:`dtcwt.registration.velocityfield` function. We need to scale the
 result by the image width and height to get a velocity field in pixels.
 
-.. ipython::
+.. code::
 
-    @doctest
-    In [24]: vxs, vys = registration.velocityfield(reg, ref.shape[:2], method='bilinear')
-
-    In [0]: vxs = vxs * ref.shape[1]
-
-    In [0]: vys = vys * ref.shape[0]
-
+    vxs, vys = registration.velocityfield(reg, ref.shape[:2], method='bilinear')
+    vxs = vxs * ref.shape[1]
+    vys = vys * ref.shape[0]
 
 We can plot the result as a quiver map overlaid on the reference image:
 
-.. ipython::
+.. code::
 
-    In [1]: figure()
+    figure()
 
-    In [26]: X, Y = np.meshgrid(np.arange(ref.shape[1]), np.arange(ref.shape[0]))
+    X, Y = np.meshgrid(np.arange(ref.shape[1]), np.arange(ref.shape[0]))
 
-    In [27]: imshow(ref, cmap=cm.gray, clim=(0,1))
-    Out[27]: <matplotlib.image.AxesImage at 0x7ded610>
+    imshow(ref, cmap=cm.gray, clim=(0,1))
 
-    In [25]: step = 8
+    step = 8
 
-    In [28]: quiver(X[::step,::step], Y[::step,::step],
-       ....:        vxs[::step,::step], vys[::step,::step],
-       ....:        color='g', angles='xy', scale_units='xy', scale=0.25)
-    Out[28]: <matplotlib.quiver.Quiver at 0x7df1110>
+    quiver(X[::step,::step], Y[::step,::step],
+           vxs[::step,::step], vys[::step,::step],
+           color='g', angles='xy', scale_units='xy', scale=0.25)
 
-    @savefig gen-registration-vel-field.png align=center
-    In [29]: title('Estimated velocity field (x4 scale)')
+    title('Estimated velocity field (x4 scale)')
+
+.. plot::
+
+    from pylab import *
+    import datasets
+    ref, src = datasets.regframes('traffic')
+    import dtcwt
+    transform = dtcwt.Transform2d()
+    ref_t = transform.forward(ref, nlevels=6)
+    src_t = transform.forward(src, nlevels=6)
+    import dtcwt.registration as registration
+
+    reg = registration.estimatereg(src_t, ref_t)
+    warped_src = registration.warp(src, reg, method='bilinear')
+
+    vxs, vys = registration.velocityfield(reg, ref.shape[:2], method='bilinear')
+    vxs = vxs * ref.shape[1]
+    vys = vys * ref.shape[0]
+
+    figure()
+
+    X, Y = np.meshgrid(np.arange(ref.shape[1]), np.arange(ref.shape[0]))
+
+    imshow(ref, cmap=cm.gray, clim=(0,1))
+
+    step = 8
+
+    quiver(X[::step,::step], Y[::step,::step],
+           vxs[::step,::step], vys[::step,::step],
+           color='g', angles='xy', scale_units='xy', scale=0.25)
+
+    title('Estimated velocity field (x4 scale)')
 
 We can also plot the magnitude of the velocity field which clearly shows the moving cars:
 
-.. ipython::
+.. code::
 
-    In [1]: figure()
+    figure()
+    imshow(np.abs(vxs + 1j*vys), cmap=cm.hot)
+    title('Velocity field magnitude')
 
-    In [30]: imshow(np.abs(vxs + 1j*vys), cmap=cm.hot)
-    Out[30]: <matplotlib.image.AxesImage at 0x7ded250>
+.. plot::
 
-    @savefig gen-registration-vel-mag.png align=center
-    In [31]: title('Velocity field magnitude')
-    Out[31]: <matplotlib.text.Text at 0x3193ad0>
+    from pylab import *
+    import datasets
+    ref, src = datasets.regframes('traffic')
+    import dtcwt
+    transform = dtcwt.Transform2d()
+    ref_t = transform.forward(ref, nlevels=6)
+    src_t = transform.forward(src, nlevels=6)
+    import dtcwt.registration as registration
+
+    reg = registration.estimatereg(src_t, ref_t)
+    warped_src = registration.warp(src, reg, method='bilinear')
+
+    vxs, vys = registration.velocityfield(reg, ref.shape[:2], method='bilinear')
+    vxs = vxs * ref.shape[1]
+    vys = vys * ref.shape[0]
+
+    figure()
+    imshow(np.abs(vxs + 1j*vys), cmap=cm.hot)
+    title('Velocity field magnitude')

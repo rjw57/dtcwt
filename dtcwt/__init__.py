@@ -48,6 +48,7 @@ def _update_from_current_backend():
 
 class _BackendGuard(object):
     def __init__(self, stack):
+        # Explicitly copy the stack
         self._stack = list(stack)
 
     def __enter__(self):
@@ -55,6 +56,7 @@ class _BackendGuard(object):
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         dtcwt._BACKEND_STACK = self._stack
+        _update_from_current_backend()
         # only re-raise if it's *not* the exception that was
         # passed to throw(), because __exit__() must not raise
         # an exception unless __exit__() itself failed.  But

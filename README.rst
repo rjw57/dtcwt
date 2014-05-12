@@ -73,6 +73,8 @@ Changes
 
 * Add queue parameter to low-level OpenCL ``colifilt`` and ``coldfilt`` functions.
 * Significantly increase speed of ``dtcwt.registration.estimatereg`` function.
+* Fix bug whereby ``dtcwt.backend_name`` was not restored when using
+  ``preserve_backend_stack``.
 
 0.9.1
 '''''

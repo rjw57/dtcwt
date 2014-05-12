@@ -7,12 +7,18 @@ CPU ones.
 from __future__ import print_function, division
 
 import os
+import sys
 import timeit
 
 import numpy as np
 
 from dtcwt.coeffs import biort, qshift
 from dtcwt.opencl.lowlevel import NoCLPresentError, get_default_queue
+
+# HACK: PyPy Numpy requires a bit of monkey patching.
+# See https://bugs.pypy.org/issue1766
+if 'PyPy' in sys.version and np.frombuffer is None:
+    np.frombuffer = np.fromstring
 
 lena = np.load(os.path.join(os.path.dirname(__file__), '..', 'tests', 'lena.npz'))['lena']
 h0o, g0o, h1o, g1o = biort('near_sym_b')

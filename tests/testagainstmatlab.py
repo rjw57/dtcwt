@@ -13,6 +13,11 @@ from dtcwt.sampling import rescale_highpass
 from .util import assert_almost_equal, summarise_mat, summarise_cube, assert_percentile_almost_equal
 import tests.datasets as datasets
 
+# HACK: PyPy Numpy requires a bit of monkey patching.
+# See https://bugs.pypy.org/issue1766
+if 'PyPy' in sys.version and np.frombuffer is None:
+    np.frombuffer = np.fromstring
+
 ## IMPORTANT NOTE ##
 
 # These tests match only a 'summary' matrix from MATLAB which is formed by
@@ -60,7 +65,7 @@ def setup():
 
     global verif
     verif = np.load(os.path.join(os.path.dirname(__file__), 'verification.npz'))
-    
+
 def test_lena_loaded():
     assert lena.shape == (512, 512)
     assert lena.min() >= 0

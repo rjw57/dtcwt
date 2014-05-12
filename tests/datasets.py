@@ -1,5 +1,11 @@
 import os
+import sys
 import numpy as np
+
+# HACK: PyPy Numpy requires a bit of monkey patching.
+# See https://bugs.pypy.org/issue1766
+if 'PyPy' in sys.version and np.frombuffer is None:
+    np.frombuffer = np.fromstring
 
 def regframes(name):
     """Load the *name* registration dataset and return source and reference frame."""

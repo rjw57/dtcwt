@@ -24,6 +24,12 @@ transforms and their inverse in Python.
     :target: https://pypi.python.org/pypi//dtcwt/
     :alt: Downloads
 
+.. Note: this DOI link must be updated for each release.
+
+.. image:: https://zenodo.org/badge/doi/10.5281/zenodo.9862.png
+    :target: http://dx.doi.org/10.5281/zenodo.9862
+    :alt: DOI: 10.5281/zenodo.9862
+
 Installation
 ````````````
 

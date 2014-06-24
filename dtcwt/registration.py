@@ -199,7 +199,7 @@ def qtildematrices(t_ref, t_target, levels):
                 elem_idx += 1
 
             # Include the confidence parameter
-            Qt *= C_d**2
+            Qt *= C_d.reshape(Qt.shape[:-1])**2
 
             # Update Qt mats
             if Qt_mat_sum is None:

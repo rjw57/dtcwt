@@ -81,17 +81,22 @@ def _pow2(a):
 def _pow3(a):
     return a * a * a
 
-def confidence(sb1, sb2):
+def confidence(sb1, sb2, epsilon=1e-6):
     """
     Compute the confidence measure of subbands *sb1* and *sb2* which should be
     2d arrays of identical shape. The confidence measure gives highest weight
     to pixels we expect to give good results.
 
+    epsilon is a small constant intended to regularise the situation in which
+    the case when the wavelet coefficients are very small (and so dominated
+    by noise). It should be set to be comparable to the cube of the amplitude
+    of the measurement noise.
     """
+
     if sb1.size != sb2.size:
         raise ValueError('Subbands should have identical size')
 
-    numerator, denominator = 0, 1e-6
+    numerator, denominator = 0.0, epsilon
 
     # Pad subbands
     us = np.concatenate((
@@ -106,29 +111,29 @@ def confidence(sb1, sb2):
     ), axis=0)
 
     us3_abs, vs3_abs = _pow3(np.abs(us)), _pow3(np.abs(vs))
-    prod2_abs = _pow2(np.abs(np.conj(us) * vs))
+    prod_coeffs = np.conj(us) * vs
 
     # pixels at -1, -1
     region = (slice(0,-2), slice(0,-2))
-    numerator += prod2_abs[region]
+    numerator += prod_coeffs[region]
     denominator += us3_abs[region] + vs3_abs[region]
 
     # pixels at +1, -1
     region = (slice(0,-2), slice(2,None))
-    numerator += prod2_abs[region]
+    numerator += prod_coeffs[region]
     denominator += us3_abs[region] + vs3_abs[region]
 
     # pixels at -1, +1
     region = (slice(2,None), slice(0,-2))
-    numerator += prod2_abs[region]
+    numerator += prod_coeffs[region]
     denominator += us3_abs[region] + vs3_abs[region]
 
     # pixels at +1, +1
     region = (slice(2,None), slice(2,None))
-    numerator += prod2_abs[region]
+    numerator += prod_coeffs[region]
     denominator += us3_abs[region] + vs3_abs[region]
 
-    return numerator / denominator
+    return _pow2(np.abs(numerator)) / denominator
 
 Q_TRIU_INDICES = list(zip(*np.triu_indices(6)))
 Q_TRIU_FLAT_INDICES = np.ravel_multi_index(np.triu_indices(6), (6,6))
@@ -192,6 +197,9 @@ def qtildematrices(t_ref, t_target, levels):
             for r in xrange(6):
                 Qt[:,:,elem_idx] = tmp[r] * tmp[6]
                 elem_idx += 1
+
+            # Include the confidence parameter
+            Qt *= C_d**2
 
             # Update Qt mats
             if Qt_mat_sum is None:

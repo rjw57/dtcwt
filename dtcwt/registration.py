@@ -319,7 +319,7 @@ def estimatereg(source, reference, regshape=None):
     this function into a velocity field.
 
     """
-    # Extract number of levels and shape of level 3 subband
+    # Extract number of levels and shape of level 4 (i.e. index 3) subband
     nlevels = len(source.highpasses)
     if regshape is None:
         avecs_shape = source.highpasses[3].shape[:2] + (6,)
@@ -342,10 +342,9 @@ def estimatereg(source, reference, regshape=None):
         avecs[:,:,idx] = a[idx]
 
     # Refine estimate
-    for it in xrange(2 * (nlevels-3) - 1):
-        s, e = nlevels, nlevels - 2 - (it+1)//2
-        levels = list(x for x in xrange(s, e-1, -1) if x>=2 and x<nlevels)
-        if len(levels) == 0:
+    for s in np.arange(nlevels-1, 0, -0.5):
+        levels = list(int(np.floor(s))-x for x in range(2) if s-x >= 2)
+        if len(levels) < 2:
             continue
 
         # Warp the levels we'll be looking at with the current best-guess transform

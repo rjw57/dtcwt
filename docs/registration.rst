@@ -89,7 +89,7 @@ implementation is:
 .. math::
 
     C_d(\mathbf{x}) = \frac{
-        \left| \sum_{k=1}^4 u_k^* v_k \right|
+        \left| \sum_{k=1}^4 u_k^* v_k \right|^2
     }{
         \sum_{k=1}^4 (\left|u_k\right|^3 + \left|v_k\right|^3) + \epsilon
     }.

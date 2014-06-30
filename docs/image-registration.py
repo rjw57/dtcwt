@@ -44,9 +44,9 @@ def register_frames(filename):
     warped_f1 = warp(f1, avecs, method='bilinear')
 
     logging.info('Computing velocity field')
-    step = 8
+    step = 16
     X, Y = np.meshgrid(np.arange(f1.shape[1]), np.arange(f1.shape[0]))
-    vxs, vys = velocityfield(avecs, f1.shape, method='bilinear')
+    vxs, vys = velocityfield(avecs, f1.shape, method='nearest')
 
     vxs -= np.median(vxs.flat)
     vys -= np.median(vys.flat)
@@ -62,11 +62,12 @@ def register_frames(filename):
     title('Frame 1 warped to Frame 2 (image domain)')
 
     subplot(223)
+    sc = 2
     imshow(np.dstack((f1, f2, np.zeros_like(f2))))
     quiver(X[::step,::step], Y[::step,::step],
-            -vxs[::step,::step]*f1.shape[1], -vys[::step,::step]*f1.shape[0],
+            -sc*vxs[::step,::step]*f1.shape[1], -sc*vys[::step,::step]*f1.shape[0],
             color='b', angles='xy', scale_units='xy', scale=1)
-    title('Computed velocity field (median subtracted)')
+    title('Computed velocity field (median subtracted), x{0}'.format(sc))
 
     subplot(224)
     imshow(np.sqrt(vxs*vxs + vys*vys), interpolation='none', cmap=cm.hot)

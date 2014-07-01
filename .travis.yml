@@ -4,6 +4,7 @@ cache:
 before_install:
     - sudo apt-get update -qq
     - sudo apt-get install fglrx opencl-headers
+    - sudo apt-get install libatlas-dev libatlas-base-dev libblas-dev
 python:
     - "2.7"
     - "3.3"

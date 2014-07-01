@@ -19,6 +19,7 @@ from dtcwt._version import __version__
 
 import dtcwt.numpy
 import dtcwt.opencl
+import dtcwt.theano
 
 # An array of dictionaries. Each dictionary stores the top-level module
 # variables for that backend.
@@ -37,6 +38,12 @@ _AVAILABLE_BACKENDS = {
         'Transform2d': dtcwt.opencl.Transform2d,
         'Transform3d': dtcwt.numpy.Transform3d,
         'Pyramid': dtcwt.opencl.Pyramid,
+    },
+    'theano': {
+        'Transform1d': dtcwt.numpy.Transform1d,
+        'Transform2d': dtcwt.theano.Transform2d,
+        'Transform3d': dtcwt.numpy.Transform3d,
+        'Pyramid': dtcwt.theano.Pyramid,
     },
 }
 
@@ -100,6 +107,8 @@ def push_backend(name):
     * ``numpy``: the default NumPy backend. See :py:mod:`dtcwt.numpy`.
     * ``opencl``: a backend which uses OpenCL where available. See
       :py:mod:`dtcwt.opencl`.
+    * ``theano``: a backend making use of the theano library for transparent GPU
+      acceleration. See :py:mod:`dtcwt.theano`.
 
     """
     try:

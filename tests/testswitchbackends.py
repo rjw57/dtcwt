@@ -1,6 +1,7 @@
 import dtcwt
 import dtcwt.numpy as npbackend
 import dtcwt.opencl as clbackend
+import dtcwt.theano as theanobackend
 
 from unittest import TestCase
 from nose.tools import raises, assert_raises
@@ -50,6 +51,19 @@ class TestSwitchBackends(TestCase):
         assert dtcwt.Transform2d is npbackend.Transform2d
         assert dtcwt.Pyramid is npbackend.Pyramid
         assert dtcwt.backend_name == 'numpy'
+        dtcwt.pop_backend()
+        assert dtcwt.Transform2d is npbackend.Transform2d
+        assert dtcwt.Pyramid is npbackend.Pyramid
+        assert dtcwt.backend_name == 'numpy'
+
+    def test_switch_to_theano(self):
+        assert dtcwt.Transform2d is npbackend.Transform2d
+        assert dtcwt.Pyramid is npbackend.Pyramid
+        assert dtcwt.backend_name == 'numpy'
+        dtcwt.push_backend('theano')
+        assert dtcwt.Transform2d is theanobackend.Transform2d
+        assert dtcwt.Pyramid is theanobackend.Pyramid
+        assert dtcwt.backend_name == 'theano'
         dtcwt.pop_backend()
         assert dtcwt.Transform2d is npbackend.Transform2d
         assert dtcwt.Pyramid is npbackend.Pyramid

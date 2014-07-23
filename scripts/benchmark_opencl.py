@@ -32,7 +32,7 @@ def format_time(t):
 def benchmark(statement='pass', setup='pass'):
     number, repeat = (1, 3)
     min_time = 0
- 
+
     try:
         while min_time < 0.2:
             number *= 10
@@ -53,6 +53,51 @@ def main():
         print('Using context: {0}'.format(queue.context))
     except NoCLPresentError:
         print('Skipping OpenCL benchmark since OpenCL is not present')
+
+    print('Running NumPy dtwavexfm2 (one level)...')
+    a = benchmark('dtwavexfm2(lena, nlevels=1)',
+            'from dtcwt.compat import dtwavexfm2; from __main__ import lena')
+    print('Running OpenCL dtwavexfm2 (one level)...')
+    b = benchmark('dtwavexfm2(lena, nlevels=1)',
+            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
+    print('Speed up: x{0:.2f}'.format(a/b))
+    print('=====')
+
+    print('Running NumPy pre-planned (one level)...')
+    a = benchmark('t.forward(lena, nlevels=1)',
+            'from dtcwt.numpy import Transform2d; t=Transform2d(); from __main__ import lena')
+    print('Running OpenCL pre-planned (one level)...')
+    b = benchmark('t.forward(lena, nlevels=1).lowpass',
+            'from dtcwt.opencl import Transform2d; t=Transform2d(); from __main__ import lena')
+    print('Speed up: x{0:.2f}'.format(a/b))
+    print('=====')
+
+    print('Running NumPy dtwavexfm2...')
+    a = benchmark('dtwavexfm2(lena)',
+            'from dtcwt.compat import dtwavexfm2; from __main__ import lena')
+    print('Running OpenCL dtwavexfm2...')
+    b = benchmark('dtwavexfm2(lena)',
+            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
+    print('Speed up: x{0:.2f}'.format(a/b))
+    print('=====')
+
+    print('Running NumPy pre-planned...')
+    a = benchmark('t.forward(lena)',
+            'from dtcwt.numpy import Transform2d; t=Transform2d(); from __main__ import lena')
+    print('Running OpenCL pre-planned...')
+    b = benchmark('t.forward(lena).lowpass',
+            'from dtcwt.opencl import Transform2d; t=Transform2d(); from __main__ import lena')
+    print('Speed up: x{0:.2f}'.format(a/b))
+    print('=====')
+
+    print('Running NumPy dtwavexfm2 (non-POT)...')
+    a = benchmark('dtwavexfm2(lena[:510,:480])',
+            'from dtcwt.compat import dtwavexfm2; from __main__ import lena')
+    print('Running OpenCL dtwavexfm2 (non-POT)...')
+    b = benchmark('dtwavexfm2(lena[:510,:480])',
+            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
+    print('Speed up: x{0:.2f}'.format(a/b))
+    print('=====')
 
     print('Running NumPy colfilter...')
     a = benchmark('colfilter(lena, h1o)',
@@ -78,24 +123,6 @@ def main():
     print('Running OpenCL colifilt...')
     b = benchmark('colifilt(lena, h0b, h0a)',
             'from dtcwt.opencl.lowlevel import colifilt; from __main__ import lena, h0b, h0a')
-    print('Speed up: x{0:.2f}'.format(a/b))
-    print('=====')
-
-    print('Running NumPy dtwavexfm2...')
-    a = benchmark('dtwavexfm2(lena)',
-            'from dtcwt.compat import dtwavexfm2; from __main__ import lena')
-    print('Running OpenCL dtwavexfm2...')
-    b = benchmark('dtwavexfm2(lena)',
-            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
-    print('Speed up: x{0:.2f}'.format(a/b))
-    print('=====')
-
-    print('Running NumPy dtwavexfm2 (non-POT)...')
-    a = benchmark('dtwavexfm2(lena[:510,:480])',
-            'from dtcwt.compat import dtwavexfm2; from __main__ import lena')
-    print('Running OpenCL dtwavexfm2 (non-POT)...')
-    b = benchmark('dtwavexfm2(lena[:510,:480])',
-            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
     print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 

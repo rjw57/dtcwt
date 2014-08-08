@@ -164,7 +164,7 @@ def rescale(im, shape, method=None):
 
     return sample(im, sxs, sys, method)
 
-def _phase_image(xs, ys, unwrap=True, sbs=[0,1,2,3,4,5]):
+def _phase_image(xs, ys, unwrap=True, sbs=None):
     """ Internal function for phase rolling/unrolling of highpass subbands,
     with subband selection and re-ordering facility.
 
@@ -176,6 +176,8 @@ def _phase_image(xs, ys, unwrap=True, sbs=[0,1,2,3,4,5]):
     
     """
     slices = []
+    # If specific subbands are not specified, use the same points for all
+    sbs = sbs if sbs is not None else np.arange(6)
     
     for sb in range(0, len(sbs)):        
         slice_phase = DTHETA_DX_2D[sbs[sb]] * xs + DTHETA_DY_2D[sbs[sb]] * ys
@@ -187,7 +189,7 @@ def _phase_image(xs, ys, unwrap=True, sbs=[0,1,2,3,4,5]):
     
     return np.dstack(slices) # flattened array returned, size dependent on length of 'sbs'
 
-def sample_highpass(im, xs, ys, method=None, sbs=[0,1,2,3,4,5]):
+def sample_highpass(im, xs, ys, method=None, sbs=None):
     """As :py:func:`sample` except that the highpass image is first phase
     shifted to be centred on approximately DC, and has additional 'sbs' 
     input allowing selection and re-ordering of subbands.
@@ -205,7 +207,9 @@ def sample_highpass(im, xs, ys, method=None, sbs=[0,1,2,3,4,5]):
     S. C. Forshaw, Feb 2014.
 
     """
-
+    # If specific subbands are not specified, use the same points for all
+    sbs = sbs if sbs is not None else np.arange(6)
+    
     # phase unwrap
     X, Y = np.meshgrid(np.arange(im.shape[1]), np.arange(im.shape[0]))
     
@@ -217,7 +221,7 @@ def sample_highpass(im, xs, ys, method=None, sbs=[0,1,2,3,4,5]):
     # re-wrap
     return _phase_image(xs, ys, False, sbs) * im_sampled
 
-def rescale_highpass(im, shape, method=None, sbs=[0,1,2,3,4,5]):
+def rescale_highpass(im, shape, method=None, sbs=None):
     """As :py:func:`rescale` except that the highpass image is first phase
     shifted to be centred on approximately DC, and has additional 'sbs' 
     input allowing selection and re-ordering of subbands.
@@ -235,6 +239,9 @@ def rescale_highpass(im, shape, method=None, sbs=[0,1,2,3,4,5]):
     S. C. Forshaw, Feb 2014.
 
     """
+    # If specific subbands are not specified, use the same points for all
+    sbs = sbs if sbs is not None else np.arange(6)
+    
     # Original width and height (including half pixel)
     sh, sw = im.shape[:2]
 

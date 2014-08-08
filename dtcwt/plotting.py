@@ -61,7 +61,6 @@ def overlay_quiver(image, vectorField, level, offset):
     scalefactor = np.max(np.max(np.max(np.max(np.abs(vectorField)))))
     vectorField[-1,-1,:] = scalefactor
         
-    print(scalefactor)
     for sb in range(0, vectorField.shape[2]):
         hold(True)
         thiscolour = cmap(sb / float(vectorField.shape[2])) # Select colour for this subband

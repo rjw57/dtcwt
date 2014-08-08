@@ -23,9 +23,9 @@ def overlay_quiver(image, vectorField, level, offset):
 
     .. note::
 
-    The *level* parameter is 1-indexed meaning that the third level has
-    index "3". This is unusual in Python but is kept for compatibility
-    with similar MATLAB routines.
+        The *level* parameter is 1-indexed meaning that the third level has
+        index "3". This is unusual in Python but is kept for compatibility
+        with similar MATLAB routines.
 
     Should also work with other types of complex arrays (e.g., SLP
     coefficients), as long as the format is the same.

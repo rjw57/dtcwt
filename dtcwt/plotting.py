@@ -33,7 +33,7 @@ def overlay_quiver(image, vectorField, level, offset):
     Usage example:
 
     .. plot::
-    :include-source: true
+        :include-source: true
 
     import dtcwt
     import dtcwt.plotting as plotting

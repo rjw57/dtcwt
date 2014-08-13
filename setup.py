@@ -44,7 +44,7 @@ setup(
         'opencl': [ 'pyopencl', ],
     },
 
-    tests_require=[ 'coverage', ],
+    tests_require=[ 'coverage', 'Pillow', ],
 )
 
 # vim:sw=4:sts=4:et

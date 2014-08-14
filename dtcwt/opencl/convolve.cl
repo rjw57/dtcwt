@@ -34,6 +34,18 @@ int index(int4 coord, int4 strides) {
     return prod.x + prod.y + prod.z + prod.w;
 }
 
+// magic function to reflect the sampling co-ordinate about the
+// *outer edges* of pixel co-ordinates x_min, x_max. The output will
+// always be in the range (x_min, x_max].
+int4 reflect(int4 x, int4 x_min, int4 x_max)
+{
+    int4 rng = x_max - x_min;
+    int4 rng_by_2 = 2 * rng;
+    int4 mod = (x - x_min) % rng_by_2;
+    int4 normed_mod = select(mod, mod + rng_by_2, mod < 0);
+    return select(normed_mod, rng_by_2 - normed_mod - (int4)(1,1,1,1), normed_mod >= rng) + x_min;
+}
+
 // Convolve along first axis. To avoid this swizzle input_{...} appropriately.
 // Strides, offsets, skips and shapes are measured in units of INPUT_TYPE.
 //

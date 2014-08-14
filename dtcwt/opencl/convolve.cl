@@ -93,25 +93,6 @@ __kernel void convolve(
         for(int z=0; z<output_shape.z;
             ++z, ++output_origin.z, ++input_origin.z, ++local_coord.z)
         {
-            // In principle async_work_group_strided_copy is the "right thing"
-            // to do here but it totally kills performance on nVidia and
-            // doesn't seem to significantly affect performance on Intel CPU.
-            // Try defining USE_ASYNC_COPY if you're brave.
-#ifdef USE_ASYNC_COPY
-            // Copy input into cache (note that stride applies always to non-local memory)
-            event_t input_copy_event;
-            for(int copy_idx=0; copy_idx<LOCAL_SIZE_REST; ++copy_idx) {
-                input_copy_event = async_work_group_strided_copy(
-                    input_cache + LOCAL_CACHE_WIDTH * copy_idx,
-                    input + index(
-                        input_origin + input_skip * (int4)(-FILTER_HALF_WIDTH,copy_idx,0,0),
-                        input_strides),
-                    LOCAL_CACHE_WIDTH,
-                    input_strides.x * input_skip.x, input_copy_event
-                );
-            }
-            wait_group_events(1, &input_copy_event);
-#else
             // Copy input into cache
             input_cache[get_local_id(0) + FILTER_HALF_WIDTH +
                 LOCAL_CACHE_WIDTH * get_local_id(1)] = input[
@@ -129,7 +110,6 @@ __kernel void convolve(
                                 (int4)(FILTER_HALF_WIDTH,0,0,0)), input_strides)];
             }
             barrier(CLK_LOCAL_MEM_FENCE);
-#endif
 
             // generate output pixel value
             float filter_tap;

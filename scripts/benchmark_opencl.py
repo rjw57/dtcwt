@@ -18,7 +18,7 @@ from dtcwt.coeffs import biort, qshift
 from dtcwt.opencl.lowlevel import NoCLPresentError, get_default_queue
 from tests import datasets
 
-testimage = datasets.traffic_hd()[:,:,0]
+testimage = datasets.traffic_hd()
 h0o, g0o, h1o, g1o = biort('near_sym_b')
 h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift('qshift_d')
 

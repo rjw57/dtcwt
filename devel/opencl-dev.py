@@ -7,6 +7,7 @@ import matplotlib
 
 from pylab import *
 rcParams['image.cmap'] = 'gray'
+rcParams['image.interpolation'] = 'none'
 
 import pyopencl as cl
 import pyopencl.array as cla
@@ -14,14 +15,18 @@ import pyopencl.array as cla
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import tests.datasets as datasets
 
-os.environ['PYOPENCL_CTX']='1'
+if 'PYOPENCL_CTX' not in os.environ:
+    os.environ['PYOPENCL_CTX']='1'
 os.environ['PYOPENCL_COMPILER_OUTPUT']='1'
 
 ctx = cl.create_some_context()
 queue = cl.CommandQueue(ctx)
 
-FILTER_WIDTH=11
-LOCAL_SIZE=(16,16,1)
+print(ctx.devices[0].max_work_group_size)
+print(ctx.devices[0].local_mem_size)
+
+FILTER_WIDTH=17
+LOCAL_SIZE=(64,8)
 convolve_prog = cl.Program(ctx,
     open(os.path.join(os.path.dirname(__file__), 'convolve.cl')).read()).build([
         '-DINPUT_TYPE=float4', '-DFILTER_WIDTH={0}'.format(FILTER_WIDTH),
@@ -42,7 +47,7 @@ def main():
     # Swizzle RGB image into a form friendly to transform and upload to device
     input_buffer = np.asanyarray(test_image_rgba, np.float32, 'C')
     print('Input buffer size is {0}, strides {1}'.format(input_buffer.nbytes, input_buffer.strides))
-    input_array = cla.empty(queue, test_image_rgba.shape[:2] + (1,), cla.vec.float3, order='C')
+    input_array = cla.empty(queue, test_image_rgba.shape[:2], cla.vec.float3, order='C')
     cl.enqueue_copy(queue, input_array.data, input_buffer)
 
     # Create output array like input
@@ -84,18 +89,18 @@ def main():
     print('Global and local sizes: {0} and {1}'.format(global_size, local_size))
 
     global_size_arr = np.array(global_size)
-    fw_arr = np.array(((FILTER_WIDTH-1)>>1, 0, 0))
+    fw_arr = np.array(((FILTER_WIDTH-1)>>1, 0))
 
     # Check for valid regions
-    input_skip_array = np.array((input_skip['x'], input_skip['y'], input_skip['z']))
-    input_offset_array = np.array((input_offset['x'], input_offset['y'], input_offset['z']))
+    input_skip_array = np.array((input_skip['x'], input_skip['y']))
+    input_offset_array = np.array((input_offset['x'], input_offset['y']))
     assert not np.any(input_offset_array - fw_arr*input_skip_array < 0)
     assert not np.any(input_offset_array +
             (fw_arr+global_size_arr)*input_skip_array > np.array(input_array.shape))
 
-    output_shape_array = np.array((output_shape['x'], output_shape['y'], output_shape['z']))
-    output_skip_array = np.array((output_skip['x'], output_skip['y'], output_skip['z']))
-    output_offset_array = np.array((output_offset['x'], output_offset['y'], output_offset['z']))
+    output_shape_array = np.array((output_shape['x'], output_shape['y']))
+    output_skip_array = np.array((output_skip['x'], output_skip['y']))
+    output_offset_array = np.array((output_offset['x'], output_offset['y']))
     assert not np.any(output_offset_array < 0)
     assert not np.any(output_offset_array + global_size_arr*output_skip_array >
             np.array(output_array.shape))

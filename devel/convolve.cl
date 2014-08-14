@@ -51,7 +51,7 @@ int index(int4 coord, int4 strides) {
 // the same effect.
 //
 // IMPORTANT: Setting input_offset, output_offset or output_shape such that
-// pixesl in an invalid region are accessed is undefined and not checked for!
+// pixels in an invalid region are accessed is undefined and not checked for!
 __kernel void convolve(
     __global INPUT_TYPE* input,
     int4 input_offset, int4 input_skip, int4 input_strides,
@@ -59,59 +59,57 @@ __kernel void convolve(
     __global INPUT_TYPE* output,
     int4 output_offset, int4 output_skip, int4 output_shape, int4 output_strides)
 {
-    // Compute upper-left corner of this work group in input and output
-    int4 input_origin = input_offset + input_skip * (int4)(
-        get_global_id(0), get_global_id(1), get_global_id(2), 0
-    );
-    int4 output_origin = output_offset + output_skip * (int4)(
-        get_global_id(0), get_global_id(1), get_global_id(2), 0
-    );
-
     // Create an appropriately sized region of local memory which can hold the
-    // input plus some apron and the output.
+    // input plus some apron.
     __local INPUT_TYPE input_cache[LOCAL_CACHE_WIDTH*LOCAL_SIZE_REST];
-    __local INPUT_TYPE output_cache[LOCAL_SIZE_0*LOCAL_SIZE_REST];
 
-    // Copy input into cache (note that stride applies always to non-local memory)
-    event_t copy_events[LOCAL_SIZE_REST];
-    for(int copy_idx=0; copy_idx<LOCAL_SIZE_REST; ++copy_idx) {
-        copy_events[copy_idx] = async_work_group_strided_copy(
-            input_cache + LOCAL_CACHE_WIDTH * copy_idx,
-            input + index(
-                input_origin - input_skip * (int4)(-FILTER_HALF_WIDTH,copy_idx,0,0), input_strides),
-            LOCAL_SIZE_0 + 2*(FILTER_HALF_WIDTH),
-            input_strides.x * input_skip.x, 0
-        );
+    event_t input_copy_event;
+
+    // Compute upper-left corner of this work group in input and output
+    int4 group_coord = (int4)(
+        get_group_id(0) * get_local_size(0), get_group_id(1) * get_local_size(1),
+        0, 0
+    );
+    int4 input_origin = input_offset + input_skip * group_coord;
+    int4 output_origin = output_offset + output_skip * group_coord;
+    int4 local_coord = (int4)(get_local_id(0), get_local_id(1), 0, 0);
+
+    for(int w=0; w<output_shape.w;
+        ++w, ++output_origin.w, ++input_origin.w, ++local_coord.w)
+    {
+        input_origin.z = input_offset.z + input_skip.z * group_coord.z;
+        output_origin.z = output_offset.z + output_skip.z * group_coord.z;
+        local_coord.z = 0;
+        for(int z=0; z<output_shape.z;
+            ++z, ++output_origin.z, ++input_origin.z, ++local_coord.z)
+        {
+            // Copy input into cache (note that stride applies always to non-local memory)
+            for(int copy_idx=0; copy_idx<LOCAL_SIZE_REST; ++copy_idx) {
+                input_copy_event = async_work_group_strided_copy(
+                    input_cache + LOCAL_CACHE_WIDTH * copy_idx,
+                    input + index(
+                        input_origin + input_skip * (int4)(-FILTER_HALF_WIDTH,copy_idx,0,0),
+                        input_strides),
+                    LOCAL_CACHE_WIDTH,
+                    input_strides.x * input_skip.x, input_copy_event
+                );
+            }
+            wait_group_events(1, &input_copy_event);
+
+            // generate output pixel value
+            float filter_tap;
+            INPUT_TYPE output_value = 0.f, input_value;
+            for(int f_idx=0; f_idx<FILTER_WIDTH; ++f_idx) {
+                input_value = input_cache[
+                    get_local_id(0) + f_idx +
+                    get_local_id(1) * LOCAL_CACHE_WIDTH
+                ];
+                filter_tap = filter_kernel[f_idx];
+                output_value += input_value * filter_tap;
+            }
+
+            // write output pixel value
+            output[index(output_origin + output_skip*local_coord, output_strides)] = output_value;
+        }
     }
-
-    // Wait for copy to complete
-    wait_group_events(LOCAL_SIZE_REST, copy_events);
-
-#if 1
-    // generate output
-    float filter_tap;
-    INPUT_TYPE output_value = 0.f, input_value;
-    for(int f_idx=0; f_idx<FILTER_WIDTH; ++f_idx) {
-        input_value = input_cache[
-            get_local_id(0) + f_idx +
-            get_local_id(1) * LOCAL_CACHE_WIDTH
-        ];
-        filter_tap = filter_kernel[f_idx];
-        output_value += input_value * filter_tap;
-    }
-    output_cache[get_local_id(0) + get_local_id(1)*LOCAL_SIZE_0] = output_value;
-#else
-    output_cache[get_local_id(0) + get_local_id(1)*LOCAL_SIZE_0] =
-        input_cache[get_local_id(0) + FILTER_HALF_WIDTH + get_local_id(1)*LOCAL_CACHE_WIDTH];
-#endif
-
-    // Copy cache into output (note that stride applies always to non-local memory)
-    for(int copy_idx=0; copy_idx<LOCAL_SIZE_REST; ++copy_idx) {
-        copy_events[copy_idx] = async_work_group_strided_copy(
-            output + index(output_origin - output_skip*(int4)(0,copy_idx,0,0), output_strides),
-            output_cache + LOCAL_SIZE_0 * copy_idx, LOCAL_SIZE_0,
-            output_strides.x * output_skip.x, 0
-        );
-    }
-    wait_group_events(LOCAL_SIZE_REST, copy_events);
 }

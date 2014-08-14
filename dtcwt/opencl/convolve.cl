@@ -102,19 +102,19 @@ __kernel void convolve(
             // Copy input into cache
             input_cache[get_local_id(0) + FILTER_HALF_WIDTH +
                 LOCAL_CACHE_WIDTH * get_local_id(1)] = input[
-                    index(clamp(input_coord, 0, input_shape), input_strides)];
+                    index(clamp(input_coord, 0, input_shape-1), input_strides)];
             if(get_local_id(0) < FILTER_HALF_WIDTH) {
                 input_cache[get_local_id(0) +
                     LOCAL_CACHE_WIDTH * get_local_id(1)] = input[index(
                         clamp(input_coord - input_skip*(int4)(FILTER_HALF_WIDTH,0,0,0),
-                            0, input_shape),
+                            0, input_shape-1),
                         input_strides)];
             }
             if(get_local_id(0) >= get_local_size(0) - FILTER_HALF_WIDTH) {
                 input_cache[get_local_id(0) + 2*(FILTER_HALF_WIDTH) +
                     LOCAL_CACHE_WIDTH * get_local_id(1)] = input[index(
                         clamp(input_coord + input_skip*(int4)(FILTER_HALF_WIDTH,0,0,0),
-                            0, input_shape),
+                            0, input_shape-1),
                         input_strides)];
             }
             barrier(CLK_LOCAL_MEM_FENCE);

@@ -65,11 +65,11 @@ int4 reflect(int4 x, int4 x_min, int4 x_max)
 // IMPORTANT: Setting input_offset, output_offset or output_shape such that
 // pixels in an invalid region are accessed is undefined and not checked for!
 __kernel void convolve(
-    __constant float* filter_kernel, int4 output_shape,
+    __constant float* filter_kernel, int4 pixels_to_write,
     __global INPUT_TYPE* input,
-    int4 input_offset, int4 input_skip, int4 input_strides,
+    int4 input_offset, int4 input_shape, int4 input_skip, int4 input_strides,
     __global INPUT_TYPE* output,
-    int4 output_offset, int4 output_skip, int4 output_strides)
+    int4 output_offset, int4 output_shape, int4 output_skip, int4 output_strides)
 {
     // Create an appropriately sized region of local memory which can hold the
     // input plus some apron.
@@ -84,32 +84,45 @@ __kernel void convolve(
     int4 output_origin = output_offset + output_skip * group_coord;
     int4 local_coord = (int4)(get_local_id(0), get_local_id(1), 0, 0);
 
-    for(int w=0; w<output_shape.w;
+    // This is the output pixel this work item should write to
+    int4 output_coord = output_origin + output_skip*local_coord;
+
+    // This is the corresponding input pixel to read from
+    int4 input_coord = input_origin + input_skip*local_coord;
+
+    for(int w=0; w<pixels_to_write.w;
         ++w, ++output_origin.w, ++input_origin.w, ++local_coord.w)
     {
         input_origin.z = input_offset.z + input_skip.z * group_coord.z;
         output_origin.z = output_offset.z + output_skip.z * group_coord.z;
         local_coord.z = 0;
-        for(int z=0; z<output_shape.z;
+        for(int z=0; z<pixels_to_write.z;
             ++z, ++output_origin.z, ++input_origin.z, ++local_coord.z)
         {
             // Copy input into cache
             input_cache[get_local_id(0) + FILTER_HALF_WIDTH +
                 LOCAL_CACHE_WIDTH * get_local_id(1)] = input[
-                    index(input_origin + input_skip*local_coord, input_strides)];
+                    index(input_coord, input_strides)];
             if(get_local_id(0) < FILTER_HALF_WIDTH) {
                 input_cache[get_local_id(0) +
                     LOCAL_CACHE_WIDTH * get_local_id(1)] = input[
-                        index(input_origin + input_skip*(local_coord -
-                                (int4)(FILTER_HALF_WIDTH,0,0,0)), input_strides)];
+                        index(input_coord - input_skip*(int4)(FILTER_HALF_WIDTH,0,0,0),
+                            input_strides)];
             }
             if(get_local_id(0) >= get_local_size(0) - FILTER_HALF_WIDTH) {
                 input_cache[get_local_id(0) + 2*(FILTER_HALF_WIDTH) +
                     LOCAL_CACHE_WIDTH * get_local_id(1)] = input[
-                        index(input_origin + input_skip*(local_coord +
-                                (int4)(FILTER_HALF_WIDTH,0,0,0)), input_strides)];
+                        index(input_coord + input_skip*(int4)(FILTER_HALF_WIDTH,0,0,0),
+                            input_strides)];
             }
             barrier(CLK_LOCAL_MEM_FENCE);
+
+            // abort if we're writing outside the valid region. Do so now
+            // because we may still have read something important into the
+            // input cache.
+            if(any(output_coord < 0) || any(output_coord > output_shape)) {
+                continue;
+            }
 
             // generate output pixel value
             float filter_tap;
@@ -125,7 +138,7 @@ __kernel void convolve(
             }
 
             // write output pixel value
-            output[index(output_origin + output_skip*local_coord, output_strides)] = output_value;
+            output[index(output_coord, output_strides)] = output_value;
         }
     }
 }

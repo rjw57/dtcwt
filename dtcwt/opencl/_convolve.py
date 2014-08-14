@@ -88,8 +88,10 @@ class Convolution(object):
         return self.program.convolve(queue, global_size, self.local_size,
             self.filter_kernel.data, as_int4(output_shape,1),
             input_region.data, as_int4(input_region.offset, 0),
+            as_int4(input_region.shape, np.product(input_region.shape)),
             as_int4(input_region.skip, 1), as_int4(input_region.strides, input_total_stride),
             output_region.data, as_int4(output_region.offset, 0),
+            as_int4(output_region.shape, np.product(output_region.shape)),
             as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride))
 
     def _optimal_local_size_for_device(self, device):

@@ -58,43 +58,26 @@ class Convolution(object):
                 filter_kernel.shape[0], self.filter_width))
         self.filter_kernel = cla.to_device(queue, np.asanyarray(filter_kernel, np.float32, 'C'))
 
-    def _checked_convolve(self,
-            input_array, input_offset, input_skip, input_strides,
-            output_array, output_offset, output_skip, output_strides, output_shape):
-        """{input,output}_{offset,skip} and output_shape must be
-        pyopencl.array.vec.float4 instances.
-
-        """
+    def _checked_convolve(self, queue, output_shape, input_region, output_region):
         if self.filter_kernel is None:
             raise RuntimeError('No filter kernel set')
 
-        output_shape_tup = (output_shape['x'], output_shape['y'])
-        global_size = tuple(y * int(np.ceil(x/y))
-                            for x, y in zip(output_shape_tup, self.local_size))
-        global_size_arr = np.array(global_size)
-        fw_arr = np.array(((self.filter_width-1)>>1, 0))
+        global_size = np.array(tuple(y * int(np.ceil(x/y))
+                                     for x, y in zip(output_shape, self.local_size)))
+        fw = np.array(((self.filter_width-1)>>1, 0))
 
-        # Firstly, just check that this convolution won't scribble in la-la land
-        input_skip_array = np.array((input_skip['x'], input_skip['y']))
-        input_offset_array = np.array((input_offset['x'], input_offset['y']))
-        if np.any(input_offset_array - fw_arr*input_skip_array < 0):
+        # Check that this convolution won't scribble in la-la land
+        if np.any(input_region.offset - fw*input_region.skip < 0):
             raise ValueError('Input array will be read from before start')
-        if np.any(input_offset_array +
-                (fw_arr+global_size_arr)*input_skip_array > np.array(input_array.shape)):
+        if np.any(input_region.offset + (fw+global_size)*input_region.skip > input_region.shape):
             raise ValueError('Input array will be read from after end')
 
-        output_shape_array = np.array((output_shape['x'], output_shape['y']))
-        output_skip_array = np.array((output_skip['x'], output_skip['y']))
-        output_offset_array = np.array((output_offset['x'], output_offset['y']))
-        if np.any(output_offset_array < 0):
+        if np.any(np.asanyarray(output_region.offset) < 0):
             raise ValueError('Output array will be written to before start')
-        if np.any(output_offset_array + global_size_arr*output_skip_array >
-                np.array(output_array.shape)):
+        if np.any(output_region.offset + global_size*output_region.skip > output_region.shape):
             raise ValueError('Output array will be written to after end')
 
-        return self._unchecked_convolve(
-            input_array, input_offset, input_skip, input_strides,
-            output_array, output_offset, output_skip, output_strides, output_shape)
+        return self._unchecked_convolve(queue, output_shape, input_region, output_region)
 
     def _unchecked_convolve(self, queue, output_shape, input_region, output_region):
         global_size = tuple(y * int(np.ceil(x/y))

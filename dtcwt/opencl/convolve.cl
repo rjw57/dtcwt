@@ -65,11 +65,11 @@ int4 reflect(int4 x, int4 x_min, int4 x_max)
 // IMPORTANT: Setting input_offset, output_offset or output_shape such that
 // pixels in an invalid region are accessed is undefined and not checked for!
 __kernel void convolve(
+    __constant float* filter_kernel, int4 output_shape,
     __global INPUT_TYPE* input,
     int4 input_offset, int4 input_skip, int4 input_strides,
-    __constant float* filter_kernel,
     __global INPUT_TYPE* output,
-    int4 output_offset, int4 output_skip, int4 output_shape, int4 output_strides)
+    int4 output_offset, int4 output_skip, int4 output_strides)
 {
     // Create an appropriately sized region of local memory which can hold the
     // input plus some apron.

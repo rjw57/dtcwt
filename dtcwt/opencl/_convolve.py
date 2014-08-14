@@ -96,17 +96,18 @@ class Convolution(object):
             input_array, input_offset, input_skip, input_strides,
             output_array, output_offset, output_skip, output_strides, output_shape)
 
-    def _unchecked_convolve(self, queue, output_pixels,
-            input_data, input_offset, input_skip, input_strides,
-            output_data, output_offset, output_skip, output_strides):
-        output_pixels_tup = (output_pixels['x'], output_pixels['y'])
+    def _unchecked_convolve(self, queue, output_shape, input_region, output_region):
         global_size = tuple(y * int(np.ceil(x/y))
-                            for x, y in zip(output_pixels_tup, self.local_size))
+                            for x, y in zip(output_shape, self.local_size))
+        input_total_stride = np.product(input_region.shape)
+        output_total_stride = np.product(output_region.shape)
 
         return self.program.convolve(queue, global_size, self.local_size,
-            input_data, input_offset, input_skip, input_strides,
-            self.filter_kernel.data,
-            output_data, output_offset, output_skip, output_pixels, output_strides)
+            self.filter_kernel.data, as_int4(output_shape,1),
+            input_region.data, as_int4(input_region.offset, 0),
+            as_int4(input_region.skip, 1), as_int4(input_region.strides, input_total_stride),
+            output_region.data, as_int4(output_region.offset, 0),
+            as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride))
 
     def _optimal_local_size_for_device(self, device):
         if device.max_work_item_dimensions < 2:

@@ -62,13 +62,24 @@ def main():
     print('Passing output offset {0} and skip {1}'.format(output_offset, output_skip))
 
     # Form filter
-    filter_kernel = np.linspace(0, np.pi, FILTER_WIDTH)
+    filter_kernel = np.sin(np.linspace(0, np.pi, FILTER_WIDTH))
     filter_kernel /= np.sum(filter_kernel)
+
+    input_strides = cla.vec.make_int4(
+        input_array.strides[0]/input_array.dtype.itemsize,
+        input_array.strides[1]/input_array.dtype.itemsize,
+        input_array.size, input_array.size,
+    )
+    output_strides = cla.vec.make_int4(
+        output_array.strides[0]/output_array.dtype.itemsize,
+        output_array.strides[1]/output_array.dtype.itemsize,
+        output_array.size, output_array.size,
+    )
 
     # Call kernel
     conv.set_filter_kernel(queue, filter_kernel)
-    evt = conv._checked_convolve(input_array, input_offset, input_skip,
-            output_array, output_offset, output_skip, output_shape)
+    evt = conv._checked_convolve(input_array, input_offset, input_skip, input_strides,
+            output_array, output_offset, output_skip, output_strides, output_shape)
 
     evt.wait()
 

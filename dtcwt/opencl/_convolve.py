@@ -1,9 +1,12 @@
+import collections
 import os
 import logging
 
 import numpy as np
 import pyopencl as cl
 import pyopencl.array as cla
+
+Region = collections.namedtuple('Region', ['data', 'shape', 'offset', 'skip', 'strides'])
 
 class Convolution(object):
     def __init__(self, ctx, filter_width, input_components=1):
@@ -87,19 +90,17 @@ class Convolution(object):
             input_array, input_offset, input_skip, input_strides,
             output_array, output_offset, output_skip, output_strides, output_shape)
 
-    def _unchecked_convolve(self,
-            input_array, input_offset, input_skip, input_strides,
-            output_array, output_offset, output_skip, output_strides, output_shape):
-        assert input_array.queue is output_array.queue
-
-        output_shape_tup = (output_shape['x'], output_shape['y'])
+    def _unchecked_convolve(self, queue, output_pixels,
+            input_data, input_offset, input_skip, input_strides,
+            output_data, output_offset, output_skip, output_strides):
+        output_pixels_tup = (output_pixels['x'], output_pixels['y'])
         global_size = tuple(y * int(np.ceil(x/y))
-                            for x, y in zip(output_shape_tup, self.local_size))
+                            for x, y in zip(output_pixels_tup, self.local_size))
 
-        return self.program.convolve(output_array.queue, global_size, self.local_size,
-            input_array.data, input_offset, input_skip, input_strides,
+        return self.program.convolve(queue, global_size, self.local_size,
+            input_data, input_offset, input_skip, input_strides,
             self.filter_kernel.data,
-            output_array.data, output_offset, output_skip, output_shape, output_strides)
+            output_data, output_offset, output_skip, output_pixels, output_strides)
 
     def _optimal_local_size_for_device(self, device):
         if device.max_work_item_dimensions < 2:

@@ -8,6 +8,12 @@ import pyopencl.array as cla
 
 Region = collections.namedtuple('Region', ['data', 'shape', 'offset', 'skip', 'strides'])
 
+def as_int4(sequence, fill_value=0):
+    rv = cla.vec.make_int4(*(fill_value,)*4)
+    for k, v in zip('xyzw', sequence):
+        rv[k] = v
+    return rv;
+
 class Convolution(object):
     def __init__(self, ctx, filter_width, input_components=1):
         if filter_width % 2 != 1:

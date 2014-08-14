@@ -18,10 +18,10 @@ import tests.datasets as datasets
 
 logging.basicConfig(level=logging.DEBUG)
 
-from dtcwt.opencl._convolve import Convolution
+from dtcwt.opencl._convolve import Convolution, Region
 
-if 'PYOPENCL_CTX' not in os.environ:
-    os.environ['PYOPENCL_CTX']='1'
+#if 'PYOPENCL_CTX' not in os.environ:
+#    os.environ['PYOPENCL_CTX']='1'
 os.environ['PYOPENCL_COMPILER_OUTPUT']='1'
 
 FILTER_WIDTH=17
@@ -49,37 +49,20 @@ def main():
     # Create output array like input
     output_array = cla.zeros_like(input_array)
 
-    input_offset = cla.vec.make_int4(100, 100, 0, 0)
-    input_skip = cla.vec.make_int4(1,1,1,1)
-    print('Passing input offset {0} and skip {1}'.format(input_offset, input_skip))
-
-    # Process a small area of output into output
-    output_shape = cla.vec.make_int4(800,600,1,1)
-    print('Passing output shape {0}'.format(output_shape))
-
-    output_offset = cla.vec.make_int4(100, 100, 0, 0)
-    output_skip = cla.vec.make_int4(1,1,1,1)
-    print('Passing output offset {0} and skip {1}'.format(output_offset, output_skip))
+    input_region = Region(input_array.data, input_array.shape,
+            (100,100), (1,1),
+            tuple(int(x/input_array.dtype.itemsize) for x in input_array.strides))
+    output_region = Region(output_array.data, output_array.shape,
+            (0,0), (1,1),
+            tuple(int(x/output_array.dtype.itemsize) for x in output_array.strides))
 
     # Form filter
     filter_kernel = np.sin(np.linspace(0, np.pi, FILTER_WIDTH))
     filter_kernel /= np.sum(filter_kernel)
 
-    input_strides = cla.vec.make_int4(
-        input_array.strides[0]/input_array.dtype.itemsize,
-        input_array.strides[1]/input_array.dtype.itemsize,
-        input_array.size, input_array.size,
-    )
-    output_strides = cla.vec.make_int4(
-        output_array.strides[0]/output_array.dtype.itemsize,
-        output_array.strides[1]/output_array.dtype.itemsize,
-        output_array.size, output_array.size,
-    )
-
     # Call kernel
     conv.set_filter_kernel(queue, filter_kernel)
-    evt = conv._checked_convolve(input_array, input_offset, input_skip, input_strides,
-            output_array, output_offset, output_skip, output_strides, output_shape)
+    evt = conv._checked_convolve(queue, (800, 1600), input_region, output_region)
 
     evt.wait()
 

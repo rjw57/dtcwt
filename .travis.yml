@@ -17,7 +17,7 @@ install:
     - pip install --find-links http://wheels2.astropy.org/ --use-wheel numpy matplotlib ipython
     - pip install -e $PIP_SPECIFIER
 script:
-    - python setup.py nosetests
+    - python setup.py test nosetests
     - python scripts/benchmark_opencl.py
     - python setup.py build_sphinx
 after_success:

@@ -41,6 +41,7 @@ class Convolution(object):
         logging.debug('Overall optimal local size is {0}'.format(optimal_local_size))
         self.local_size = optimal_local_size
         self.program = self._build_program()
+        self.filter_kernel = None
 
     def set_filter_kernel(self, queue, filter_kernel):
         if filter_kernel.shape[0] != self.filter_width:
@@ -49,22 +50,14 @@ class Convolution(object):
         self.filter_kernel = cla.to_device(queue, np.asanyarray(filter_kernel, np.float32, 'C'))
 
     def _checked_convolve(self,
-            input_array, input_offset, input_skip,
-            output_array, output_offset, output_skip, output_shape):
+            input_array, input_offset, input_skip, input_strides,
+            output_array, output_offset, output_skip, output_strides, output_shape):
         """{input,output}_{offset,skip} and output_shape must be
         pyopencl.array.vec.float4 instances.
 
         """
-        input_strides = cla.vec.make_int4(
-            input_array.strides[0]/input_array.dtype.itemsize,
-            input_array.strides[1]/input_array.dtype.itemsize,
-            input_array.size, input_array.size,
-        )
-        output_strides = cla.vec.make_int4(
-            output_array.strides[0]/output_array.dtype.itemsize,
-            output_array.strides[1]/output_array.dtype.itemsize,
-            output_array.size, output_array.size,
-        )
+        if self.filter_kernel is None:
+            raise RuntimeError('No filter kernel set')
 
         output_shape_tup = (output_shape['x'], output_shape['y'])
         global_size = tuple(y * int(np.ceil(x/y))
@@ -85,31 +78,19 @@ class Convolution(object):
         output_skip_array = np.array((output_skip['x'], output_skip['y']))
         output_offset_array = np.array((output_offset['x'], output_offset['y']))
         if np.any(output_offset_array < 0):
-            raise ValueError('Output array will be read from before start')
+            raise ValueError('Output array will be written to before start')
         if np.any(output_offset_array + global_size_arr*output_skip_array >
                 np.array(output_array.shape)):
-            raise ValueError('Output array will be read from after end')
+            raise ValueError('Output array will be written to after end')
 
         return self._unchecked_convolve(
-            input_array, input_offset, input_skip,
-            output_array, output_offset, output_skip, output_shape)
+            input_array, input_offset, input_skip, input_strides,
+            output_array, output_offset, output_skip, output_strides, output_shape)
 
     def _unchecked_convolve(self,
-            input_array, input_offset, input_skip,
-            output_array, output_offset, output_skip, output_shape):
+            input_array, input_offset, input_skip, input_strides,
+            output_array, output_offset, output_skip, output_strides, output_shape):
         assert input_array.queue is output_array.queue
-
-        input_strides = cla.vec.make_int4(
-            input_array.strides[0]/input_array.dtype.itemsize,
-            input_array.strides[1]/input_array.dtype.itemsize,
-            input_array.size, input_array.size,
-        )
-
-        output_strides = cla.vec.make_int4(
-            output_array.strides[0]/output_array.dtype.itemsize,
-            output_array.strides[1]/output_array.dtype.itemsize,
-            output_array.size, output_array.size,
-        )
 
         output_shape_tup = (output_shape['x'], output_shape['y'])
         global_size = tuple(y * int(np.ceil(x/y))
@@ -124,7 +105,7 @@ class Convolution(object):
         if device.max_work_item_dimensions < 2:
             raise ValueError('Device {0} does not support at least 2d work items'.format(d.name))
 
-        # Sanity check: never go above 32x32 no matter what device claims
+        # Sanity check: never go above this size no matter what device claims
         hard_max_N, hard_max_M = 32, 32
 
         # Let local size be N, M. With a filter width of W, the amount of

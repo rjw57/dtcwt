@@ -90,7 +90,7 @@ class Level1(object):
                 int(3*np.product(input_shape) * pixel_size)
         ]
 
-    def transform(self, input_array, workspace, wait_for=None):
+    def transform(self, input_array, workspace, outputs, wait_for=None):
         """Workspace and output must have been created by create_{...} methods.
 
         """
@@ -169,20 +169,14 @@ class Level1(object):
         rowhiconv_evt = self.conv._unchecked_convolve(self.queue, output_array.shape,
                 input_region, output_region, wait_for=[colconv_evt])
 
-        return output_array, cl.enqueue_marker(self.queue, wait_for=[rowloconv_evt, rowhiconv_evt])
+        # Copy into output
+        lowpass = cla.Array(self.queue, self.input_shape, np.float32, data=outputs[0])
+        highpass = cla.Array(self.queue,
+                tuple(x>>1 for x in self.input_shape) + (6,), np.complex64, data=outputs[1])
+        output_evt = self.conv._copy_level1_output(self.queue, output_array, lowpass, highpass,
+                wait_for=[rowloconv_evt, rowhiconv_evt])
 
-    def format_output(self, output, wait_for=None):
-        wait_for = wait_for or []
-        cl.wait_for_events(wait_for)
-
-        output = output.get()
-        lolo, lohi, hilo, hihi = tuple(output[d] for d in 'xyzw')
-        highpasses = np.empty(tuple(x>>1 for x in output.shape) + (6,), np.complex64)
-        highpasses[:,:,0:6:5] = q2c(lohi)
-        highpasses[:,:,2:4:1] = q2c(hilo)
-        highpasses[:,:,1:5:3] = q2c(hihi)
-
-        return lolo, highpasses
+        return lowpass, highpass, output_evt
 
 def main():
     ctx = cl.create_some_context(interactive=False)
@@ -225,24 +219,25 @@ def main():
 
     runs, start, end = 0, time.time(), time.time()
     while end - start < 5:
-        output, evt = l1.transform(input_array, l1_workspace)
+        lowpass, highpass, evt = l1.transform(input_array, l1_workspace, l1_outputs)
         cl.wait_for_events([evt])
         runs += 1
         end = time.time()
     print('{0} runs, {1:.2g} per run ({2:.2f}Hz)'.format(runs, (end-start)/runs, runs/(end-start)))
 
-    lolo, highpasses = l1.format_output(output, [evt])
+    lowpass = lowpass.get()
+    highpass = highpass.get()
 
     figure()
     subplot(2,1,1)
-    imshow(lolo)
+    imshow(lowpass)
     title('OpenCL transform lowpass')
     subplot(2,1,2)
-    imshow(np.abs(highpasses[:,:,0]), cmap=cm.jet)
+    imshow(np.abs(highpass[:,:,0]), cmap=cm.jet)
     title('OpenCL transform highpass')
 
-    print('Lowpass max abs diff', np.abs(lolo - gold_pyramid.lowpass).max())
-    print('Highpass max abs diff', np.abs(highpasses - gold_pyramid.highpasses[0]).max())
+    print('Lowpass max abs diff', np.abs(lowpass - gold_pyramid.lowpass).max())
+    print('Highpass max abs diff', np.abs(highpass - gold_pyramid.highpasses[0]).max())
 
     #figure()
     #climshow(input_array)

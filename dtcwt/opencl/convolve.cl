@@ -206,43 +206,70 @@ void q2c(INPUT_TYPE a, INPUT_TYPE b, INPUT_TYPE c, INPUT_TYPE d,
     *z2imag = pimag + qimag;
 }
 
-__kernel void rearrange_output(
-    int4 pixels_to_write,
-    __global INPUT_TYPE* input,
-    int4 input_offset, int4 input_shape, int4 input_skip, int4 input_strides,
-    __global INPUT_TYPE* output,
-    int4 output_offset, int4 output_shape, int4 output_skip, int4 output_strides)
+// Input is tightly packed C-style array of 4 INPUT_TYPE elements per pixel.
+// Lo output is tightly packed C-style array of INPUT_TYPE elements per pixel.
+// Hi output is tightly packed C-style half-size array of 6 pairs of INPUT_TYPE elements per pixel.
+// Each work item works on one element of the highpass output => 2x2 block of lowpass output and input.
+//
+// Shape is (height, width). Co-ordinates are row-column.
+__kernel void copy_level1_output(int4 hi_shape,
+    __global INPUT_TYPE* input, int input_start,
+    __global INPUT_TYPE* lo_output, int lo_output_start,
+    __global INPUT_TYPE* hi_output, int hi_output_start)
 {
+    input += input_start;
+    lo_output += lo_output_start;
+    hi_output += hi_output_start;
+
     // Compute upper-left corner of this work group in input and output
     int4 group_coord = (int4)(
         get_group_id(0) * get_local_size(0), get_group_id(1) * get_local_size(1),
         0, 0
     );
     int4 local_coord = (int4)(get_local_id(0), get_local_id(1), 0, 0);
-    int4 input_origin = input_offset + input_skip * group_coord;
-    int4 output_origin = output_offset + output_skip * group_coord;
 
-    // This is the output pixel this work item should write to
-    int4 output_coord = output_origin + output_skip*local_coord;
+    // Where are we in highpass output?
+    int4 hi_coord = group_coord + local_coord;
 
-    // Abort on invalid output coord
-    if(any(output_coord < 0) || any(output_coord >= output_shape)) { return; }
+    // Abort if in invalid area.
+    if(any(hi_coord < 0) || any(hi_coord >= hi_shape)) { return; }
 
-    // This is the corresponding input pixel to read from
-    int4 input_coord = input_origin + input_skip*local_coord;
+    // Advance input pointer to start of input block
+    int input_row_stride = 4*2*hi_shape.s1;
+    input += input_row_stride*2*hi_coord.s0;    // row
+    input += 4*2*hi_coord.s1;                   // column
 
-    for(int w=0; w<pixels_to_write.w; ++w, ++output_coord.w, ++input_coord.w)
-    {
-        input_coord.z = input_origin.z;
-        output_coord.z = output_origin.z;
-        for(int z=0; z<pixels_to_write.z; ++z, ++output_coord.z, ++input_coord.z)
-        {
-            // Reflect input coord
-            int4 sample_coord = reflect(input_coord, 0, input_shape);
+    // Advance output pointers to start of output.
+    int lo_row_stride = 2*hi_shape.s1;
+    lo_output += lo_row_stride*2*hi_coord.s0;   // row
+    lo_output += 2*hi_coord.s1;                 // col
+    int hi_row_stride = 12*hi_shape.s1;
+    hi_output += hi_row_stride*hi_coord.s0;     // row
+    hi_output += 12*hi_coord.s1;                // col
 
-            // Copy input to output
-            output[index(output_coord, output_strides)] =
-                input[index(sample_coord, input_strides)];
-        }
-    }
+    // Copy 4 lowpass pixels
+    lo_output[0] = input[0];
+    lo_output[1] = input[4];
+    lo_output[0+lo_row_stride] = input[0+input_row_stride];
+    lo_output[1+lo_row_stride] = input[4+input_row_stride];
+
+    INPUT_TYPE a, b, c, d, z1r, z1i, z2r, z2i;
+
+    // lohi
+    a = input[1]; b = input[5];
+    c = input[1+input_row_stride]; d = input[5+input_row_stride];
+    q2c(a,b,c,d,&z1r,&z1i,&z2r,&z2i);
+    hi_output[0]=z1r; hi_output[1]=z1i; hi_output[10]=z2r; hi_output[11]=z2i;
+
+    // hilo
+    a = input[2]; b = input[6];
+    c = input[2+input_row_stride]; d = input[6+input_row_stride];
+    q2c(a,b,c,d,&z1r,&z1i,&z2r,&z2i);
+    hi_output[4]=z1r; hi_output[5]=z1i; hi_output[6]=z2r; hi_output[7]=z2i;
+
+    // hihi
+    a = input[3]; b = input[7];
+    c = input[3+input_row_stride]; d = input[7+input_row_stride];
+    q2c(a,b,c,d,&z1r,&z1i,&z2r,&z2i);
+    hi_output[2]=z1r; hi_output[3]=z1i; hi_output[8]=z2r; hi_output[9]=z2i;
 }

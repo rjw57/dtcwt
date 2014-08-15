@@ -95,6 +95,23 @@ class Convolution(object):
             as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride),
             wait_for=wait_for)
 
+    def _copy_level1_output(self, queue, l1_output, lowpass, highpass, wait_for=None):
+        # All input must be tightly packed C-ordered arrays
+        # l1_output is float4, lowpass is float, highpass is float2 (or complex)
+        assert highpass.shape[2] == 6
+        assert tuple(2*x for x in highpass.shape[:2]) == lowpass.shape
+        assert lowpass.shape == l1_output.shape
+
+        global_size = tuple(y * int(np.ceil(x/y))
+            for x, y in zip(highpass.shape[:2], self.local_size))
+
+        return self.program.copy_level1_output(queue, global_size, self.local_size,
+            as_int4(highpass.shape[:2], 1),
+            l1_output.base_data, np.int32(l1_output.offset),
+            lowpass.base_data, np.int32(lowpass.offset),
+            highpass.base_data, np.int32(highpass.offset),
+            wait_for=wait_for)
+
     def _optimal_local_size_for_device(self, device):
         if device.max_work_item_dimensions < 2:
             raise ValueError('Device {0} does not support at least 2d work items'.format(d.name))

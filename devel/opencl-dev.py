@@ -54,6 +54,20 @@ def main():
     # Create output array like input
     output_array = cla.zeros_like(input_array)
 
+    # Copy with sampling
+    input_region = Region(input_array.data, input_array.shape,
+            (-100,-100), (2,3),
+            tuple(int(x/input_array.dtype.itemsize) for x in input_array.strides))
+    output_region = Region(output_array.data, output_array.shape,
+            (0,0), (1,1),
+            tuple(int(x/output_array.dtype.itemsize) for x in output_array.strides))
+    conv._copy_region(queue, output_array.shape, input_region, output_region)
+
+    figure()
+    output_array_host = output_array.get()
+    imshow(np.dstack(tuple(output_array_host[d] for d in 'xyz')))
+    title('Shifted')
+
     input_region = Region(input_array.data, input_array.shape,
             (0,0), (1,1),
             tuple(int(x/input_array.dtype.itemsize) for x in input_array.strides))

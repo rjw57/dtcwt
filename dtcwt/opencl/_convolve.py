@@ -58,26 +58,20 @@ class Convolution(object):
                 filter_kernel.shape[0], self.filter_width))
         self.filter_kernel = cla.to_device(queue, np.asanyarray(filter_kernel, np.float32, 'C'))
 
-    def _checked_convolve(self, queue, output_shape, input_region, output_region):
-        if self.filter_kernel is None:
-            raise RuntimeError('No filter kernel set')
+    def _copy_region(self, queue, output_shape, input_region, output_region):
+        global_size = tuple(y * int(np.ceil(x/y))
+                            for x, y in zip(output_shape, self.local_size))
+        input_total_stride = np.product(input_region.shape)
+        output_total_stride = np.product(output_region.shape)
 
-        global_size = np.array(tuple(y * int(np.ceil(x/y))
-                                     for x, y in zip(output_shape, self.local_size)))
-        fw = np.array(((self.filter_width-1)>>1, 0))
-
-        # Check that this convolution won't scribble in la-la land
-        if np.any(input_region.offset - fw*input_region.skip < 0):
-            raise ValueError('Input array will be read from before start')
-        if np.any(input_region.offset + (fw+global_size)*input_region.skip > input_region.shape):
-            raise ValueError('Input array will be read from after end')
-
-        if np.any(np.asanyarray(output_region.offset) < 0):
-            raise ValueError('Output array will be written to before start')
-        if np.any(output_region.offset + global_size*output_region.skip > output_region.shape):
-            raise ValueError('Output array will be written to after end')
-
-        return self._unchecked_convolve(queue, output_shape, input_region, output_region)
+        return self.program.copy_with_sampling(queue, global_size, self.local_size,
+            as_int4(output_shape,1),
+            input_region.data, as_int4(input_region.offset, 0),
+            as_int4(input_region.shape, 1),
+            as_int4(input_region.skip, 1), as_int4(input_region.strides, input_total_stride),
+            output_region.data, as_int4(output_region.offset, 0),
+            as_int4(output_region.shape, 1),
+            as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride))
 
     def _unchecked_convolve(self, queue, output_shape, input_region, output_region):
         global_size = tuple(y * int(np.ceil(x/y))

@@ -138,7 +138,7 @@ __kernel void convolve(
                 }
 
                 // write output pixel value
-                output[index(output_coord, n_convolutions * output_strides) + conv_idx] =
+                output[n_convolutions * index(output_coord, output_strides) + conv_idx] =
                     output_value;
             }
         }

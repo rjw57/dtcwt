@@ -59,7 +59,7 @@ class Convolution(object):
                 filter_kernel.shape[1], self.filter_width))
         self.filter_kernel = cla.to_device(queue, filter_kernel)
 
-    def _copy_region(self, queue, output_shape, input_region, output_region):
+    def _copy_region(self, queue, output_shape, input_region, output_region, wait_for=None):
         global_size = tuple(y * int(np.ceil(x/y))
                             for x, y in zip(output_shape, self.local_size))
         input_total_stride = np.product(input_region.shape)
@@ -72,9 +72,10 @@ class Convolution(object):
             as_int4(input_region.skip, 1), as_int4(input_region.strides, input_total_stride),
             output_region.data, as_int4(output_region.offset, 0),
             as_int4(output_region.shape, 1),
-            as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride))
+            as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride),
+            wait_for=wait_for)
 
-    def _unchecked_convolve(self, queue, output_shape, input_region, output_region):
+    def _unchecked_convolve(self, queue, output_shape, input_region, output_region, wait_for=None):
         global_size = tuple(y * int(np.ceil(x/y))
                             for x, y in zip(output_shape, self.local_size))
         input_total_stride = np.product(input_region.shape)
@@ -87,7 +88,8 @@ class Convolution(object):
             as_int4(input_region.skip, 1), as_int4(input_region.strides, input_total_stride),
             output_region.data, as_int4(output_region.offset, 0),
             as_int4(output_region.shape, 1),
-            as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride))
+            as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride),
+            wait_for=wait_for)
 
     def _optimal_local_size_for_device(self, device):
         if device.max_work_item_dimensions < 2:

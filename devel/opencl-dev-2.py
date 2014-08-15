@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import division
 
 import logging
 import os
@@ -68,6 +69,20 @@ class Level1(object):
         self.conv = Convolution(queue.context, filter_width, 1)
         self.conv.set_filter_kernel(queue, filter_kernel)
 
+        # Calculate size of workspace: 2 output pixels for every input for
+        # column wise convolution and a further 4 output pixels for rowwise.
+        # Alignment is to 4 pixel boundaries
+        input_size = np.product(input_shape)
+        pixel_size = 1 * 4 # bytes
+        alignment = 4
+
+        # Aligned sizes of various sub-bits of workspace in units of input data type
+        self._ws_sizes = [
+                alignment*((2*input_size+(alignment-1))//alignment),
+                alignment*((4*input_size+(alignment-1))//alignment)
+        ]
+        self.workspace_size = int(np.sum(self._ws_sizes) * pixel_size)
+
     def create_workspace(self):
         # Workspace will store lo and hi column-wise convolution
         return cla.empty(self.queue, self.input_shape, cla.vec.float2)
@@ -77,7 +92,7 @@ class Level1(object):
         # convolution as four interleaved pixels.
         return cla.empty(self.queue, self.input_shape, cla.vec.float4)
 
-    def transform(self, input_array, workspace, output, wait_for=None):
+    def transform(self, input_array, workspace, wait_for=None):
         """Workspace and output must have been created by create_{...} methods.
 
         """
@@ -87,12 +102,24 @@ class Level1(object):
             raise ValueError('Input array does not have the shape prepared for')
         if input_array.dtype != np.float32:
             raise ValueError('Input array does not have float32 dtype')
+        if workspace.size < self.workspace_size:
+            raise ValueError('Workspace is too small ({0} vs {1})'.format(
+                workspace.size, self.workspace_size))
+
+        # Create workspace and output array views on workspace
+        workspace_array = cla.Array(self.queue,
+                input_array.shape, cla.vec.float2,
+                data=workspace, offset=0)
+        output_array = cla.Array(self.queue,
+                input_array.shape, cla.vec.float4,
+                data=workspace, offset=(workspace_array.size+1)>>1)
+        output_array = cla.empty(self.queue, self.input_shape, cla.vec.float4)
+
+        # output_array, workspace_array = output, workspace
 
         # C-style ordering where first index is horizontal
         input_array_strides = (1, input_array.shape[1],
                 input_array.shape[1]*input_array.shape[0])
-
-        output_array, workspace_array = output, workspace
 
         # C-style ordering where first index is horizontal
         workspace_array_strides = (1, workspace_array.shape[1],
@@ -100,11 +127,11 @@ class Level1(object):
 
         # Perform column convolution
         input_region = Region(input_array.base_data,
-                int(input_array.offset / input_array.dtype.itemsize),
+                input_array.offset,
                 input_array.shape[::-1],
                 (0,0), (1,1), input_array_strides)
         output_region = Region(workspace_array.base_data,
-                int(workspace_array.offset / workspace_array.dtype.itemsize),
+                workspace_array.offset*2,
                 workspace_array.shape[::-1],
                 (0,0), (1,1), workspace_array_strides)
         colconv_evt = self.conv._unchecked_convolve(self.queue, workspace_array.shape[::-1],
@@ -123,28 +150,28 @@ class Level1(object):
         workspace_array_strides = (effective_workspace_shape[1], 1,
                 effective_workspace_shape[0]*effective_workspace_shape[1])
         input_region = Region(workspace_array.base_data,
-                int(workspace_array.offset / workspace_array.dtype.itemsize),
+                workspace_array.offset*2,
                 effective_workspace_shape,
                 (0,0), (1,2), workspace_array_strides)
         output_region = Region(output_array.base_data,
-                int(output_array.offset / output_array.dtype.itemsize),
+                output_array.offset*4,
                 effective_output_shape,
                 (0,0), (1,2), output_array_strides)
         rowloconv_evt = self.conv._unchecked_convolve(self.queue, output_array.shape,
                 input_region, output_region, wait_for=[colconv_evt])
 
         input_region = Region(workspace_array.base_data,
-                int(workspace_array.offset / workspace_array.dtype.itemsize),
+                workspace_array.offset*2,
                 effective_workspace_shape,
                 (0,1), (1,2), workspace_array_strides)
         output_region = Region(output_array.base_data,
-                int(output_array.offset / output_array.dtype.itemsize),
+                output_array.offset*4,
                 effective_output_shape,
                 (0,1), (1,2), output_array_strides)
         rowhiconv_evt = self.conv._unchecked_convolve(self.queue, output_array.shape,
                 input_region, output_region, wait_for=[colconv_evt])
 
-        return output, cl.enqueue_marker(self.queue, wait_for=[rowloconv_evt, rowhiconv_evt])
+        return output_array, cl.enqueue_marker(self.queue, wait_for=[rowloconv_evt, rowhiconv_evt])
 
     def format_output(self, output, wait_for=None):
         wait_for = wait_for or []
@@ -192,12 +219,12 @@ def main():
     cl.enqueue_copy(queue, input_array.data, input_buffer)
 
     l1 = Level1(queue, biort, input_array.shape)
-    l1_output = l1.create_output()
-    l1_ws = l1.create_workspace()
+    print('Level 1 requires workspace of size {0}'.format(l1.workspace_size))
+    l1_workspace = cl.Buffer(ctx, cl.mem_flags.READ_WRITE, l1.workspace_size)
 
     runs, start, end = 0, time.time(), time.time()
     while end - start < 5:
-        output, evt = l1.transform(input_array, l1_ws, l1_output)
+        output, evt = l1.transform(input_array, l1_workspace)
         cl.wait_for_events([evt])
         runs += 1
         end = time.time()

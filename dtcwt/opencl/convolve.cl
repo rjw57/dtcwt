@@ -122,7 +122,7 @@ __kernel void convolve(
             // abort if we're writing outside the valid region. Do so now
             // because we may still have read something important into the
             // input cache.
-            if(any(output_coord < 0) || any(output_coord > output_shape)) {
+            if(any(output_coord < 0) || any(output_coord >= output_shape)) {
                 continue;
             }
 

@@ -53,10 +53,11 @@ class Convolution(object):
         self.filter_kernel = None
 
     def set_filter_kernel(self, queue, filter_kernel):
-        if filter_kernel.shape[0] != self.filter_width:
-            raise ValueError('Filter kernel has length {0}, expected {1}'.format(
-                filter_kernel.shape[0], self.filter_width))
-        self.filter_kernel = cla.to_device(queue, np.asanyarray(filter_kernel, np.float32, 'C'))
+        filter_kernel = np.asanyarray(np.atleast_2d(filter_kernel), dtype=np.float32, order='C')
+        if filter_kernel.shape[1] != self.filter_width:
+            raise ValueError('Filter kernel has width {0}, expected {1}'.format(
+                filter_kernel.shape[1], self.filter_width))
+        self.filter_kernel = cla.to_device(queue, filter_kernel)
 
     def _copy_region(self, queue, output_shape, input_region, output_region):
         global_size = tuple(y * int(np.ceil(x/y))
@@ -80,7 +81,7 @@ class Convolution(object):
         output_total_stride = np.product(output_region.shape)
 
         return self.program.convolve(queue, global_size, self.local_size,
-            self.filter_kernel.data, as_int4(output_shape,1),
+            self.filter_kernel.data, np.int32(self.filter_kernel.shape[0]), as_int4(output_shape,1),
             input_region.data, as_int4(input_region.offset, 0),
             as_int4(input_region.shape, 1),
             as_int4(input_region.skip, 1), as_int4(input_region.strides, input_total_stride),

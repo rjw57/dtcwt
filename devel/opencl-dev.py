@@ -43,7 +43,7 @@ def main():
     # Swizzle RGB image into a form friendly to transform and upload to device
     input_buffer = np.asanyarray(test_image_rgba, np.float32, 'C')
     print('Input buffer size is {0}, strides {1}'.format(input_buffer.nbytes, input_buffer.strides))
-    input_array = cla.empty(queue, test_image_rgba.shape[:2], cla.vec.float3, order='C')
+    input_array = cla.empty(queue, test_image_rgba.shape[:2], cla.vec.float4, order='C')
     cl.enqueue_copy(queue, input_array.data, input_buffer)
 
     figure()
@@ -52,7 +52,7 @@ def main():
     title('Input')
 
     # Create output array like input
-    output_array = cla.zeros_like(input_array)
+    output_array = cla.zeros(queue, input_array.shape, cla.vec.float8, 'C')
 
     # Copy with sampling
     input_region = Region(input_array.data, input_array.shape,
@@ -63,10 +63,10 @@ def main():
             tuple(int(x/output_array.dtype.itemsize) for x in output_array.strides))
     conv._copy_region(queue, output_array.shape, input_region, output_region)
 
-    figure()
-    output_array_host = output_array.get()
-    imshow(np.dstack(tuple(output_array_host[d] for d in 'xyz')))
-    title('Shifted')
+#    figure()
+#    output_array_host = output_array.get()
+#    imshow(np.dstack(tuple(output_array_host[d] for d in 'xyz')))
+#    title('Shifted')
 
     input_region = Region(input_array.data, input_array.shape,
             (0,0), (1,1),
@@ -76,14 +76,28 @@ def main():
             tuple(int(x/output_array.dtype.itemsize) for x in output_array.strides))
 
     # Form filter
-    filter_kernel = np.sin(np.linspace(0, np.pi, FILTER_WIDTH))
-    filter_kernel /= np.sum(filter_kernel)
+    filter_kernel_a = np.sin(np.linspace(0, np.pi, FILTER_WIDTH))
+    filter_kernel_a /= np.sum(filter_kernel_a)
+    filter_kernel_b = -np.sin(np.linspace(0, 2*np.pi, FILTER_WIDTH))
+    filter_kernel_b /= np.sum(filter_kernel_a)
+    filter_kernel = np.vstack((filter_kernel_a, filter_kernel_b))
 
     # Call kernel
     conv.set_filter_kernel(queue, filter_kernel)
     pixel_count = (output_array.shape[0], output_array.shape[1])
     evt = conv._unchecked_convolve(queue, pixel_count, input_region, output_region)
     evt.wait()
+
+    figure()
+    output_array_host = output_array.get()
+    subplot(2,1,1)
+    imshow(np.dstack(tuple(output_array_host['s' + str(d)] for d in range(4))))
+    title('Conv 1 a')
+    subplot(2,1,2)
+    #imshow(np.dstack(tuple(output_array_host['s' + str(d)] for d in range(4, 8))))
+    imshow(output_array_host['s5'])
+    title('Conv 1 b')
+    return
 
     # Now the other direction
     output_region = Region(input_array.data, input_array.shape[::-1],

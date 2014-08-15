@@ -65,7 +65,7 @@ int4 reflect(int4 x, int4 x_min, int4 x_max)
 // IMPORTANT: Setting input_offset, output_offset or output_shape such that
 // pixels in an invalid region are accessed is undefined and not checked for!
 __kernel void convolve(
-    __constant float* filter_kernel, int4 pixels_to_write,
+    __constant float* filter_kernel, int n_convolutions, int4 pixels_to_write,
     __global INPUT_TYPE* input,
     int4 input_offset, int4 input_shape, int4 input_skip, int4 input_strides,
     __global INPUT_TYPE* output,
@@ -123,21 +123,24 @@ __kernel void convolve(
                 continue;
             }
 
-            // generate output pixel value
-            float filter_tap;
-            INPUT_TYPE output_value = 0.f, input_value;
-            for(int f_idx=0; f_idx<FILTER_WIDTH; ++f_idx) {
-                input_value = input_cache[
-                    get_local_id(0) + f_idx +
-                    get_local_id(1) * LOCAL_CACHE_WIDTH
-                ];
-                //input_value = 1.f;
-                filter_tap = filter_kernel[f_idx];
-                output_value += input_value * filter_tap;
-            }
+            for(int conv_idx=0; conv_idx < n_convolutions; ++conv_idx) {
+                // generate output pixel value
+                float filter_tap;
+                INPUT_TYPE output_value = 0.f, input_value;
+                for(int f_idx=0; f_idx<FILTER_WIDTH; ++f_idx) {
+                    input_value = input_cache[
+                        get_local_id(0) + f_idx +
+                        get_local_id(1) * LOCAL_CACHE_WIDTH
+                    ];
+                    //input_value = 1.f;
+                    filter_tap = filter_kernel[f_idx + conv_idx*FILTER_WIDTH];
+                    output_value += input_value * filter_tap;
+                }
 
-            // write output pixel value
-            output[index(output_coord, output_strides)] = output_value;
+                // write output pixel value
+                output[index(output_coord, n_convolutions * output_strides) + conv_idx] =
+                    output_value;
+            }
         }
     }
 }

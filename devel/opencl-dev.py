@@ -46,6 +46,11 @@ def main():
     input_array = cla.empty(queue, test_image_rgba.shape[:2], cla.vec.float3, order='C')
     cl.enqueue_copy(queue, input_array.data, input_buffer)
 
+    figure()
+    input_array_host = input_array.get()
+    imshow(np.dstack(tuple(input_array_host[d] for d in 'xyz')))
+    title('Input')
+
     # Create output array like input
     output_array = cla.zeros_like(input_array)
 
@@ -64,17 +69,22 @@ def main():
     conv.set_filter_kernel(queue, filter_kernel)
     pixel_count = (output_array.shape[0], output_array.shape[1])
     evt = conv._unchecked_convolve(queue, pixel_count, input_region, output_region)
+    evt.wait()
 
+    # Now the other direction
+    output_region = Region(input_array.data, input_array.shape[::-1],
+                 (0,0), (1,1),
+                 tuple(int(x/input_array.dtype.itemsize) for x in input_array.strides[::-1]))
+    input_region = Region(output_array.data, output_array.shape[::-1],
+                 (0,0), (1,1),
+                 tuple(int(x/output_array.dtype.itemsize) for x in output_array.strides[::-1]))
+
+    evt = conv._unchecked_convolve(queue, pixel_count[::-1], input_region, output_region)
     evt.wait()
 
     figure()
     input_array_host = input_array.get()
     imshow(np.dstack(tuple(input_array_host[d] for d in 'xyz')))
-    title('Input')
-
-    figure()
-    output_array_host = output_array.get()
-    imshow(np.dstack(tuple(output_array_host[d] for d in 'xyz')))
     title('Output')
 
 if __name__ == '__main__':

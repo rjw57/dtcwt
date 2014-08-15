@@ -83,14 +83,12 @@ class Level1(object):
         ]
         self.workspace_size = int(np.sum(self._ws_sizes) * pixel_size)
 
-    def create_workspace(self):
-        # Workspace will store lo and hi column-wise convolution
-        return cla.empty(self.queue, self.input_shape, cla.vec.float2)
-
-    def create_output(self):
-        # Output will store lo-lo, lo-hi, hi-lo and hi-hi column-then-row-wise
-        # convolution as four interleaved pixels.
-        return cla.empty(self.queue, self.input_shape, cla.vec.float4)
+        # Output is full-res lolo image plus 6 half-res complex images => four
+        # times redundancy.
+        self.output_sizes = [
+                int(np.product(input_shape) * pixel_size),
+                int(3*np.product(input_shape) * pixel_size)
+        ]
 
     def transform(self, input_array, workspace, wait_for=None):
         """Workspace and output must have been created by create_{...} methods.
@@ -219,8 +217,11 @@ def main():
     cl.enqueue_copy(queue, input_array.data, input_buffer)
 
     l1 = Level1(queue, biort, input_array.shape)
-    print('Level 1 requires workspace of size {0}'.format(l1.workspace_size))
+    print('Level 1 requires workspace of size {0:.2f}MB'.format(l1.workspace_size/(1<<20)))
+    print('Level 1 has output of sizes {0[0]:.2f}MB (lowpass) and {0[1]:.2f}MB (highpass)'.format(
+        tuple(x/(1<<20) for x in l1.output_sizes)))
     l1_workspace = cl.Buffer(ctx, cl.mem_flags.READ_WRITE, l1.workspace_size)
+    l1_outputs = tuple(cl.Buffer(ctx, cl.mem_flags.READ_WRITE, s) for s in l1.output_sizes)
 
     runs, start, end = 0, time.time(), time.time()
     while end - start < 5:
@@ -228,7 +229,7 @@ def main():
         cl.wait_for_events([evt])
         runs += 1
         end = time.time()
-    print('{0} runs, {1:.2g} per run ({2:.2g}Hz)'.format(runs, (end-start)/runs, runs/(end-start)))
+    print('{0} runs, {1:.2g} per run ({2:.2f}Hz)'.format(runs, (end-start)/runs, runs/(end-start)))
 
     lolo, highpasses = l1.format_output(output, [evt])
 

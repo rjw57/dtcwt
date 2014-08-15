@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+import time
 
 import matplotlib
 
@@ -98,9 +99,13 @@ class Level1(object):
                 workspace_array.shape[1] * workspace_array.shape[0])
 
         # Perform column convolution
-        input_region = Region(input_array.data, input_array.shape[::-1],
+        input_region = Region(input_array.base_data,
+                int(input_array.offset / input_array.dtype.itemsize),
+                input_array.shape[::-1],
                 (0,0), (1,1), input_array_strides)
-        output_region = Region(workspace_array.data, workspace_array.shape[::-1],
+        output_region = Region(workspace_array.base_data,
+                int(workspace_array.offset / workspace_array.dtype.itemsize),
+                workspace_array.shape[::-1],
                 (0,0), (1,1), workspace_array_strides)
         colconv_evt = self.conv._unchecked_convolve(self.queue, workspace_array.shape[::-1],
                 input_region, output_region, wait_for=wait_for)
@@ -117,16 +122,24 @@ class Level1(object):
         effective_workspace_shape = (workspace_array.shape[0], 2*workspace_array.shape[1])
         workspace_array_strides = (effective_workspace_shape[1], 1,
                 effective_workspace_shape[0]*effective_workspace_shape[1])
-        input_region = Region(workspace_array.data, effective_workspace_shape,
+        input_region = Region(workspace_array.base_data,
+                int(workspace_array.offset / workspace_array.dtype.itemsize),
+                effective_workspace_shape,
                 (0,0), (1,2), workspace_array_strides)
-        output_region = Region(output_array.data, effective_output_shape,
+        output_region = Region(output_array.base_data,
+                int(output_array.offset / output_array.dtype.itemsize),
+                effective_output_shape,
                 (0,0), (1,2), output_array_strides)
         rowloconv_evt = self.conv._unchecked_convolve(self.queue, output_array.shape,
                 input_region, output_region, wait_for=[colconv_evt])
 
-        input_region = Region(workspace_array.data, effective_workspace_shape,
+        input_region = Region(workspace_array.base_data,
+                int(workspace_array.offset / workspace_array.dtype.itemsize),
+                effective_workspace_shape,
                 (0,1), (1,2), workspace_array_strides)
-        output_region = Region(output_array.data, effective_output_shape,
+        output_region = Region(output_array.base_data,
+                int(output_array.offset / output_array.dtype.itemsize),
+                effective_output_shape,
                 (0,1), (1,2), output_array_strides)
         rowhiconv_evt = self.conv._unchecked_convolve(self.queue, output_array.shape,
                 input_region, output_region, wait_for=[colconv_evt])
@@ -182,7 +195,14 @@ def main():
     l1_output = l1.create_output()
     l1_ws = l1.create_workspace()
 
-    output, evt = l1.transform(input_array, l1_ws, l1_output)
+    runs, start, end = 0, time.time(), time.time()
+    while end - start < 5:
+        output, evt = l1.transform(input_array, l1_ws, l1_output)
+        cl.wait_for_events([evt])
+        runs += 1
+        end = time.time()
+    print('{0} runs, {1:.2g} per run ({2:.2g}Hz)'.format(runs, (end-start)/runs, runs/(end-start)))
+
     lolo, highpasses = l1.format_output(output, [evt])
 
     figure()

@@ -66,11 +66,14 @@ int4 reflect(int4 x, int4 x_min, int4 x_max)
 // pixels in an invalid region are accessed is undefined and not checked for!
 __kernel void convolve(
     __constant float* filter_kernel, int n_convolutions, int4 pixels_to_write,
-    __global INPUT_TYPE* input,
+    __global INPUT_TYPE* input, int input_start,
     int4 input_offset, int4 input_shape, int4 input_skip, int4 input_strides,
-    __global INPUT_TYPE* output,
+    __global INPUT_TYPE* output, int output_start,
     int4 output_offset, int4 output_shape, int4 output_skip, int4 output_strides)
 {
+    input += input_start;
+    output += output_start;
+
     // Create an appropriately sized region of local memory which can hold the
     // input plus some apron.
     __local INPUT_TYPE input_cache[LOCAL_CACHE_WIDTH*LOCAL_SIZE_REST];
@@ -146,6 +149,64 @@ __kernel void convolve(
 }
 
 __kernel void copy_with_sampling(
+    int4 pixels_to_write,
+    __global INPUT_TYPE* input, int input_start,
+    int4 input_offset, int4 input_shape, int4 input_skip, int4 input_strides,
+    __global INPUT_TYPE* output, int output_start,
+    int4 output_offset, int4 output_shape, int4 output_skip, int4 output_strides)
+{
+    input += input_start;
+    output += output_start;
+
+    // Compute upper-left corner of this work group in input and output
+    int4 group_coord = (int4)(
+        get_group_id(0) * get_local_size(0), get_group_id(1) * get_local_size(1),
+        0, 0
+    );
+    int4 local_coord = (int4)(get_local_id(0), get_local_id(1), 0, 0);
+    int4 input_origin = input_offset + input_skip * group_coord;
+    int4 output_origin = output_offset + output_skip * group_coord;
+
+    // This is the output pixel this work item should write to
+    int4 output_coord = output_origin + output_skip*local_coord;
+
+    // Abort on invalid output coord
+    if(any(output_coord < 0) || any(output_coord >= output_shape)) { return; }
+
+    // This is the corresponding input pixel to read from
+    int4 input_coord = input_origin + input_skip*local_coord;
+
+    for(int w=0; w<pixels_to_write.w; ++w, ++output_coord.w, ++input_coord.w)
+    {
+        input_coord.z = input_origin.z;
+        output_coord.z = output_origin.z;
+        for(int z=0; z<pixels_to_write.z; ++z, ++output_coord.z, ++input_coord.z)
+        {
+            // Reflect input coord
+            int4 sample_coord = reflect(input_coord, 0, input_shape);
+
+            // Copy input to output
+            output[index(output_coord, output_strides)] =
+                input[index(sample_coord, input_strides)];
+        }
+    }
+}
+
+void q2c(INPUT_TYPE a, INPUT_TYPE b, INPUT_TYPE c, INPUT_TYPE d,
+         INPUT_TYPE *z1real, INPUT_TYPE *z1imag,
+         INPUT_TYPE *z2real, INPUT_TYPE *z2imag)
+{
+    const float sqrt_half = sqrt(0.5);
+    INPUT_TYPE preal = a * sqrt_half, pimag = b * sqrt_half;
+    INPUT_TYPE qreal = d * sqrt_half, qimag = -c * sqrt_half;
+
+    *z1real = preal - qreal;
+    *z1imag = pimag - qimag;
+    *z2real = preal + qreal;
+    *z2imag = pimag + qimag;
+}
+
+__kernel void rearrange_output(
     int4 pixels_to_write,
     __global INPUT_TYPE* input,
     int4 input_offset, int4 input_shape, int4 input_skip, int4 input_strides,

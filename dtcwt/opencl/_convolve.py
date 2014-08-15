@@ -6,7 +6,7 @@ import numpy as np
 import pyopencl as cl
 import pyopencl.array as cla
 
-Region = collections.namedtuple('Region', ['data', 'shape', 'offset', 'skip', 'strides'])
+Region = collections.namedtuple('Region', ['data', 'data_start', 'shape', 'offset', 'skip', 'strides'])
 
 def as_int4(sequence, fill_value=0):
     rv = cla.vec.make_int4(*(fill_value,)*4)
@@ -67,10 +67,12 @@ class Convolution(object):
 
         return self.program.copy_with_sampling(queue, global_size, self.local_size,
             as_int4(output_shape,1),
-            input_region.data, as_int4(input_region.offset, 0),
+            input_region.data, np.int32(input_region.data_start),
+            as_int4(input_region.offset, 0),
             as_int4(input_region.shape, 1),
             as_int4(input_region.skip, 1), as_int4(input_region.strides, input_total_stride),
-            output_region.data, as_int4(output_region.offset, 0),
+            output_region.data, np.int32(output_region.data_start),
+            as_int4(output_region.offset, 0),
             as_int4(output_region.shape, 1),
             as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride),
             wait_for=wait_for)
@@ -83,10 +85,12 @@ class Convolution(object):
 
         return self.program.convolve(queue, global_size, self.local_size,
             self.filter_kernel.data, np.int32(self.filter_kernel.shape[0]), as_int4(output_shape,1),
-            input_region.data, as_int4(input_region.offset, 0),
+            input_region.data, np.int32(input_region.data_start),
+            as_int4(input_region.offset, 0),
             as_int4(input_region.shape, 1),
             as_int4(input_region.skip, 1), as_int4(input_region.strides, input_total_stride),
-            output_region.data, as_int4(output_region.offset, 0),
+            output_region.data, np.int32(output_region.data_start),
+            as_int4(output_region.offset, 0),
             as_int4(output_region.shape, 1),
             as_int4(output_region.skip, 1), as_int4(output_region.strides, output_total_stride),
             wait_for=wait_for)

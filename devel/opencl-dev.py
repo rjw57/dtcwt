@@ -50,7 +50,7 @@ def main():
     output_array = cla.zeros_like(input_array)
 
     input_region = Region(input_array.data, input_array.shape,
-            (100,100), (1,1),
+            (0,0), (1,1),
             tuple(int(x/input_array.dtype.itemsize) for x in input_array.strides))
     output_region = Region(output_array.data, output_array.shape,
             (0,0), (1,1),
@@ -62,7 +62,8 @@ def main():
 
     # Call kernel
     conv.set_filter_kernel(queue, filter_kernel)
-    evt = conv._checked_convolve(queue, (800, 1600), input_region, output_region)
+    pixel_count = (output_array.shape[0], output_array.shape[1])
+    evt = conv._unchecked_convolve(queue, pixel_count, input_region, output_region)
 
     evt.wait()
 

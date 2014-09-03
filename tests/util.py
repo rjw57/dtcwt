@@ -16,6 +16,11 @@ def assert_almost_equal(a, b, tolerance=TOLERANCE):
             'Arrays differ by a maximum of {0} which is greater than the tolerance of {1}'.
             format(md, tolerance))
 
+def assert_pyramids_almost_equal(a, b, tolerance=TOLERANCE):
+    assert_almost_equal(a.lowpass, b.lowpass)
+    for hp_a, hp_b in zip(a.highpasses, b.highpasses):
+        assert_almost_equal(hp_a, hp_b)
+
 def assert_percentile_almost_equal(a, b, percentile=90, tolerance=TOLERANCE):
     md = np.percentile(np.abs(a-b), percentile)
     if md <= tolerance:

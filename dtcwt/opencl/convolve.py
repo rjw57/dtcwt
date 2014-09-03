@@ -1,3 +1,5 @@
+"""Low-level support for convolution using OpenCL."""
+
 import os
 import numpy as np
 import dtcwt.coeffs

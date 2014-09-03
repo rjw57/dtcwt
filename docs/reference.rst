@@ -71,6 +71,6 @@ OpenCL
     :members:
     :inherited-members:
 
-.. automodule:: dtcwt.opencl.lowlevel
+.. automodule:: dtcwt.opencl.transform2d
     :members:
 

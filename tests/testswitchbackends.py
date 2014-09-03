@@ -1,6 +1,6 @@
 import dtcwt
 import dtcwt.numpy as npbackend
-import dtcwt.opencl as clbackend
+import dtcwt.opencl.transform2d as cl2d
 
 from unittest import TestCase
 from nose.tools import raises, assert_raises
@@ -34,8 +34,8 @@ class TestSwitchBackends(TestCase):
         assert dtcwt.Pyramid is npbackend.Pyramid
         assert dtcwt.backend_name == 'numpy'
         dtcwt.push_backend('opencl')
-        assert dtcwt.Transform2d is clbackend.Transform2d
-        assert dtcwt.Pyramid is clbackend.Pyramid
+        assert dtcwt.Transform2d is cl2d.Transform2d
+        assert dtcwt.Pyramid is cl2d.Pyramid
         assert dtcwt.backend_name == 'opencl'
         dtcwt.pop_backend()
         assert dtcwt.Transform2d is npbackend.Transform2d

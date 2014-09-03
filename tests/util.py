@@ -2,7 +2,6 @@ import functools
 import numpy as np
 
 from nose import SkipTest
-from dtcwt.opencl.lowlevel import NoCLPresentError
 
 from six.moves import xrange
 
@@ -71,8 +70,5 @@ def skip_if_no_cl(f):
             import pyopencl
         except ImportError:
             raise SkipTest('Skipping due to no CL library being present')
-        try:
-            return f(*args, **kwargs)
-        except NoCLPresentError:
-            raise SkipTest('Skipping due to no CL library being present')
+        return f(*args, **kwargs)
     return wrapper

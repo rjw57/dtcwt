@@ -44,7 +44,7 @@ def centre_indices(ndim=2,apron=8):
 def summarise_mat(M, apron=8):
     """HACK to provide a 'summary' matrix consisting of the corners of the
     matrix and summed versions of the sub matrices.
-    
+
     N.B. Keep this in sync with matlab/verif_m_to_npz.py.
 
     """
@@ -62,11 +62,15 @@ def summarise_cube(M, apron=4):
     """
     return np.dstack(
         [summarise_mat(M[:,:,i,...], apron) for i in xrange(M.shape[-2])]
-    )    
+    )
 
 def skip_if_no_cl(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
+        try:
+            import pyopencl
+        except ImportError:
+            raise SkipTest('Skipping due to no CL library being present')
         try:
             return f(*args, **kwargs)
         except NoCLPresentError:

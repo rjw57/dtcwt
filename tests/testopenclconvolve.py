@@ -7,11 +7,14 @@ import tests.datasets as datasets
 try:
     import pyopencl as cl
     import pyopencl.array as cla
+    HAVE_OPENCL=True
 except ImportError:
-    pass
+    HAVE_OPENCL=False
 
-@skip_if_no_cl
 def setup():
+    if not HAVE_OPENCL:
+        return
+
     global traffic_rgb, queue, ctx
     ctx = cl.create_some_context(interactive=False)
     queue = cl.CommandQueue(ctx)

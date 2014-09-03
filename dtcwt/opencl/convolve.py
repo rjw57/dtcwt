@@ -62,25 +62,6 @@ def _write_input_pixel_test_image(queue, output_array, input_offset, input_shape
             cla.vec.make_int2(*input_offset), cla.vec.make_int2(*input_shape),
             out_data, out_offset, out_strides, out_shape, wait_for=wait_for)
 
-def biort(name):
-    """Return a host array of kernel coefficients for the named biorthogonal
-    level 1 wavelet. The lowpass coefficients are loaded into the 'x' field of
-    the returned array and the highpass are loaded into the 'y' field. The
-    returned array is suitable for passing to Convolution1D().
-    """
-    low, _, high, _ = dtcwt.coeffs.biort(name)
-    assert low.shape[0] % 2 == 1
-    assert high.shape[0] % 2 == 1
-
-    kernel_coeffs = np.zeros((max(low.shape[0], high.shape[0]),), cla.vec.float2)
-
-    low_offset = (kernel_coeffs.shape[0] - low.shape[0])>>1
-    kernel_coeffs['x'][low_offset:low_offset+low.shape[0]] = low.flatten()
-    high_offset = (kernel_coeffs.shape[0] - high.shape[0])>>1
-    kernel_coeffs['y'][high_offset:high_offset+high.shape[0]] = high.flatten()
-
-    return kernel_coeffs
-
 class Convolution1D(object):
     def __init__(self, queue, kernel_coeffs):
         if kernel_coeffs.dtype != cla.vec.float2 or len(kernel_coeffs.shape) != 1:

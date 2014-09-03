@@ -89,7 +89,8 @@ def test_trivial_convolution():
 @skip_if_no_cl
 def test_low_highpass():
     """Tests convolving an input with a less trivial kernel."""
-    from dtcwt.opencl.convolve import Convolution1D, biort
+    from dtcwt.opencl.convolve import Convolution1D
+    from dtcwt.opencl.coeffs import biort
     from dtcwt.numpy.lowlevel import colfilter
 
     # Get a low- and highpass kernel

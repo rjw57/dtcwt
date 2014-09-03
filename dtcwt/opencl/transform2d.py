@@ -14,6 +14,7 @@ from dtcwt.numpy.common import Pyramid as NumPyPyramid
 from dtcwt.numpy.transform2d import DEFAULT_BIORT, DEFAULT_QSHIFT
 
 import dtcwt.opencl.convolve as convolve
+import dtcwt.opencl.coeffs as coeffs
 
 log = logging.getLogger()
 
@@ -89,8 +90,8 @@ class Transform2d(object):
 
     The :py:class:`pyopencl.CommandQueue` associated with the transform is
     specified as *queue*.
-    """
 
+    """
     def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, queue=None):
         if queue is None:
             log.warn('Queue not specified for OpenCL transform. Using first available.')
@@ -98,7 +99,7 @@ class Transform2d(object):
             queue = cl.CommandQueue(ctx)
 
         self._queue = queue
-        self._biort_coeffs = convolve.biort(biort)
+        self._biort_coeffs = coeffs.biort(biort)
         self._l1_convolution = convolve.Convolution1D(self._queue, self._biort_coeffs)
 
     def forward(self, X, nlevels=3, include_scale=False, wait_for=None):

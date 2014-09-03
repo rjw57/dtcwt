@@ -1,6 +1,6 @@
 import os
 import numpy as np
-import PIL.Image as Image
+from PIL import Image
 
 def regframes(name):
     """Load the *name* registration dataset and return source and reference frame."""

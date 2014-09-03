@@ -47,7 +47,7 @@ void test_edge_reflect(
 // Convolve along first dimension of data
 __kernel
 __attribute__((reqd_work_group_size(CHUNK_SIZE, CHUNK_SIZE, 1)))
-void convolve_2d_scalar(
+void convolve_scalar(
     __constant vec2_t* kernel_coeffs,
     __global scalar_t* input_ptr, int2 input_strides, int2 input_shape,
     __global vec2_t* output_ptr, int2 output_strides, int2 output_shape)

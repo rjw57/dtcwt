@@ -60,3 +60,22 @@ def test_edge_reflect():
     assert output_array[40,52]['y'] == 11
     assert output_array[41,52]['x'] == 10
     assert output_array[41,52]['y'] == 11
+
+@skip_if_no_cl
+def test_trivial_convolution():
+    """Tests convolving an input with a single coefficient kernel."""
+    from dtcwt.opencl.convolve import Convolution2D
+    coeffs = np.empty((1,), cla.vec.float2)
+    coeffs['x'] = 1
+    coeffs['y'] = 0.5
+    convolution = Convolution2D(queue, coeffs)
+
+    traffic_r_plane = traffic_rgb[:,:,0]
+    output = cla.empty(queue, traffic_r_plane.shape, cla.vec.float2)
+    convolution(traffic_r_plane, output).wait()
+
+    output = output.get()
+
+    r_plane = traffic_rgb.get()[:,:,0]
+    assert_almost_equal(output['x'], r_plane)
+    assert_almost_equal(output['y'], 0.5 * r_plane)

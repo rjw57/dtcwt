@@ -47,3 +47,33 @@ def _write_input_pixel_test_image(queue, output_array, input_offset, input_shape
     return program.test_edge_reflect(queue, global_size, local_size,
             cla.vec.make_int2(*input_offset), cla.vec.make_int2(*input_shape),
             out_data, out_strides, out_shape, wait_for=wait_for)
+
+class Convolution2D(object):
+    def __init__(self, queue, kernel_coeffs):
+        if kernel_coeffs.dtype != cla.vec.float2 or len(kernel_coeffs.shape) != 1:
+            raise ValueError('Kernel coefficients must be a 1d vector of float2')
+        if kernel_coeffs.shape[0] % 2 != 1:
+            raise ValueError('Kernel coefficients vector must have odd length')
+
+        # Remember which queue we work on
+        self._queue = queue
+
+        # Copy kernel to device if necessary
+        self._kernel_coeffs = cla.to_device(queue, kernel_coeffs)
+
+        # Compute chunk size, kernel half width and build device program
+        self._chunk_size = _DEFAULT_CHUNK_SIZE
+        self._kernel_half_width = (kernel_coeffs.shape[0] - 1)>>1
+        self._program = _build_program(queue, self._kernel_half_width, self._chunk_size)
+
+        # Fetch kernels
+        self._convolve_scalar = self._program.convolve_scalar
+
+    def __call__(self, input_array, output_array, wait_for=None):
+        in_data, in_strides, in_shape = _array_to_spec(input_array)
+        out_data, out_strides, out_shape = _array_to_spec(output_array)
+        global_size, local_size = _global_and_local_size(output_array.shape, self._chunk_size)
+        return self._convolve_scalar(self._queue, global_size, local_size,
+                self._kernel_coeffs.data,
+                in_data, in_strides, in_shape,
+                out_data, out_strides, out_shape, wait_for=wait_for)

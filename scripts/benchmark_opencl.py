@@ -10,13 +10,18 @@ import os
 import timeit
 
 import numpy as np
+from PIL import Image
 
-from dtcwt.coeffs import biort, qshift
-from dtcwt.opencl.lowlevel import NoCLPresentError, get_default_queue
+try:
+    import pyopencl as cl
+    HAVE_OPENCL = True
+except ImportError:
+    HAVE_OPENCL = False
 
 lena = np.load(os.path.join(os.path.dirname(__file__), '..', 'tests', 'lena.npz'))['lena']
-h0o, g0o, h1o, g1o = biort('near_sym_b')
-h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = qshift('qshift_d')
+traffic_rgb = Image.open(os.path.join(os.path.dirname(__file__), '..', 'tests', 'traffic_hd.jpg'))
+traffic_rgb = np.asarray(traffic_rgb, np.float32) / 255
+traffic_g = np.copy(traffic_rgb[:,:,1])
 
 def format_time(t):
     units = (
@@ -32,70 +37,63 @@ def format_time(t):
 def benchmark(statement='pass', setup='pass'):
     number, repeat = (1, 3)
     min_time = 0
- 
-    try:
-        while min_time < 0.2:
-            number *= 10
-            times = timeit.repeat(statement, setup, repeat=repeat, number=number)
-            min_time = min(times)
-    except NoCLPresentError:
-        print('Skipping benchmark since OpenCL is not present')
-        return 1
+
+    while min_time < 0.2:
+        number *= 10
+        times = timeit.repeat(statement, setup, repeat=repeat, number=number)
+        min_time = min(times)
 
     t = min_time / number
     print('{0} loops, best of {1}: {2}'.format(number, repeat, format_time(t)))
 
     return t
 
+class NumpyBenchmark(object):
+    def __init__(self, *args, **kwargs):
+        from dtcwt.numpy.transform2d import Transform2d
+        self.t = Transform2d()
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        self.t.forward(*self.args, **self.kwargs)
+
+class OpenCLBenchmark(object):
+    def __init__(self, *args, **kwargs):
+        from dtcwt.opencl.transform2d import Transform2d
+        self.ctx = cl.create_some_context(interactive=False)
+        self.queue = cl.CommandQueue(self.ctx)
+        self.t = Transform2d(queue=self.queue)
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        self.t.forward(*self.args, **self.kwargs).event.wait()
+
 def main():
-    try:
-        queue = get_default_queue()
-        print('Using context: {0}'.format(queue.context))
-    except NoCLPresentError:
+    if not HAVE_OPENCL:
         print('Skipping OpenCL benchmark since OpenCL is not present')
+        return
 
-    print('Running NumPy colfilter...')
-    a = benchmark('colfilter(lena, h1o)',
-            'from dtcwt.numpy.lowlevel import colfilter; from __main__ import lena, h1o')
-    print('Running OpenCL colfilter...')
-    b = benchmark('colfilter(lena, h1o)',
-            'from dtcwt.opencl.lowlevel import colfilter; from __main__ import lena, h1o')
+    print('Running 1 level Lena...')
+    print('  NumPy')
+    a = benchmark(
+        'bm.run()',
+        'from __main__ import lena, NumpyBenchmark; bm = NumpyBenchmark(lena, 1)')
+    print('  OpenCL')
+    b = benchmark(
+        'bm.run()',
+        'from __main__ import lena, OpenCLBenchmark; bm = OpenCLBenchmark(lena, 1)')
     print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 
-    print('Running NumPy coldfilt...')
-    a = benchmark('coldfilt(lena, h0b, h0a)',
-            'from dtcwt.numpy.lowlevel import coldfilt; from __main__ import lena, h0b, h0a')
-    print('Running OpenCL coldfilt...')
-    b = benchmark('coldfilt(lena, h0b, h0a)',
-            'from dtcwt.opencl.lowlevel import coldfilt; from __main__ import lena, h0b, h0a')
-    print('Speed up: x{0:.2f}'.format(a/b))
-    print('=====')
-
-    print('Running NumPy colifilt...')
-    a = benchmark('colifilt(lena, h0b, h0a)',
-            'from dtcwt.numpy.lowlevel import colifilt; from __main__ import lena, h0b, h0a')
-    print('Running OpenCL colifilt...')
-    b = benchmark('colifilt(lena, h0b, h0a)',
-            'from dtcwt.opencl.lowlevel import colifilt; from __main__ import lena, h0b, h0a')
-    print('Speed up: x{0:.2f}'.format(a/b))
-    print('=====')
-
-    print('Running NumPy dtwavexfm2...')
-    a = benchmark('dtwavexfm2(lena)',
-            'from dtcwt.compat import dtwavexfm2; from __main__ import lena')
-    print('Running OpenCL dtwavexfm2...')
-    b = benchmark('dtwavexfm2(lena)',
-            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
-    print('Speed up: x{0:.2f}'.format(a/b))
-    print('=====')
-
-    print('Running NumPy dtwavexfm2 (non-POT)...')
-    a = benchmark('dtwavexfm2(lena[:510,:480])',
-            'from dtcwt.compat import dtwavexfm2; from __main__ import lena')
-    print('Running OpenCL dtwavexfm2 (non-POT)...')
-    b = benchmark('dtwavexfm2(lena[:510,:480])',
-            'from dtcwt.opencl.transform2d import dtwavexfm2; from __main__ import lena')
+    print('Running 1 level traffic (green channel)...')
+    a = benchmark(
+        'bm.run()',
+        '''from __main__ import traffic_g, NumpyBenchmark; bm = NumpyBenchmark(traffic_g, 1)''')
+    b = benchmark(
+        'bm.run()',
+        '''from __main__ import traffic_g, OpenCLBenchmark; bm = OpenCLBenchmark(traffic_g, 1)''')
     print('Speed up: x{0:.2f}'.format(a/b))
     print('=====')
 

@@ -44,6 +44,11 @@ class Pyramid(object):
             Accessing this attribute causes an implicit copy from the device to the
             host.
 
+    .. py:attribute:: event
+
+        A PyOpenCL event which can be waited for to ensure that the Pyramid has
+        been fully computed.
+
     .. py:attribute:: cl_lowpass
 
         A :py:class:`pyopencl.array.Array` containing the coarsest scale
@@ -57,9 +62,10 @@ class Pyramid(object):
 
     """
 
-    def __init__(self, lowpass, highpasses):
+    def __init__(self, lowpass, highpasses, event):
         self.cl_lowpass = lowpass
         self.cl_highpasses = highpasses
+        self.event = event
 
     def get(self):
         """Return a :py:class:`dtcwt.numpy.Pyramid` object initialised by
@@ -95,7 +101,7 @@ class Transform2d(object):
         self._biort_coeffs = convolve.biort(biort)
         self._l1_convolution = convolve.Convolution1D(self._queue, self._biort_coeffs)
 
-    def forward(self, X, nlevels=3, include_scale=False):
+    def forward(self, X, nlevels=3, include_scale=False, wait_for=None):
         if include_scale:
             raise NotImplementedError(
                 'Setting include_scale is not implemented for the OpenCL transform')
@@ -120,24 +126,24 @@ class Transform2d(object):
                 'Input with 3 or greater dimensions not supported in OpenCL transform')
 
         # Do level 1 of transform
-        lp, hp = self._level1_transform(X)
+        lp, hp, evt = self._level1_transform(X, wait_for)
 
         # Return result
-        return Pyramid(lp, (hp,))
+        return Pyramid(lp, (hp,), evt)
 
     def inverse(self, pyramid, gain_mask=None):
         if gain_mask is not None:
             raise NotImplementedError('Setting gain_mask is not supported in the OpenCL backend.')
         raise NotImplementedError()
 
-    def _level1_transform(self, X):
+    def _level1_transform(self, X, wait_for):
         if np.any(np.asarray(X.shape[:2]) % 2 == 1):
             raise ValueError('Input must have even rows and columns')
 
         # Do the first dimension convolution
         lohi = cla.empty(self._queue, X.shape, dtype=cla.vec.float2)
-        self._l1_convolution(X, lohi)
+        evt = self._l1_convolution(X, lohi, wait_for=wait_for)
 
         lp = cla.empty(self._queue, X.shape, dtype=np.float32)
         hp = cla.empty(self._queue, X.shape + (6,), dtype=np.complex64)
-        return lp, hp
+        return lp, hp, evt

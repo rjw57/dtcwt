@@ -27,8 +27,10 @@ inline int2 edge_reflect(int2 coord, int2 shape)
 __kernel
 void test_edge_reflect(
         int2 input_origin, int2 input_shape,
-        __global vec2_t* output_ptr, int2 output_strides, int2 output_shape)
+        __global vec2_t* output_ptr, int output_start, int2 output_strides, int2 output_shape)
 {
+    output_ptr += output_start;
+
     int2 output_coord = (int2)(get_global_id(0), get_global_id(1));
     if(any(output_coord < 0) || any(output_coord >= output_shape)) {
         return;
@@ -49,9 +51,12 @@ __kernel
 __attribute__((reqd_work_group_size(CHUNK_SIZE, CHUNK_SIZE, 1)))
 void convolve_scalar(
     __constant vec2_t* kernel_coeffs,
-    __global scalar_t* input_ptr, int2 input_strides, int2 input_shape,
-    __global vec2_t* output_ptr, int2 output_strides, int2 output_shape)
+    __global scalar_t* input_ptr, int input_start, int2 input_strides, int2 input_shape,
+    __global vec2_t* output_ptr, int output_start, int2 output_strides, int2 output_shape)
 {
+    input_ptr += input_start;
+    output_ptr += output_start;
+
     // Allocate a region of local storage to store cached input
     __local scalar_t input_cache[LOCAL_WIDTH*CHUNK_SIZE];
 
@@ -59,8 +64,7 @@ void convolve_scalar(
     int2 input_coord = (int2)(get_global_id(0), get_global_id(1));
 
     // What pixel in the shared memory does this correspond to?
-    int2 local_coord = (int2)(get_local_id(0), get_local_id(1))
-        + (int2)(KERNEL_HALF_WIDTH, 0);
+    int2 local_coord = (int2)(get_local_id(0) + KERNEL_HALF_WIDTH, get_local_id(1));
 
     // Read input into shared memory
     int2 input_offsets = mul24(edge_reflect(input_coord, input_shape), input_strides);

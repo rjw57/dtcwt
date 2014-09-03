@@ -64,18 +64,50 @@ def test_edge_reflect():
 @skip_if_no_cl
 def test_trivial_convolution():
     """Tests convolving an input with a single coefficient kernel."""
-    from dtcwt.opencl.convolve import Convolution2D
+    from dtcwt.opencl.convolve import Convolution1D
     coeffs = np.empty((1,), cla.vec.float2)
     coeffs['x'] = 1
     coeffs['y'] = 0.5
-    convolution = Convolution2D(queue, coeffs)
+    convolution = Convolution1D(queue, coeffs)
 
-    traffic_r_plane = traffic_rgb[:,:,0]
-    output = cla.empty(queue, traffic_r_plane.shape, cla.vec.float2)
-    convolution(traffic_r_plane, output).wait()
+    # Test each plane
+    output_device = cla.empty(queue, traffic_rgb.shape[:2], cla.vec.float2)
+    for plane_idx in range(traffic_rgb.shape[2]):
+        print('Testing plane {0}/{1}'.format(plane_idx+1, traffic_rgb.shape[2]))
+        plane = traffic_rgb[:,:,plane_idx]
+        convolution(plane, output_device).wait()
 
-    output = output.get()
+        output = output_device.get()
+        plane_host = traffic_rgb.get()[:,:,plane_idx]
 
-    r_plane = traffic_rgb.get()[:,:,0]
-    assert_almost_equal(output['x'], r_plane)
-    assert_almost_equal(output['y'], 0.5 * r_plane)
+        assert_almost_equal(output['x'], plane_host)
+        assert_almost_equal(output['y'], 0.5 * plane_host)
+
+@skip_if_no_cl
+def test_low_highpass():
+    """Tests convolving an input with a less trivial kernel."""
+    from dtcwt.opencl.convolve import Convolution1D, biort
+    from dtcwt.numpy.lowlevel import colfilter
+
+    # Get a low- and highpass kernel
+    kernel_coeffs = biort('near_sym_b')
+    assert kernel_coeffs.shape[0] > 1
+
+    # Prepare the convolution
+    convolution = Convolution1D(queue, kernel_coeffs)
+
+    # Test each plane
+    output_device = cla.empty(queue, traffic_rgb.shape[:2], cla.vec.float2)
+    for plane_idx in range(traffic_rgb.shape[2]):
+        print('Testing plane {0}/{1}'.format(plane_idx+1, traffic_rgb.shape[2]))
+        plane = traffic_rgb[:,:,plane_idx]
+        convolution(plane, output_device).wait()
+
+        output = output_device.get()
+
+        plane_host = traffic_rgb.get()[:,:,plane_idx]
+        gold_low = colfilter(plane_host, kernel_coeffs['x'])
+        gold_high = colfilter(plane_host, kernel_coeffs['y'])
+
+        assert_almost_equal(gold_low, output['x'])
+        assert_almost_equal(gold_high, output['y'])

@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import dtcwt.coeffs
 
 try:
     import pyopencl as cl
@@ -12,10 +13,11 @@ _PROGRAM_PATH=os.path.join(os.path.dirname(__file__), 'convolve.cl')
 _DEFAULT_CHUNK_SIZE=32
 
 def _array_to_spec(array):
-    data = array.base_data[array.offset:]
+    data = array.base_data
+    offset = np.int32(array.offset // array.dtype.itemsize)
     strides = cla.vec.make_int2(*np.divide(array.strides, array.dtype.itemsize))
     shape = cla.vec.make_int2(*array.shape)
-    return data, strides, shape
+    return data, offset, strides, shape
 
 @np.vectorize
 def _ceil_multiple(x, m):
@@ -42,13 +44,32 @@ def _build_program(queue, kernel_half_width, chunk_size):
 
 def _write_input_pixel_test_image(queue, output_array, input_offset, input_shape, wait_for=None):
     program = _build_program(queue, 0, _DEFAULT_CHUNK_SIZE)
-    out_data, out_strides, out_shape = _array_to_spec(output_array)
+    out_data, out_offset, out_strides, out_shape = _array_to_spec(output_array)
     global_size, local_size = _global_and_local_size(output_array.shape, _DEFAULT_CHUNK_SIZE)
     return program.test_edge_reflect(queue, global_size, local_size,
             cla.vec.make_int2(*input_offset), cla.vec.make_int2(*input_shape),
-            out_data, out_strides, out_shape, wait_for=wait_for)
+            out_data, out_offset, out_strides, out_shape, wait_for=wait_for)
 
-class Convolution2D(object):
+def biort(name):
+    """Return a host array of kernel coefficients for the named biorthogonal
+    level 1 wavelet. The lowpass coefficients are loaded into the 'x' field of
+    the returned array and the highpass are loaded into the 'y' field. The
+    returned array is suitable for passing to Convolution1D().
+    """
+    low, _, high, _ = dtcwt.coeffs.biort(name)
+    assert low.shape[0] % 2 == 1
+    assert high.shape[0] % 2 == 1
+
+    kernel_coeffs = np.zeros((max(low.shape[0], high.shape[0]),), cla.vec.float2)
+
+    low_offset = (kernel_coeffs.shape[0] - low.shape[0])>>1
+    kernel_coeffs['x'][low_offset:low_offset+low.shape[0]] = low.flatten()
+    high_offset = (kernel_coeffs.shape[0] - high.shape[0])>>1
+    kernel_coeffs['y'][high_offset:high_offset+high.shape[0]] = high.flatten()
+
+    return kernel_coeffs
+
+class Convolution1D(object):
     def __init__(self, queue, kernel_coeffs):
         if kernel_coeffs.dtype != cla.vec.float2 or len(kernel_coeffs.shape) != 1:
             raise ValueError('Kernel coefficients must be a 1d vector of float2')
@@ -70,10 +91,10 @@ class Convolution2D(object):
         self._convolve_scalar = self._program.convolve_scalar
 
     def __call__(self, input_array, output_array, wait_for=None):
-        in_data, in_strides, in_shape = _array_to_spec(input_array)
-        out_data, out_strides, out_shape = _array_to_spec(output_array)
+        in_data, in_offset, in_strides, in_shape = _array_to_spec(input_array)
+        out_data, out_offset, out_strides, out_shape = _array_to_spec(output_array)
         global_size, local_size = _global_and_local_size(output_array.shape, self._chunk_size)
         return self._convolve_scalar(self._queue, global_size, local_size,
                 self._kernel_coeffs.data,
-                in_data, in_strides, in_shape,
-                out_data, out_strides, out_shape, wait_for=wait_for)
+                in_data, in_offset, in_strides, in_shape,
+                out_data, out_offset, out_strides, out_shape, wait_for=wait_for)

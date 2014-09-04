@@ -121,6 +121,11 @@ class _Q2C(object):
             high_data, high_offset, high_strides, high_shape,
             wait_for=wait_for)
 
+def _ceil_align(x, alignment):
+    return alignment * ((x+alignment-1)//alignment)
+
+BUFFER_ALIGNMENT = 16
+
 class Transform2d(object):
     """OpenCL implementation of 2D DTCWT.
 
@@ -142,7 +147,10 @@ class Transform2d(object):
         # Prepare the q2c kernel
         self._q2c = _Q2C(self._queue)
 
-    def forward(self, X, nlevels=3, include_scale=False, wait_for=None):
+    def forward(self, X, nlevels=3, include_scale=False,
+            workspace_buffer=None, output_pyramid=None, wait_for=None):
+        X = self._normalise_input(X)
+
         if include_scale:
             raise NotImplementedError(
                 'Setting include_scale is not implemented for the OpenCL transform')
@@ -150,6 +158,52 @@ class Transform2d(object):
             raise NotImplementedError(
                 'Setting nlevels > 1 is not implemented for the OpenCL transform')
 
+        # Allocate workspace if not provided
+        ws_size = self.workspace_size_for_input(X, nlevels)
+        if workspace_buffer is None:
+            workspace_buffer = cl.Buffer(self._queue.context, cl.mem_flags.READ_WRITE, ws_size)
+        elif workspace_buffer.size < ws_size:
+            raise ValueError('Workspace of size {0} is too small. At least {1} is required'.format(
+                workspace_buffer.size, ws_size))
+
+        # Allocate output if not provided
+        if output_pyramid is None:
+            output_pyramid = self.allocate_output(X, nlevels)
+
+        # Do level 1 of transform
+        lowpass = output_pyramid.cl_lowpass
+        highpass = output_pyramid.cl_highpasses[0]
+        evt = self._level1_transform(X, lowpass, highpass, workspace_buffer, wait_for)
+
+        # Return result
+        output_pyramid.event = evt
+        return output_pyramid
+
+    def inverse(self, pyramid, gain_mask=None):
+        if gain_mask is not None:
+            raise NotImplementedError('Setting gain_mask is not supported in the OpenCL backend.')
+        raise NotImplementedError()
+
+    def allocate_output(self, X, nlevels):
+        X = self._normalise_input(X)
+
+        if nlevels != 1:
+            raise NotImplementedError(
+                'Setting nlevels > 1 is not implemented for the OpenCL transform')
+
+        # Create low and highpass output
+        half_shape = tuple(x>>1 for x in X.shape)
+        lowpass = cla.empty(self._queue, X.shape, np.float32)
+        highpass = cla.empty(self._queue, half_shape + (6,), np.complex64)
+
+        return Pyramid(lowpass, (highpass,), None)
+
+    def workspace_size_for_input(self, X, nlevels):
+        X = self._normalise_input(X)
+        l1_ws = self._level1_workspace_sizes(X)[0]
+        return l1_ws
+
+    def _normalise_input(self, X):
         if not isinstance(X, cla.Array):
             X = np.atleast_2d(X)
             if X.dtype != self._input_dtype:
@@ -167,37 +221,37 @@ class Transform2d(object):
             raise NotImplementedError(
                 'Input with 3 or greater dimensions not supported in OpenCL transform')
 
-        # Do level 1 of transform
-        lp, hp, evt = self._level1_transform(X, wait_for)
+        return X
 
-        # Return result
-        return Pyramid(lp, (hp,), evt)
+    def _level1_workspace_sizes(self, X):
+        ws_size = 0
 
-    def inverse(self, pyramid, gain_mask=None):
-        if gain_mask is not None:
-            raise NotImplementedError('Setting gain_mask is not supported in the OpenCL backend.')
-        raise NotImplementedError()
+        # Allocate workspace for convolution
+        conv_ws_size = _ceil_align(self._l1_convolution.workspace_size_for_input(X), BUFFER_ALIGNMENT)
+        conv_ws_offset = ws_size
+        ws_size += conv_ws_size
 
-    def _level1_transform(self, X, wait_for):
+        # Allocate workspace for output
+        conv_output_size = _ceil_align(int(np.product(X.shape[:2]) * 4*4), BUFFER_ALIGNMENT)
+        conv_output_offset = ws_size
+        ws_size += conv_output_size
+
+        return ws_size, conv_ws_size, conv_output_size
+
+    def _level1_transform(self, X, lowpass, highpass, ws, wait_for):
         if np.any(np.asarray(X.shape[:2]) % 2 == 1):
             raise ValueError('Input must have even rows and columns')
 
-        # Allocate workspace for convolution
-        ws_size = self._l1_convolution.workspace_size_for_input(X)
-        ws = cl.Buffer(self._queue.context, cl.mem_flags.READ_WRITE, ws_size)
+        ws_size, conv_ws_size, conv_output_size = self._level1_workspace_sizes(X)
+        assert ws.size >= ws_size
 
-        # Create convolution output
-        output_array = cla.empty(self._queue, X.shape, self._l1_convolution.output_dtype)
+        # Create convolution output array
+        output_array = cla.Array(self._queue,
+                X.shape, self._l1_convolution.output_dtype,
+                data=ws, offset=conv_ws_size)
 
         # Do the convolution
         evt = self._l1_convolution(X, output_array, ws)
 
-        # Create low and highpass output
-        half_shape = tuple(x>>1 for x in X.shape)
-        lowpass = cla.empty(self._queue, X.shape, np.float32)
-        highpass = cla.empty(self._queue, half_shape + (6,), np.complex64)
-
         # Extract low- and highpass from convolution output
-        evt = self._q2c(output_array, lowpass, highpass, wait_for=[evt])
-
-        return lowpass, highpass, evt
+        return self._q2c(output_array, lowpass, highpass, wait_for=[evt])

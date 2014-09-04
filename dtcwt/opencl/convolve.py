@@ -63,7 +63,19 @@ def _write_input_pixel_test_image(queue, output_array, input_offset, input_shape
             out_data, out_offset, out_strides, out_shape, wait_for=wait_for)
 
 class Convolution1D(object):
-    def __init__(self, queue, kernel_coeffs):
+    """A 1d convolution on the OpenCL device.
+
+    .. py:attribute:: input_dtype
+
+        Read-only. The expected dtype of the input array.
+
+    .. py:attribute:: output_dtype
+
+        Read-only. The output dtype resulting from :py:attr:`input_dtype`.
+
+    """
+
+    def __init__(self, queue, kernel_coeffs, input_dtype):
         if kernel_coeffs.dtype != cla.vec.float2 or len(kernel_coeffs.shape) != 1:
             raise ValueError('Kernel coefficients must be a 1d vector of float2')
         if kernel_coeffs.shape[0] % 2 != 1:
@@ -81,13 +93,29 @@ class Convolution1D(object):
         self._program = _build_program(queue, self._kernel_half_width, self._chunk_size)
 
         # Fetch kernels
-        self._convolve_scalar = self._program.convolve_scalar
+        self.input_dtype = input_dtype
+        if input_dtype == np.float32:
+            self._convolve = self._program.convolve_scalar
+            self.output_dtype = cla.vec.float2
+        elif input_dtype == cla.vec.float2:
+            self._convolve = self._program.convolve_vec2
+            self.output_dtype = cla.vec.float4
+        else:
+            raise ValueError('an input dtype of "{0}" is not supported'.format(input_dtype))
 
     def __call__(self, input_array, output_array, wait_for=None):
+        # Check dtypes
+        if input_array.dtype != self.input_dtype:
+            raise ValueError('Input array has wrong dtype "{0}". Was expecting "{1}"'.format(
+                self.input_dtype, input_array.dtype))
+        if input_array.dtype != self.input_dtype:
+            raise ValueError('Output array has wrong dtype "{0}". Was expecting "{1}"'.format(
+                self.input_dtype, input_array.dtype))
+
         in_data, in_offset, in_strides, in_shape = _array_to_spec(input_array)
         out_data, out_offset, out_strides, out_shape = _array_to_spec(output_array)
         global_size, local_size = _global_and_local_size(output_array.shape, self._chunk_size)
-        return self._convolve_scalar(self._queue, global_size, local_size,
+        return self._convolve(self._queue, global_size, local_size,
                 self._kernel_coeffs.data,
                 in_data, in_offset, in_strides, in_shape,
                 out_data, out_offset, out_strides, out_shape, wait_for=wait_for)

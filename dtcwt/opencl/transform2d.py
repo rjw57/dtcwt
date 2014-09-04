@@ -100,7 +100,9 @@ class Transform2d(object):
 
         self._queue = queue
         self._biort_coeffs = coeffs.biort(biort)
-        self._l1_convolution = convolve.Convolution1D(self._queue, self._biort_coeffs)
+        self._input_dtype = np.float32
+        self._l1_convolution = convolve.Convolution1D(
+            self._queue, self._biort_coeffs, self._input_dtype)
 
     def forward(self, X, nlevels=3, include_scale=False, wait_for=None):
         if include_scale:
@@ -112,14 +114,15 @@ class Transform2d(object):
 
         if not isinstance(X, cla.Array):
             X = np.atleast_2d(X)
-            if X.dtype != np.float32:
-                log.warn('OpenCL operates only on float32 arrays. The input will be converted.')
-                X = np.asarray(X, dtype=np.float32)
+            if X.dtype != self._input_dtype:
+                log.warn('OpenCL operates only on arrays with dtype {0}.'.format(self._input_dtype))
+                log.warn('The input will be converted.')
+                X = np.asarray(X, dtype=self._input_dtype)
             X = cla.to_device(self._queue, X)
         elif len(X.shape) < 2:
             raise ValueError('OpenCL arrays need to be at least 2 dimensional.')
-        elif X.dtype != np.float32:
-            raise ValueError('OpenCL arrays need to have float32 dtype. ' +
+        elif X.dtype != self._input_dtype:
+            raise ValueError('OpenCL arrays need to have dtype {0}. '.format(self._input_dtype) +
                 '(Passed array has {0}.)'.format(X.dtype))
 
         if len(X.shape) > 2:

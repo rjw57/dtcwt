@@ -71,7 +71,7 @@ def test_trivial_convolution():
     coeffs = np.empty((1,), cla.vec.float2)
     coeffs['x'] = 1
     coeffs['y'] = 0.5
-    convolution = Convolution1D(queue, coeffs)
+    convolution = Convolution1D(queue, coeffs, traffic_rgb.dtype)
 
     # Test each plane
     output_device = cla.empty(queue, traffic_rgb.shape[:2], cla.vec.float2)
@@ -98,7 +98,7 @@ def test_low_highpass():
     assert kernel_coeffs.shape[0] > 1
 
     # Prepare the convolution
-    convolution = Convolution1D(queue, kernel_coeffs)
+    convolution = Convolution1D(queue, kernel_coeffs, traffic_rgb.dtype)
 
     # Test each plane
     output_device = cla.empty(queue, traffic_rgb.shape[:2], cla.vec.float2)
@@ -115,3 +115,41 @@ def test_low_highpass():
 
         assert_almost_equal(gold_low, output['x'])
         assert_almost_equal(gold_high, output['y'])
+
+@skip_if_no_cl
+def test_low_highpass_2_component():
+    """Tests convolving a two components input with a less trivial kernel."""
+    from dtcwt.opencl.convolve import Convolution1D
+    from dtcwt.opencl.coeffs import biort
+    from dtcwt.numpy.lowlevel import colfilter
+
+    # Get a low- and highpass kernel
+    kernel_coeffs = biort('near_sym_b')
+    assert kernel_coeffs.shape[0] > 1
+
+    # Construct a two component traffic image
+    traffic_host = traffic_rgb.get()
+    traffic_rg_host = np.empty(traffic_rgb.shape[:2], cla.vec.float2)
+    traffic_rg_host['x'] = traffic_host[:,:,0]
+    traffic_rg_host['y'] = traffic_host[:,:,1]
+    traffic_rg = cla.to_device(queue, traffic_rg_host)
+
+    # Prepare the convolution
+    convolution = Convolution1D(queue, kernel_coeffs, traffic_rg.dtype)
+
+    # Convolve
+    output_device = cla.empty(queue, traffic_rgb.shape[:2], cla.vec.float4)
+    convolution(traffic_rg, output_device).wait()
+    output = output_device.get()
+
+    # Test xy channels of output
+    gold_low = colfilter(traffic_host[:,:,0], kernel_coeffs['x'])
+    gold_high = colfilter(traffic_host[:,:,0], kernel_coeffs['y'])
+    assert_almost_equal(gold_low, output['x'])
+    assert_almost_equal(gold_high, output['y'])
+
+    # Test zw channels of output
+    gold_low = colfilter(traffic_host[:,:,1], kernel_coeffs['x'])
+    gold_high = colfilter(traffic_host[:,:,1], kernel_coeffs['y'])
+    assert_almost_equal(gold_low, output['z'])
+    assert_almost_equal(gold_high, output['w'])

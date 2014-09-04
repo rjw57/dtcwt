@@ -9,6 +9,8 @@ import os
 import numpy as np
 import dtcwt.coeffs
 
+from dtcwt.opencl.util import array_to_spec, global_and_local_size, good_chunk_size_for_queue
+
 try:
     import pyopencl as cl
     import pyopencl.array as cla
@@ -17,32 +19,6 @@ except ImportError:
     _HAVE_OPENCL = False
 
 _PROGRAM_PATH=os.path.join(os.path.dirname(__file__), 'convolve.cl')
-_DEFAULT_CHUNK_SIZE=32
-
-def _array_to_spec(array):
-    data = array.base_data
-    offset = np.int32(array.offset // array.dtype.itemsize)
-    strides = cla.vec.make_int2(*np.divide(array.strides, array.dtype.itemsize))
-    shape = cla.vec.make_int2(*array.shape)
-    return data, offset, strides, shape
-
-@np.vectorize
-def _ceil_multiple(x, m):
-        return m * ((x+(m-1)) // m)
-
-def _global_and_local_size(output_shape, chunk_size):
-    local_size = tuple(int(x) for x in (chunk_size, chunk_size))
-    global_size = tuple(int(x) for x in _ceil_multiple(output_shape[:2], local_size))
-    return global_size, local_size
-
-def _good_chunk_size_for_queue(queue):
-    # By default use _DEFAULT_CHUNK_SIZE for chunk size but reduce it if
-    # the device does not support a work group that big.
-    chunk_size = _DEFAULT_CHUNK_SIZE
-    if chunk_size * chunk_size > queue.device.max_work_group_size:
-        # Set chunk size to largest which will fit
-        chunk_size = int(np.floor(np.sqrt(queue.device.max_work_group_size)))
-    return chunk_size
 
 def _build_program(queue, kernel_half_width, chunk_size):
     """Load and build the convolution kernel program for a specified kernel
@@ -59,10 +35,10 @@ def _build_program(queue, kernel_half_width, chunk_size):
     return program
 
 def _write_input_pixel_test_image(queue, output_array, input_offset, input_shape, wait_for=None):
-    chunk_size = _good_chunk_size_for_queue(queue)
+    chunk_size = good_chunk_size_for_queue(queue)
     program = _build_program(queue, 0, chunk_size)
-    out_data, out_offset, out_strides, out_shape = _array_to_spec(output_array)
-    global_size, local_size = _global_and_local_size(output_array.shape, chunk_size)
+    out_data, out_offset, out_strides, out_shape = array_to_spec(output_array)
+    global_size, local_size = global_and_local_size(output_array.shape, chunk_size)
     return program.test_edge_reflect(queue, global_size, local_size,
             cla.vec.make_int2(*input_offset), cla.vec.make_int2(*input_shape),
             out_data, out_offset, out_strides, out_shape, wait_for=wait_for)
@@ -112,7 +88,7 @@ class Convolution1D(object):
         self._kernel_coeffs = cla.to_device(queue, kernel_coeffs)
 
         # Compute chunk size, kernel half width and build device program
-        self._chunk_size = _good_chunk_size_for_queue(queue)
+        self._chunk_size = good_chunk_size_for_queue(queue)
         self._kernel_half_width = (kernel_coeffs.shape[0] - 1)>>1
         self._program = _build_program(queue, self._kernel_half_width, self._chunk_size)
 
@@ -152,9 +128,9 @@ class Convolution1D(object):
             raise ValueError('Output array has wrong dtype "{0}". Was expecting "{1}"'.format(
                 self.input_dtype, input_array.dtype))
 
-        in_data, in_offset, in_strides, in_shape = _array_to_spec(input_array)
-        out_data, out_offset, out_strides, out_shape = _array_to_spec(output_array)
-        global_size, local_size = _global_and_local_size(output_array.shape, self._chunk_size)
+        in_data, in_offset, in_strides, in_shape = array_to_spec(input_array)
+        out_data, out_offset, out_strides, out_shape = array_to_spec(output_array)
+        global_size, local_size = global_and_local_size(output_array.shape, self._chunk_size)
         return self._convolve(self._queue, global_size, local_size,
                 self._kernel_coeffs.data,
                 in_data, in_offset, in_strides, in_shape,

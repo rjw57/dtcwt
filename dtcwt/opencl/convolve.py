@@ -65,6 +65,25 @@ def _write_input_pixel_test_image(queue, output_array, input_offset, input_shape
 class Convolution1D(object):
     """A 1d convolution on the OpenCL device.
 
+    A convolution is planned for a particular set of kernel coefficients and a
+    particular input dtype.
+
+    *kernel_coeffs* is a 1d vector of :py:class:`pyopencl.array.vec.float2`
+    which stores the lowpass kernel coefficients in the 'x' field and the
+    highpass coefficients in the 'y' field.
+
+    *input_dtype* specifies the dtype of the input array. If this is a scalar
+    type then the output array dtype will be a 2-component vector where the 'x'
+    field corresponds to convolving the input with the lowpass kernel and the
+    'y' field corresponds to convolving the input with the highpass kernel. If
+    *input_dtype* is a 2 component vector then the output will have four
+    components. The 'xy' fields corresponding to the low- and highpass
+    convolution of the 'x' field of the input and the 'zw' fields corresponds
+    to the low- and highpass convolution of the 'y' field of the input.
+
+    The convolution expects a 2D array as input and will convolve along the
+    first dimension.
+
     .. py:attribute:: input_dtype
 
         Read-only. The expected dtype of the input array.
@@ -103,7 +122,23 @@ class Convolution1D(object):
         else:
             raise ValueError('an input dtype of "{0}" is not supported'.format(input_dtype))
 
-    def __call__(self, input_array, output_array, wait_for=None):
+    def __call__(self, *args, **kwargs):
+        return self.convolve(*args, **kwargs)
+
+    def convolve(self, input_array, output_array, wait_for=None):
+        """Perform the convolution. *input_array* and *output_array* should be
+        instances of :py:class:`pyopencl.array.Array` with the correct dtypes
+        as specified in :py:attr:`input_dtype` and :py:attr:`output_dtype`.
+
+        *wait_for* is either *None* or a sequence of OpenCL evens to wait for
+        before performing the convolution.
+
+        Returns an OpenCL event which represents the convolution succeeding.
+
+        This method can also be accessed via the :py:meth:`__call__` method in
+        order to treat the convolution as a callable.
+
+        """
         # Check dtypes
         if input_array.dtype != self.input_dtype:
             raise ValueError('Input array has wrong dtype "{0}". Was expecting "{1}"'.format(

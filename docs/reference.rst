@@ -74,3 +74,6 @@ OpenCL
 .. automodule:: dtcwt.opencl.transform2d
     :members:
 
+.. automodule:: dtcwt.opencl.convolve
+    :members:
+

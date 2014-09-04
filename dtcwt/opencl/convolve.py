@@ -161,7 +161,29 @@ class Convolution1D(object):
                 out_data, out_offset, out_strides, out_shape, wait_for=wait_for)
 
 class Convolution2D(object):
-    """A 2-dimensional convolution."""
+    """A 2-dimensional convolution.
+
+    A convolution is planned for a particular set of kernel coefficients. 2D
+    convolution is only defined for scalar input.
+
+    *kernel_coeffs* is a 1d vector of :py:class:`pyopencl.array.vec.float2`
+    which stores the lowpass kernel coefficients in the 'x' field and the
+    highpass coefficients in the 'y' field.
+
+    The convolution expects a 2D array as input and convolves column-wise and
+    then row-wise. The 'x' field of output is the low-low convolution, the 'y'
+    field is low-high, the 'z' field is high-low and the 'w' field is
+    high-high.
+
+    .. py:attribute:: input_dtype
+
+        Read-only. The expected dtype of the input array.
+
+    .. py:attribute:: output_dtype
+
+        Read-only. The output dtype resulting from :py:attr:`input_dtype`.
+
+    """
 
     def __init__(self, queue, kernel_coeffs):
         if kernel_coeffs.dtype != cla.vec.float2 or len(kernel_coeffs.shape) != 1:
@@ -182,12 +204,38 @@ class Convolution2D(object):
         self._convolution2 = Convolution1D(queue, kernel_coeffs, self.workspace_dtype)
 
     def workspace_size_for_input(self, input_array):
+        """Return the minimum workspace size, in bytes, required for convolving
+        *input_array*.
+
+        """
         if input_array.dtype != self.input_dtype:
             raise ValueError('Input array has invalid dtype {0}. Expected {1}'.format(
                 input_array.dtype, self.input_dtype))
         return int(np.product(input_array.shape) * input_array.dtype.itemsize * 2)
 
     def convolve(self, input_array, output_array, workspace_buffer, wait_for=None):
+        """Perform the convolution. *input_array* and *output_array* should be
+        instances of :py:class:`pyopencl.array.Array` with the correct dtypes
+        as specified in :py:attr:`input_dtype` and :py:attr:`output_dtype`.
+
+        *workspace_buffer* is a :py:class:`pyopencl.Buffer` instance which will
+        be used as a temporary on-device workspace. See
+        :py:meth:`workspace_size_for_input` for how to compute the minimum size
+        for this workspace. Between the events in *wait_for* firing and the
+        return value event firing the workspace may be written to and must not
+        be modified. Note that :py:meth:`workspace_size_for_input` gives the
+        *minimum* size for this buffer and only the first bytes up to that size
+        will be used. The workspace may be larger if required.
+
+        *wait_for* is either *None* or a sequence of OpenCL evens to wait for
+        before performing the convolution.
+
+        Returns an OpenCL event which represents the convolution succeeding.
+
+        This method can also be accessed via the :py:meth:`__call__` method in
+        order to treat the convolution as a callable.
+
+        """
         if input_array.dtype != self.input_dtype:
             raise ValueError('Input array has dtype {0}. Expected {1}'.format(
                 input_array.dtype, self.input_dtype))

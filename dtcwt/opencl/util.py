@@ -12,9 +12,17 @@ _DEFAULT_CHUNK_SIZE=32
 def array_to_spec(array):
     data = array.base_data
     offset = np.int32(array.offset // array.dtype.itemsize)
-    strides = cla.vec.make_int2(*np.divide(array.strides, array.dtype.itemsize))
-    shape = cla.vec.make_int2(*array.shape)
-    return data, offset, strides, shape
+
+    if len(array.shape) == 2:
+        strides = cla.vec.make_int2(*np.divide(array.strides, array.dtype.itemsize))
+        shape = cla.vec.make_int2(*array.shape)
+        return data, offset, strides, shape
+    elif len(array.shape) == 3:
+        strides = cla.vec.make_int3(*np.divide(array.strides, array.dtype.itemsize))
+        shape = cla.vec.make_int3(*array.shape)
+        return data, offset, strides, shape
+
+    raise ValueError('Input array has invalid dimension {0}'.format(len(array.shape)))
 
 @np.vectorize
 def _ceil_multiple(x, m):

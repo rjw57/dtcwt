@@ -46,5 +46,5 @@ def test_level1_forward_transform():
         # Perform opencl level 1 transform
         ocl = t.forward(plane_device, nlevels=1)
 
-        # TODO: Compare result
-        # assert_pyramids_almost_equal(gold, ocl)
+        # Compare result
+        assert_pyramids_almost_equal(gold, ocl)

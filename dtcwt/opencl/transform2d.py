@@ -4,6 +4,8 @@
 
 """
 import logging
+import os
+
 import numpy as np
 
 try:
@@ -15,6 +17,7 @@ except ImportError:
 
 from dtcwt.numpy.common import Pyramid as NumPyPyramid
 from dtcwt.numpy.transform2d import DEFAULT_BIORT, DEFAULT_QSHIFT
+from dtcwt.opencl.util import array_to_spec, global_and_local_size, good_chunk_size_for_queue
 
 import dtcwt.opencl.convolve as convolve
 import dtcwt.opencl.coeffs as coeffs
@@ -88,6 +91,36 @@ class Pyramid(object):
     def highpasses(self):
         return tuple(x.get() for x in self.cl_highpasses)
 
+class _Q2C(object):
+    PROGRAM_PATH = os.path.join(os.path.dirname(__file__), 'q2c.cl')
+    def __init__(self, queue):
+        self.queue = queue
+        self.chunk_size = good_chunk_size_for_queue(queue)
+        self.program = self._build_program()
+        self.q2c = self.program.q2c
+
+    def _build_program(self):
+        constants = { 'CHUNK_SIZE': self.chunk_size, }
+        options = list('-D{0}={1}'.format(k,v) for k,v in constants.items())
+        program = cl.Program(self.queue.context, open(_Q2C.PROGRAM_PATH).read())
+        program.build(options)
+        return program
+
+    def __call__(self, input_array, low_array, high_array, wait_for=None):
+        assert len(low_array.shape) == 2
+        assert len(high_array.shape) == 3 and high_array.shape[2] >= 6
+
+        in_data, in_offset, in_strides, in_shape = array_to_spec(input_array)
+        low_data, low_offset, low_strides, low_shape = array_to_spec(low_array)
+        high_data, high_offset, high_strides, high_shape = array_to_spec(high_array)
+        global_size, local_size = global_and_local_size(high_array.shape, self.chunk_size)
+
+        return self.q2c(self.queue, global_size, local_size,
+            in_data, in_offset, in_strides, in_shape,
+            low_data, low_offset, low_strides, low_shape,
+            high_data, high_offset, high_strides, high_shape,
+            wait_for=wait_for)
+
 class Transform2d(object):
     """OpenCL implementation of 2D DTCWT.
 
@@ -104,8 +137,10 @@ class Transform2d(object):
         self._queue = queue
         self._biort_coeffs = coeffs.biort(biort)
         self._input_dtype = np.float32
-        self._l1_convolution = convolve.Convolution1D(
-            self._queue, self._biort_coeffs, self._input_dtype)
+        self._l1_convolution = convolve.Convolution2D(self._queue, self._biort_coeffs)
+
+        # Prepare the q2c kernel
+        self._q2c = _Q2C(self._queue)
 
     def forward(self, X, nlevels=3, include_scale=False, wait_for=None):
         if include_scale:
@@ -147,10 +182,22 @@ class Transform2d(object):
         if np.any(np.asarray(X.shape[:2]) % 2 == 1):
             raise ValueError('Input must have even rows and columns')
 
-        # Do the first dimension convolution
-        lohi = cla.empty(self._queue, X.shape, dtype=cla.vec.float2)
-        evt = self._l1_convolution(X, lohi, wait_for=wait_for)
+        # Allocate workspace for convolution
+        ws_size = self._l1_convolution.workspace_size_for_input(X)
+        ws = cl.Buffer(self._queue.context, cl.mem_flags.READ_WRITE, ws_size)
 
-        lp = cla.empty(self._queue, X.shape, dtype=np.float32)
-        hp = cla.empty(self._queue, X.shape + (6,), dtype=np.complex64)
-        return lp, hp, evt
+        # Create convolution output
+        output_array = cla.empty(self._queue, X.shape, self._l1_convolution.output_dtype)
+
+        # Do the convolution
+        evt = self._l1_convolution(X, output_array, ws)
+
+        # Create low and highpass output
+        half_shape = tuple(x>>1 for x in X.shape)
+        lowpass = cla.empty(self._queue, X.shape, np.float32)
+        highpass = cla.empty(self._queue, half_shape + (6,), np.complex64)
+
+        # Extract low- and highpass from convolution output
+        evt = self._q2c(output_array, lowpass, highpass, wait_for=[evt])
+
+        return lowpass, highpass, evt

@@ -1,5 +1,8 @@
-"""2D DTCWT implemented using OpenCL."""
+"""
+2D DTCWT
+========
 
+"""
 import logging
 import numpy as np
 

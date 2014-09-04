@@ -153,3 +153,44 @@ def test_low_highpass_2_component():
     gold_high = colfilter(traffic_host[:,:,1], kernel_coeffs['y'])
     assert_almost_equal(gold_low, output['z'])
     assert_almost_equal(gold_high, output['w'])
+
+@skip_if_no_cl
+def test_low_highpass_2d():
+    """Tests convolving an input with a less trivial kernel in rows and columns."""
+    from dtcwt.opencl.coeffs import biort
+    from dtcwt.numpy.lowlevel import colfilter
+
+    # Get a low- and highpass kernel
+    kernel_coeffs = biort('near_sym_b')
+    assert kernel_coeffs.shape[0] > 1
+
+    # Use the green plane of input
+    input_host = np.copy(traffic_rgb.get()[:,:,1])
+    input_device = cla.to_device(queue, input_host)
+
+    # Convolve columns
+    gold_low = colfilter(input_host, kernel_coeffs['x'])
+    gold_high = colfilter(input_host, kernel_coeffs['y'])
+
+    # Convolve rows
+    gold_lowlow = colfilter(gold_low.T, kernel_coeffs['x']).T
+    gold_lowhigh = colfilter(gold_low.T, kernel_coeffs['y']).T
+    gold_highlow = colfilter(gold_high.T, kernel_coeffs['x']).T
+    gold_highhigh = colfilter(gold_high.T, kernel_coeffs['y']).T
+
+    # Prepare convolution
+    from dtcwt.opencl.convolve import Convolution2D
+    convolve = Convolution2D(queue, kernel_coeffs)
+
+    # Perform convolution
+    output_device = cla.empty(queue, input_device.shape, convolve.output_dtype)
+    workspace_size = convolve.workspace_size_for_input(input_device)
+    workspace = cl.Buffer(queue.context, cl.mem_flags.READ_WRITE, workspace_size)
+    convolve(input_device, output_device, workspace).wait()
+
+    # Check output
+    output_host = output_device.get()
+    assert_almost_equal(output_host['x'], gold_lowlow)
+    assert_almost_equal(output_host['y'], gold_lowhigh)
+    assert_almost_equal(output_host['z'], gold_highlow)
+    assert_almost_equal(output_host['w'], gold_highhigh)

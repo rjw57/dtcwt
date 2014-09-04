@@ -1,4 +1,9 @@
-"""Low-level support for convolution using OpenCL."""
+"""
+Convolution
+===========
+
+Low-level convolution routines for OpenCL.
+"""
 
 import os
 import numpy as np
@@ -154,3 +159,71 @@ class Convolution1D(object):
                 self._kernel_coeffs.data,
                 in_data, in_offset, in_strides, in_shape,
                 out_data, out_offset, out_strides, out_shape, wait_for=wait_for)
+
+class Convolution2D(object):
+    """A 2-dimensional convolution."""
+
+    def __init__(self, queue, kernel_coeffs):
+        if kernel_coeffs.dtype != cla.vec.float2 or len(kernel_coeffs.shape) != 1:
+            raise ValueError('Kernel coefficients must be a 1d vector of float2')
+        if kernel_coeffs.shape[0] % 2 != 1:
+            raise ValueError('Kernel coefficients vector must have odd length')
+
+        # Remember which queue we work on
+        self._queue = queue
+
+        # Set input and output dtypes we work with
+        self.input_dtype = np.float32
+        self.workspace_dtype = cla.vec.float2
+        self.output_dtype = cla.vec.float4
+
+        # Prepare convolutions
+        self._convolution1 = Convolution1D(queue, kernel_coeffs, self.input_dtype)
+        self._convolution2 = Convolution1D(queue, kernel_coeffs, self.workspace_dtype)
+
+    def workspace_size_for_input(self, input_array):
+        if input_array.dtype != self.input_dtype:
+            raise ValueError('Input array has invalid dtype {0}. Expected {1}'.format(
+                input_array.dtype, self.input_dtype))
+        return int(np.product(input_array.shape) * input_array.dtype.itemsize * 2)
+
+    def convolve(self, input_array, output_array, workspace_buffer, wait_for=None):
+        if input_array.dtype != self.input_dtype:
+            raise ValueError('Input array has dtype {0}. Expected {1}'.format(
+                input_array.dtype, self.input_dtype))
+        if output_array.dtype != self.output_dtype:
+            raise ValueError('Output array has dtype {0}. Expected {1}'.format(
+                output_array.dtype, self.output_dtype))
+        if len(input_array.shape) != 2:
+            raise ValueError('Input array must be 2 dimensional')
+        if len(output_array.shape) != 2:
+            raise ValueError('Output array must be 2 dimensional')
+        req_workspace_size = self.workspace_size_for_input(input_array)
+        if workspace_buffer.size < req_workspace_size:
+            raise ValueError('Workspace size {0} is too small. At least {1} is required'.format(
+                workspace_buffer.size, req_workspace_size))
+
+        workspace_array = cla.Array(
+            self._queue, input_array.shape,
+            self.workspace_dtype, data=workspace_buffer
+        )
+        evt1 = self._convolution1(input_array, workspace_array, wait_for=wait_for)
+
+        # Re-interpret workspace and output as transposed versions of themselves
+        workspace_array = cla.Array(
+            self._queue, workspace_array.shape[::-1],
+            workspace_array.dtype, data=workspace_buffer,
+            strides=workspace_array.strides[::-1]
+        )
+        output_array = cla.Array(
+            self._queue, output_array.shape[::-1],
+            output_array.dtype,
+            data=output_array.base_data, offset=output_array.offset,
+            strides=output_array.strides[::-1]
+        )
+
+        # Perform second convolution
+        return self._convolution2(workspace_array, output_array, wait_for=[evt1])
+
+    def __call__(self, *args, **kwargs):
+        return self.convolve(*args, **kwargs)

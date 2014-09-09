@@ -36,7 +36,13 @@ def qshift(name):
     Convolution1D().
 
     """
-    _, low, _, _, _, high = dtcwt.coeffs.qshift(name)[:6]
+    h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = dtcwt.coeffs.qshift(name)[:8]
+    low, high = h0b, h1b
+
+    if np.sum(low*low[::-1]) <= 0:
+        low = low[::-1]
+    if np.sum(high*high[::-1]) <= 0:
+        high = high[::-1]
 
     low_odd = low.flatten()[0::2]
     low_even = low.flatten()[1::2]
@@ -48,17 +54,16 @@ def qshift(name):
     assert high_odd.shape[0] % 2 == 1
     assert low_odd.shape[0] % 2 == 1
 
-    kernel_coeffs_odd = np.zeros((max(low.shape[0]>>1, high.shape[0]>>1),), cla.vec.float2)
-    kernel_coeffs_even = np.zeros((max(low.shape[0]>>1, high.shape[0]>>1),), cla.vec.float2)
+    kernel_coeffs = np.zeros((max(low.shape[0]>>1, high.shape[0]>>1),), cla.vec.float4)
 
-    low_odd_offset = (kernel_coeffs_odd.shape[0] - low_odd.shape[0])>>1
-    kernel_coeffs_odd['x'][low_odd_offset:low_odd_offset+low_odd.shape[0]] = low_odd.flatten()
-    low_even_offset = (kernel_coeffs_even.shape[0] - low_even.shape[0])>>1
-    kernel_coeffs_even['x'][low_even_offset:low_even_offset+low_even.shape[0]] = low_even.flatten()
-    high_odd_offset = (kernel_coeffs_odd.shape[0] - high_odd.shape[0])>>1
-    kernel_coeffs_odd['y'][high_odd_offset:high_odd_offset+high_odd.shape[0]] = high_odd.flatten()
-    high_even_offset = (kernel_coeffs_even.shape[0] - high_even.shape[0])>>1
-    kernel_coeffs_even['y'][high_even_offset:high_even_offset+high_even.shape[0]] = high_even.flatten()
+    low_odd_offset = (kernel_coeffs.shape[0] - low_odd.shape[0])>>1
+    kernel_coeffs['x'][low_odd_offset:low_odd_offset+low_odd.shape[0]] = low_odd.flatten()
+    low_even_offset = (kernel_coeffs.shape[0] - low_even.shape[0])>>1
+    kernel_coeffs['y'][low_even_offset:low_even_offset+low_even.shape[0]] = low_even.flatten()
+    high_odd_offset = (kernel_coeffs.shape[0] - high_odd.shape[0])>>1
+    kernel_coeffs['z'][high_odd_offset:high_odd_offset+high_odd.shape[0]] = high_odd.flatten()
+    high_even_offset = (kernel_coeffs.shape[0] - high_even.shape[0])>>1
+    kernel_coeffs['w'][high_even_offset:high_even_offset+high_even.shape[0]] = high_even.flatten()
 
-    return kernel_coeffs_odd, kernel_coeffs_even
+    return kernel_coeffs
 

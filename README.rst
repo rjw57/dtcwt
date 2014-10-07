@@ -30,6 +30,10 @@ transforms and their inverse in Python.
     :target: http://dx.doi.org/10.5281/zenodo.9862
     :alt: DOI: 10.5281/zenodo.9862
 
+.. image:: https://readthedocs.org/projects/dtcwt/badge/?version=latest
+    :target: https://readthedocs.org/projects/dtcwt/?badge=latest
+    :alt: Documentation Status
+
 Installation
 ````````````
 

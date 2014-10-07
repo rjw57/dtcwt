@@ -357,7 +357,7 @@ def estimatereg(source, reference, regshape=None):
 
         qts = np.zeros(avecs.shape[:2] + all_qts[0].shape[2:])
         for x in all_qts:
-            qts += dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='nearest')
+            qts += dtcwt.sampling.rescale(_boxfilter(x, 3), avecs.shape[:2], method='bilinear')
 
         avecs += solvetransform(qts)
 

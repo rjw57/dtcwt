@@ -81,6 +81,9 @@ Changes
 0.11.0
 ''''''
 
+* Fix regression in dtcwt-based image registration.
+* Allow levels used for dtcwt-based image registration to be customised.
+
 0.10.0
 ''''''
 

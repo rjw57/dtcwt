@@ -78,7 +78,7 @@ MATLAB toolbox.
 Changes
 ```````
 
-0.11.0
+0.10.1
 ''''''
 
 * Fix regression in dtcwt-based image registration.

@@ -2,13 +2,13 @@
 ------------
 
 Using the pylab environment (part of matplotlib) we can perform a simple
-example where we transform the standard 'Lena' image and show the level 2
+example where we transform the standard 'mandrill' image and show the level 2
 wavelet coefficients:
 
 .. plot::
     :include-source: true
 
-    # Load the Lena image
+    # Load the mandrill image
     mandrill = datasets.mandrill()
 
     # Show mandrill

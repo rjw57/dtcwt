@@ -6,6 +6,6 @@ def regframes(name):
     frames = np.load(os.path.join(os.path.dirname(__file__), name + '.npz'))
     return frames['f1'], frames['f2']
 
-def lena():
-    """Return Lena in all her glory."""
-    return np.load(os.path.join(os.path.dirname(__file__), 'lena.npz'))['lena']
+def mandrill():
+    """Return the "mandrill" test image."""
+    return np.load(os.path.join(os.path.dirname(__file__), 'mandrill.npz'))['mandrill']

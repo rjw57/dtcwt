@@ -81,6 +81,9 @@ Changes
 0.11.0
 ''''''
 
+* Use fixed random number generator seed when generating documentation.
+* Replace use of Lena image with mandrill.
+
 0.10.1
 ''''''
 

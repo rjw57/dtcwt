@@ -158,7 +158,7 @@ def get_default_queue():
     This function is memoized and so only one queue is created after multiple invocations.
     """
     _check_cl()
-    ctx = cl.create_some_context()
+    ctx = cl.create_some_context(interactive=False)
     return cl.CommandQueue(ctx)
 
 def to_queue(queue):

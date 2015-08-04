@@ -38,16 +38,16 @@ Installation
 ````````````
 
 Ubuntu 15.10 (wily) and later
------------------------------
+'''''''''''''''''''''''''''''
 
-Installation can be perfomed via ``apt-get``:
+Installation can be perfomed via ``apt-get``::
 
     $ sudo apt-get install python-dtcwt python-dtcwt-doc
 
 The package is also currently in Debian sid (unstable).
 
 Other operating systems
------------------------
+'''''''''''''''''''''''
 
 The easiest way to install ``dtcwt`` is via ``easy_install`` or ``pip``::
 

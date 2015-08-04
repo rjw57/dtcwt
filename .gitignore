@@ -1,9 +1,19 @@
+# Cached Python bytecode
 *.pyc
-build/
+__pycache__
+
+# Setuptools detritus
+build
+dist
 *.egg
 *.egg-info
-.*.swp
-cover/
+.eggs
+
+# Test suite detritus
+cover
 .coverage
-dist/
+.tox
+
+# Editor backup files
+.*.swp
 *~

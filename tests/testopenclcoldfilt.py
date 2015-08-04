@@ -5,7 +5,7 @@ from dtcwt.numpy.lowlevel import coldfilt as coldfilt_gold
 from dtcwt.opencl.lowlevel import coldfilt, NoCLPresentError
 from dtcwt.coeffs import biort, qshift
 
-from nose.tools import raises
+from pytest import raises
 
 from .util import assert_almost_equal, skip_if_no_cl
 import tests.datasets as datasets
@@ -20,20 +20,20 @@ def test_mandrill_loaded():
     assert mandrill.max() <= 1
     assert mandrill.dtype == np.float32
 
-@raises(ValueError)
 @skip_if_no_cl
 def test_odd_filter():
-    coldfilt(mandrill, (-1,2,-1), (-1,2,1))
+    with raises(ValueError):
+        coldfilt(mandrill, (-1,2,-1), (-1,2,1))
 
-@raises(ValueError)
 @skip_if_no_cl
 def test_different_size():
-    coldfilt(mandrill, (-0.5,-1,2,1,0.5), (-1,2,-1))
+    with raises(ValueError):
+        coldfilt(mandrill, (-0.5,-1,2,1,0.5), (-1,2,-1))
 
-@raises(ValueError)
 @skip_if_no_cl
 def test_bad_input_size():
-    coldfilt(mandrill[:511,:], (-1,1), (1,-1))
+    with raises(ValueError):
+        coldfilt(mandrill[:511,:], (-1,1), (1,-1))
 
 @skip_if_no_cl
 def test_real_wavelet():

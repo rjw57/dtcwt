@@ -1,6 +1,5 @@
 import os
-from nose.tools import raises
-from nose.plugins.attrib import attr
+from pytest import raises
 
 import numpy as np
 from dtcwt.compat import dtwavexfm, dtwaveifm
@@ -8,55 +7,48 @@ from dtcwt.coeffs import biort, qshift
 
 TOLERANCE = 1e-12
 
-@attr('transform')
 def test_simple():
     vec = np.random.rand(630)
     Yl, Yh = dtwavexfm(vec, 3)
     assert len(Yh) == 3
 
-@attr('transform')
 def test_simple_with_no_levels():
     vec = np.random.rand(630)
     Yl, Yh = dtwavexfm(vec, 0)
     assert len(Yh) == 0
 
-@attr('transform')
 def test_simple_with_scale():
     vec = np.random.rand(630)
     Yl, Yh, Yscale = dtwavexfm(vec, 3, include_scale=True)
     assert len(Yh) == 3
     assert len(Yscale) == 3
 
-@attr('transform')
 def test_simple_with_scale_and_no_levels():
     vec = np.random.rand(630)
     Yl, Yh, Yscale = dtwavexfm(vec, 0, include_scale=True)
     assert len(Yh) == 0
     assert len(Yscale) == 0
 
-@attr('transform')
 def test_perfect_recon():
     vec = np.random.rand(630)
     Yl, Yh = dtwavexfm(vec)
     vec_recon = dtwaveifm(Yl, Yh)
     assert np.max(np.abs(vec_recon - vec)) < TOLERANCE
 
-@attr('transform')
 def test_simple_custom_filter():
     vec = np.random.rand(630)
     Yl, Yh = dtwavexfm(vec, 4, biort('legall'), qshift('qshift_06'))
     vec_recon = dtwaveifm(Yl, Yh, biort('legall'), qshift('qshift_06'))
     assert np.max(np.abs(vec_recon - vec)) < TOLERANCE
 
-@attr('transform')
 def test_single_level():
     vec = np.random.rand(630)
     Yl, Yh = dtwavexfm(vec, 1)
 
-@raises(ValueError)
 def test_non_multiple_of_two():
     vec = np.random.rand(631)
-    Yl, Yh = dtwavexfm(vec, 1)
+    with raises(ValueError):
+        Yl, Yh = dtwavexfm(vec, 1)
 
 def test_2d():
     Yl, Yh = dtwavexfm(np.random.rand(10,10))

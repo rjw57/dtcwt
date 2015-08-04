@@ -1,13 +1,11 @@
 import os
-from nose.tools import raises
-from nose.plugins.attrib import attr
+from pytest import raises
 
 import numpy as np
 from dtcwt.compat import dtwavexfm, dtwaveifm
 
 TOLERANCE = 1e-12
 
-@attr('transform')
 def test_reconstruct():
     # Reconstruction up to tolerance
     vec = np.random.rand(630)
@@ -15,7 +13,6 @@ def test_reconstruct():
     vec_recon = dtwaveifm(Yl, Yh)
     assert np.all(np.abs(vec_recon - vec) < TOLERANCE)
 
-@attr('transform')
 def test_reconstruct_2d():
     # Reconstruction up to tolerance
     vec = np.random.rand(630, 20)

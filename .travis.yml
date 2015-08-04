@@ -3,23 +3,18 @@ cache:
     - apt
 before_install:
     - sudo apt-get update -qq
-    - sudo apt-get install fglrx opencl-headers
-python:
-    - "2.7"
-    - "3.3"
+    - sudo apt-get install -y fglrx opencl-headers
+    - sudo apt-get install -y python-numpy python3-numpy
 env:
-    - PIP_SPECIFIER=.[docs]
-    - PIP_SPECIFIER=.[opencl,docs]
+    - TOX_ENV=py34
+    - TOX_ENV=py27
+    - TOX_ENV=py34-opencl
+    - TOX_ENV=py27-opencl
 install:
-    - pip install --upgrade pip setuptools  # Upgrade pip and setuptools to get ones with `wheel` support
-    - pip install --no-use-wheel pytools # Work around broken pytools wheel on Py3
-    - pip install --no-use-wheel coveralls # For updating coverage info
-    - pip install --find-links http://wheels2.astropy.org/ --use-wheel numpy matplotlib ipython
-    - pip install -e $PIP_SPECIFIER
+    - pip install --upgrade pip
+    - pip install tox coveralls
 script:
-    - python setup.py nosetests
-    - python scripts/benchmark_opencl.py
-    - python setup.py build_sphinx
+    - tox -e $TOX_ENV
 after_success:
     - coveralls
 

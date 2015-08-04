@@ -1,6 +1,6 @@
 from dtcwt.coeffs import biort, qshift
 
-from nose.tools import raises
+from pytest import raises
 
 def test_antonini():
     h0o, g0o, h1o, g1o = biort('antonini')
@@ -60,20 +60,20 @@ def test_qshift_d():
     for v in coeffs:
         assert v.shape[0] == 18
 
-@raises(IOError)
 def test_non_exist_biort():
-    biort('this-does-not-exist')
+    with raises(IOError):
+        biort('this-does-not-exist')
 
-@raises(IOError)
 def test_non_exist_qshift():
-    qshift('this-does-not-exist')
+    with raises(IOError):
+        qshift('this-does-not-exist')
 
-@raises(ValueError)
 def test_wrong_type_a():
-    biort('qshift_06')
+    with raises(ValueError):
+        biort('qshift_06')
 
-@raises(ValueError)
 def test_wrong_type_b():
-    qshift('antonini')
+    with raises(ValueError):
+        qshift('antonini')
 
 # vim:sw=4:sts=4:et

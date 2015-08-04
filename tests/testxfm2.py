@@ -1,6 +1,5 @@
 import os
-from nose.tools import raises
-from nose.plugins.attrib import attr
+from pytest import raises
 
 import numpy as np
 from dtcwt.compat import dtwavexfm2, dtwaveifm2
@@ -19,20 +18,18 @@ def test_mandrill_loaded():
     assert mandrill.max() <= 1
     assert mandrill.dtype == np.float32
 
-@attr('transform')
 def test_simple():
     Yl, Yh = dtwavexfm2(mandrill)
 
-@attr('transform')
 def test_specific_wavelet():
     Yl, Yh = dtwavexfm2(mandrill, biort=biort('antonini'), qshift=qshift('qshift_06'))
 
 def test_1d():
     Yl, Yh = dtwavexfm2(mandrill[0,:])
 
-@raises(ValueError)
 def test_3d():
-    Yl, Yh = dtwavexfm2(np.dstack((mandrill, mandrill)))
+    with raises(ValueError):
+        Yl, Yh = dtwavexfm2(np.dstack((mandrill, mandrill)))
 
 def test_simple_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(mandrill, include_scale=True)

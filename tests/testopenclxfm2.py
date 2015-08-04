@@ -1,6 +1,5 @@
 import os
-from nose.tools import raises
-from nose.plugins.attrib import attr
+from pytest import raises
 
 import numpy as np
 from dtcwt.coeffs import biort, qshift
@@ -31,12 +30,10 @@ def _compare_transforms(A, B):
         assert_almost_equal(x, y, tolerance=GOLD_TOLERANCE)
 
 @skip_if_no_cl
-@attr('transform')
 def test_simple():
     _compare_transforms(dtwavexfm2_np(mandrill), dtwavexfm2_cl(mandrill))
 
 @skip_if_no_cl
-@attr('transform')
 def test_specific_wavelet():
     a = dtwavexfm2_np(mandrill, biort=biort('antonini'), qshift=qshift('qshift_06'))
     b = dtwavexfm2_cl(mandrill, biort=biort('antonini'), qshift=qshift('qshift_06'))
@@ -49,9 +46,9 @@ def test_1d():
     _compare_transforms(a, b)
 
 @skip_if_no_cl
-@raises(ValueError)
 def test_3d():
-    Yl, Yh = dtwavexfm2_cl(np.dstack((mandrill, mandrill)))
+    with raises(ValueError):
+        Yl, Yh = dtwavexfm2_cl(np.dstack((mandrill, mandrill)))
 
 @skip_if_no_cl
 def test_simple_w_scale():
@@ -87,7 +84,6 @@ def test_0_levels():
     _compare_transforms(a, b)
 
 @skip_if_no_cl
-@attr('transform')
 def test_modified():
     a = dtwavexfm2_np(mandrill, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))
     b = dtwavexfm2_cl(mandrill, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))

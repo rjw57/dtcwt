@@ -1,8 +1,8 @@
 import functools
 import numpy as np
+import pytest
 
-from nose import SkipTest
-from dtcwt.opencl.lowlevel import NoCLPresentError
+from dtcwt.opencl.lowlevel import _HAVE_CL as HAVE_CL
 
 from six.moves import xrange
 
@@ -44,7 +44,7 @@ def centre_indices(ndim=2,apron=8):
 def summarise_mat(M, apron=8):
     """HACK to provide a 'summary' matrix consisting of the corners of the
     matrix and summed versions of the sub matrices.
-    
+
     N.B. Keep this in sync with matlab/verif_m_to_npz.py.
 
     """
@@ -62,13 +62,7 @@ def summarise_cube(M, apron=4):
     """
     return np.dstack(
         [summarise_mat(M[:,:,i,...], apron) for i in xrange(M.shape[-2])]
-    )    
+    )
 
-def skip_if_no_cl(f):
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except NoCLPresentError:
-            raise SkipTest('Skipping due to no CL library being present')
-    return wrapper
+skip_if_no_cl = pytest.mark.skipif(not HAVE_CL, reason="OpenCL not present")
+

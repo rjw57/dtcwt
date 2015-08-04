@@ -1,6 +1,4 @@
 import os
-from nose.tools import raises
-from nose.plugins.attrib import attr
 
 import numpy as np
 from dtcwt.compat import dtwavexfm2, dtwaveifm2
@@ -20,21 +18,18 @@ def test_mandrill_loaded():
     assert mandrill.max() <= 1
     assert mandrill.dtype == np.float64
 
-@attr('transform')
 def test_reconstruct():
     # Reconstruction up to tolerance
     Yl, Yh = dtwavexfm2(mandrill)
     mandrill_recon = dtwaveifm2(Yl, Yh)
     assert np.all(np.abs(mandrill_recon - mandrill) < TOLERANCE)
 
-@attr('transform')
 def test_reconstruct_crop():
     # Reconstruction up to tolerance
     Yl_crop, Yh_crop = dtwavexfm2(mandrill_crop)
     mandrill_recon = dtwaveifm2(Yl_crop, Yh_crop)[:mandrill_crop.shape[0], :mandrill_crop.shape[1]]
     assert np.all(np.abs(mandrill_recon - mandrill_crop) < TOLERANCE)
 
-@attr('transform')
 def test_reconstruct_custom_filter():
     # Reconstruction up to tolerance
     Yl, Yh = dtwavexfm2(mandrill, 4, biort('legall'), qshift('qshift_06'))

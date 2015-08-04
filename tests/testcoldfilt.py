@@ -3,7 +3,7 @@ import os
 import numpy as np
 from dtcwt.numpy.lowlevel import coldfilt
 
-from nose.tools import raises
+from pytest import raises
 
 import tests.datasets as datasets
 
@@ -17,17 +17,17 @@ def test_mandrill_loaded():
     assert mandrill.max() <= 1
     assert mandrill.dtype == np.float32
 
-@raises(ValueError)
 def test_odd_filter():
-    coldfilt(mandrill, (-1,2,-1), (-1,2,1))
+    with raises(ValueError):
+        coldfilt(mandrill, (-1,2,-1), (-1,2,1))
 
-@raises(ValueError)
 def test_different_size():
-    coldfilt(mandrill, (-0.5,-1,2,1,0.5), (-1,2,-1))
+    with raises(ValueError):
+        coldfilt(mandrill, (-0.5,-1,2,1,0.5), (-1,2,-1))
 
-@raises(ValueError)
 def test_bad_input_size():
-    coldfilt(mandrill[:511,:], (-1,1), (1,-1))
+    with raises(ValueError):
+        coldfilt(mandrill[:511,:], (-1,1), (1,-1))
 
 def test_good_input_size():
     coldfilt(mandrill[:,:511], (-1,1), (1,-1))

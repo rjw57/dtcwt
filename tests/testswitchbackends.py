@@ -3,7 +3,7 @@ import dtcwt.numpy as npbackend
 import dtcwt.opencl as clbackend
 
 from unittest import TestCase
-from nose.tools import raises, assert_raises
+from pytest import raises
 from .util import skip_if_no_cl
 
 class TestSwitchBackends(TestCase):
@@ -55,13 +55,13 @@ class TestSwitchBackends(TestCase):
         assert dtcwt.Pyramid is npbackend.Pyramid
         assert dtcwt.backend_name == 'numpy'
 
-    @raises(ValueError)
     def test_switch_to_invalid(self):
-        dtcwt.push_backend('does-not-exist')
+        with raises(ValueError):
+            dtcwt.push_backend('does-not-exist')
 
-    @raises(IndexError)
     def test_no_pop_default_backend(self):
-        dtcwt.pop_backend()
+        with raises(IndexError):
+            dtcwt.pop_backend()
 
 def test_backend_with_guard():
     """Test that manipulating the stack with preserve_backend_stack() will
@@ -83,12 +83,11 @@ def test_backend_with_guard_and_exception():
     dtcwt.push_backend('numpy')
     assert len(dtcwt._BACKEND_STACK) == 2
     assert dtcwt.backend_name == 'numpy'
-    def tst():
+    with raises(RuntimeError):
         with dtcwt.preserve_backend_stack():
             dtcwt.push_backend('opencl')
             assert dtcwt.backend_name == 'opencl'
             assert len(dtcwt._BACKEND_STACK) == 3
             raise RuntimeError('test error')
-    assert_raises(RuntimeError, tst)
     assert dtcwt.backend_name == 'numpy'
     assert len(dtcwt._BACKEND_STACK) == 2

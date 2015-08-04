@@ -1,6 +1,4 @@
 import os
-from nose.tools import raises
-from nose.plugins.attrib import attr
 
 import numpy as np
 
@@ -60,7 +58,7 @@ def setup():
 
     global verif
     verif = np.load(os.path.join(os.path.dirname(__file__), 'verification.npz'))
-    
+
 def test_lena_loaded():
     assert lena.shape == (512, 512)
     assert lena.min() >= 0

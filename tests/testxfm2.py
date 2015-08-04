@@ -1,6 +1,5 @@
 import os
-from nose.tools import raises
-from nose.plugins.attrib import attr
+from pytest import raises
 
 import numpy as np
 from dtcwt.compat import dtwavexfm2, dtwaveifm2
@@ -19,20 +18,18 @@ def test_lena_loaded():
     assert lena.max() <= 1
     assert lena.dtype == np.float32
 
-@attr('transform')
 def test_simple():
     Yl, Yh = dtwavexfm2(lena)
 
-@attr('transform')
 def test_specific_wavelet():
     Yl, Yh = dtwavexfm2(lena, biort=biort('antonini'), qshift=qshift('qshift_06'))
 
 def test_1d():
     Yl, Yh = dtwavexfm2(lena[0,:])
 
-@raises(ValueError)
 def test_3d():
-    Yl, Yh = dtwavexfm2(np.dstack((lena, lena)))
+    with raises(ValueError):
+        Yl, Yh = dtwavexfm2(np.dstack((lena, lena)))
 
 def test_simple_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(lena, include_scale=True)

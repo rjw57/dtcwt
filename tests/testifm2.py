@@ -1,6 +1,4 @@
 import os
-from nose.tools import raises
-from nose.plugins.attrib import attr
 
 import numpy as np
 from dtcwt.compat import dtwavexfm2, dtwaveifm2
@@ -20,21 +18,18 @@ def test_lena_loaded():
     assert lena.max() <= 1
     assert lena.dtype == np.float64
 
-@attr('transform')
 def test_reconstruct():
     # Reconstruction up to tolerance
     Yl, Yh = dtwavexfm2(lena)
     lena_recon = dtwaveifm2(Yl, Yh)
     assert np.all(np.abs(lena_recon - lena) < TOLERANCE)
 
-@attr('transform')
 def test_reconstruct_crop():
     # Reconstruction up to tolerance
     Yl_crop, Yh_crop = dtwavexfm2(lena_crop)
     lena_recon = dtwaveifm2(Yl_crop, Yh_crop)[:lena_crop.shape[0], :lena_crop.shape[1]]
     assert np.all(np.abs(lena_recon - lena_crop) < TOLERANCE)
 
-@attr('transform')
 def test_reconstruct_custom_filter():
     # Reconstruction up to tolerance
     Yl, Yh = dtwavexfm2(lena, 4, biort('legall'), qshift('qshift_06'))

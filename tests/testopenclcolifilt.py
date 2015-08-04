@@ -5,7 +5,7 @@ from dtcwt.opencl.lowlevel import colifilt
 from dtcwt.numpy.lowlevel import colifilt as colifilt_gold
 from dtcwt.coeffs import biort, qshift
 
-from nose.tools import raises
+from pytest import raises
 
 from .util import assert_almost_equal, skip_if_no_cl
 import tests.datasets as datasets
@@ -21,14 +21,14 @@ def test_lena_loaded():
     assert lena.dtype == np.float32
 
 @skip_if_no_cl
-@raises(ValueError)
 def test_odd_filter():
-    colifilt(lena, (-1,2,-1), (-1,2,1))
+    with raises(ValueError):
+        colifilt(lena, (-1,2,-1), (-1,2,1))
 
 @skip_if_no_cl
-@raises(ValueError)
 def test_different_size_h():
-    colifilt(lena, (-1,2,1), (-0.5,-1,2,-1,0.5))
+    with raises(ValueError):
+        colifilt(lena, (-1,2,1), (-0.5,-1,2,-1,0.5))
 
 @skip_if_no_cl
 def test_zero_input():
@@ -36,9 +36,9 @@ def test_zero_input():
     assert np.all(Y[:0] == 0)
 
 @skip_if_no_cl
-@raises(ValueError)
 def test_bad_input_size():
-    colifilt(lena[:511,:], (-1,1), (1,-1))
+    with raises(ValueError):
+        colifilt(lena[:511,:], (-1,1), (1,-1))
 
 @skip_if_no_cl
 def test_good_input_size():

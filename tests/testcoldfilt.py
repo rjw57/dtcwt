@@ -3,7 +3,7 @@ import os
 import numpy as np
 from dtcwt.numpy.lowlevel import coldfilt
 
-from nose.tools import raises
+from pytest import raises
 
 import tests.datasets as datasets
 
@@ -17,17 +17,17 @@ def test_lena_loaded():
     assert lena.max() <= 1
     assert lena.dtype == np.float32
 
-@raises(ValueError)
 def test_odd_filter():
-    coldfilt(lena, (-1,2,-1), (-1,2,1))
+    with raises(ValueError):
+        coldfilt(lena, (-1,2,-1), (-1,2,1))
 
-@raises(ValueError)
 def test_different_size():
-    coldfilt(lena, (-0.5,-1,2,1,0.5), (-1,2,-1))
+    with raises(ValueError):
+        coldfilt(lena, (-0.5,-1,2,1,0.5), (-1,2,-1))
 
-@raises(ValueError)
 def test_bad_input_size():
-    coldfilt(lena[:511,:], (-1,1), (1,-1))
+    with raises(ValueError):
+        coldfilt(lena[:511,:], (-1,1), (1,-1))
 
 def test_good_input_size():
     coldfilt(lena[:,:511], (-1,1), (1,-1))

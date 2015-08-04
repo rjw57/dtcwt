@@ -1,6 +1,4 @@
 import os
-from nose.tools import raises
-from nose.plugins.attrib import attr
 
 import numpy as np
 from dtcwt.compat import dtwavexfm3, dtwaveifm3

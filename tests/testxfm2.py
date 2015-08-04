@@ -10,68 +10,68 @@ import tests.datasets as datasets
 TOLERANCE = 1e-12
 
 def setup():
-    global lena
-    lena = datasets.lena()
+    global mandrill
+    mandrill = datasets.mandrill()
 
-def test_lena_loaded():
-    assert lena.shape == (512, 512)
-    assert lena.min() >= 0
-    assert lena.max() <= 1
-    assert lena.dtype == np.float32
+def test_mandrill_loaded():
+    assert mandrill.shape == (512, 512)
+    assert mandrill.min() >= 0
+    assert mandrill.max() <= 1
+    assert mandrill.dtype == np.float32
 
 @attr('transform')
 def test_simple():
-    Yl, Yh = dtwavexfm2(lena)
+    Yl, Yh = dtwavexfm2(mandrill)
 
 @attr('transform')
 def test_specific_wavelet():
-    Yl, Yh = dtwavexfm2(lena, biort=biort('antonini'), qshift=qshift('qshift_06'))
+    Yl, Yh = dtwavexfm2(mandrill, biort=biort('antonini'), qshift=qshift('qshift_06'))
 
 def test_1d():
-    Yl, Yh = dtwavexfm2(lena[0,:])
+    Yl, Yh = dtwavexfm2(mandrill[0,:])
 
 @raises(ValueError)
 def test_3d():
-    Yl, Yh = dtwavexfm2(np.dstack((lena, lena)))
+    Yl, Yh = dtwavexfm2(np.dstack((mandrill, mandrill)))
 
 def test_simple_w_scale():
-    Yl, Yh, Yscale = dtwavexfm2(lena, include_scale=True)
+    Yl, Yh, Yscale = dtwavexfm2(mandrill, include_scale=True)
 
     assert len(Yscale) > 0
     for x in Yscale:
         assert x is not None
 
 def test_odd_rows():
-    Yl, Yh = dtwavexfm2(lena[:509,:])
+    Yl, Yh = dtwavexfm2(mandrill[:509,:])
 
 def test_odd_rows_w_scale():
-    Yl, Yh, Yscale = dtwavexfm2(lena[:509,:], include_scale=True)
+    Yl, Yh, Yscale = dtwavexfm2(mandrill[:509,:], include_scale=True)
 
 def test_odd_cols():
-    Yl, Yh = dtwavexfm2(lena[:,:509])
+    Yl, Yh = dtwavexfm2(mandrill[:,:509])
 
 def test_odd_cols_w_scale():
-    Yl, Yh, Yscale = dtwavexfm2(lena[:509,:509], include_scale=True)
+    Yl, Yh, Yscale = dtwavexfm2(mandrill[:509,:509], include_scale=True)
 
 def test_odd_rows_and_cols():
-    Yl, Yh = dtwavexfm2(lena[:,:509])
+    Yl, Yh = dtwavexfm2(mandrill[:,:509])
 
 def test_odd_rows_and_cols_w_scale():
-    Yl, Yh, Yscale = dtwavexfm2(lena[:509,:509], include_scale=True)
+    Yl, Yh, Yscale = dtwavexfm2(mandrill[:509,:509], include_scale=True)
 
 def test_rot_symm_modified():
     # This test only checks there is no error running these functions, not that they work
-    Yl, Yh, Yscale = dtwavexfm2(lena, biort='near_sym_b_bp', qshift='qshift_b_bp', include_scale=True)
+    Yl, Yh, Yscale = dtwavexfm2(mandrill, biort='near_sym_b_bp', qshift='qshift_b_bp', include_scale=True)
     Z = dtwaveifm2(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
 
 def test_0_levels():
-    Yl, Yh = dtwavexfm2(lena, nlevels=0)
-    assert np.all(np.abs(Yl - lena) < TOLERANCE)
+    Yl, Yh = dtwavexfm2(mandrill, nlevels=0)
+    assert np.all(np.abs(Yl - mandrill) < TOLERANCE)
     assert len(Yh) == 0
 
 def test_0_levels_w_scale():
-    Yl, Yh, Yscale = dtwavexfm2(lena, nlevels=0, include_scale=True)
-    assert np.all(np.abs(Yl - lena) < TOLERANCE)
+    Yl, Yh, Yscale = dtwavexfm2(mandrill, nlevels=0, include_scale=True)
+    assert np.all(np.abs(Yl - mandrill) < TOLERANCE)
     assert len(Yh) == 0
     assert len(Yscale) == 0
 
@@ -91,7 +91,7 @@ def test_integer_perfect_recon():
 
 def test_float32_input():
     # Check that an float32 input is correctly output as float32
-    Yl, Yh = dtwavexfm2(lena.astype(np.float32))
+    Yl, Yh = dtwavexfm2(mandrill.astype(np.float32))
     assert np.issubsctype(Yl.dtype, np.float32)
     assert np.all(list(np.issubsctype(x.dtype, np.complex64) for x in Yh))
 

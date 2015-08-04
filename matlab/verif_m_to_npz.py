@@ -17,12 +17,12 @@ def _mean(a, axis=None, *args, **kwargs):
 def centre_indices(ndim=2,apron=8):
     """Returns the centre indices for the correct number of dimension
     """
-    return tuple([slice(apron,-apron) for i in xrange(ndim)])
+    return tuple([slice(apron,-apron) for i in range(ndim)])
 
 def summarise_mat(M, apron=8):
     """HACK to provide a 'summary' matrix consisting of the corners of the
     matrix and summed versions of the sub matrices.
-    
+
     N.B. Keep this in sync with matlab/verif_m_to_npz.py.
 
     """
@@ -39,29 +39,29 @@ def summarise_cube(M, apron=4):
     """Provide a summary cube, extending  summarise_mat to 3D
     """
     return np.dstack(
-        [summarise_mat(M[:,:,i,...], apron) for i in xrange(M.shape[-2])]
-    )    
-    
+        [summarise_mat(M[:,:,i,...], apron) for i in range(M.shape[-2])]
+    )
+
 verif_temp = loadmat('verification.mat')
-verif = dict((k,v) for k, v in verif_temp.iteritems() if (not k.startswith('_') and not k.startswith('qbgn')))
-verif_cube = dict((k,v) for k, v in verif_temp.iteritems() if (not k.startswith('_') and k.startswith('qbgn')))
+verif = dict((k,v) for k, v in verif_temp.items() if (not k.startswith('_') and not k.startswith('qbgn')))
+verif_cube = dict((k,v) for k, v in verif_temp.items() if (not k.startswith('_') and k.startswith('qbgn')))
 del verif_temp
 
-for idx, v in enumerate(verif['lena_Yh']):
-    verif['lena_Yh_{0}'.format(idx)] = v[0]
-del verif['lena_Yh']
+for idx, v in enumerate(verif['mandrill_Yh']):
+    verif['mandrill_Yh_{0}'.format(idx)] = v[0]
+del verif['mandrill_Yh']
 
-for idx, v in enumerate(verif['lena_Yscale']):
-    verif['lena_Yscale_{0}'.format(idx)] = v[0]
-del verif['lena_Yscale']
+for idx, v in enumerate(verif['mandrill_Yscale']):
+    verif['mandrill_Yscale_{0}'.format(idx)] = v[0]
+del verif['mandrill_Yscale']
 
-for idx, v in enumerate(verif['lena_Yhb']):
-    verif['lena_Yhb_{0}'.format(idx)] = v[0]
-del verif['lena_Yhb']
+for idx, v in enumerate(verif['mandrill_Yhb']):
+    verif['mandrill_Yhb_{0}'.format(idx)] = v[0]
+del verif['mandrill_Yhb']
 
-for idx, v in enumerate(verif['lena_Yscaleb']):
-    verif['lena_Yscaleb_{0}'.format(idx)] = v[0]
-del verif['lena_Yscaleb']
+for idx, v in enumerate(verif['mandrill_Yscaleb']):
+    verif['mandrill_Yscaleb_{0}'.format(idx)] = v[0]
+del verif['mandrill_Yscaleb']
 
 for idx, v in enumerate(verif_cube['qbgn_Yh']):
     verif_cube['qbgn_Yh_{0}'.format(idx)] = v[0]
@@ -71,10 +71,10 @@ for idx, v in enumerate(verif_cube['qbgn_Yscale']):
     verif_cube['qbgn_Yscale_{0}'.format(idx)] = v[0]
 del verif_cube['qbgn_Yscale']
 
-summaries = dict((k, summarise_mat(v)) for k, v in verif.iteritems())
-for k,v in verif_cube.iteritems():
+summaries = dict((k, summarise_mat(v)) for k, v in verif.items())
+for k,v in verif_cube.items():
     summaries[k] = summarise_cube(v)
-    
+
 savez_compressed('../tests/verification.npz', **summaries)
 
 # Convert qbgn.mat -> qbgn.npz

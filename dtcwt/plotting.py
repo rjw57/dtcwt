@@ -38,12 +38,12 @@ def overlay_quiver(image, vectorField, level, offset):
     import dtcwt
     import dtcwt.plotting as plotting
 
-    lena = datasets.lena()
+    mandrill = datasets.mandrill()
 
     transform2d = dtcwt.Transform2d()
-    lena_t = transform2d.forward(lena, nlevels=5)
+    mandrill_t = transform2d.forward(mandrill, nlevels=5)
 
-    plotting.overlay_quiver(lena*255, lena_t.highpasses[-1], 5, 0.5)
+    plotting.overlay_quiver(mandrill*255, mandrill_t.highpasses[-1], 5, 0.5)
 
     .. codeauthor:: R. Anderson, 2005 (MATLAB)
     .. codeauthor:: S. C. Forshaw, 2014 (Python)
@@ -51,7 +51,7 @@ def overlay_quiver(image, vectorField, level, offset):
     # Make sure imshow() uses the full range of greyscale values
     imshow(image, cmap=cm.gray, clim=(0,255))
     hold(True)
-       
+
     # Set up the grid for the quiver plot
     g1 = np.kron(np.arange(0, vectorField[:,:,0].shape[0]).T, np.ones((1,vectorField[:,:,0].shape[1])))
     g2 = np.kron(np.ones((vectorField[:,:,0].shape[0], 1)), np.arange(0, vectorField[:,:,0].shape[1]))
@@ -60,7 +60,7 @@ def overlay_quiver(image, vectorField, level, offset):
     cmap = cm.spectral
     scalefactor = np.max(np.max(np.max(np.max(np.abs(vectorField)))))
     vectorField[-1,-1,:] = scalefactor
-        
+
     for sb in range(0, vectorField.shape[2]):
         hold(True)
         thiscolour = cmap(sb / float(vectorField.shape[2])) # Select colour for this subband

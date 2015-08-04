@@ -26,6 +26,10 @@ project = setup_cfg.get('metadata', 'name')
 import dtcwt
 version = release = dtcwt.__version__
 
+# Ensure a deterministic build by setting the random seed
+import numpy
+numpy.random.seed(0)
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.

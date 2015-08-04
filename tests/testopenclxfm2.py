@@ -13,14 +13,14 @@ TOLERANCE = 1e-12
 GOLD_TOLERANCE = 1e-5
 
 def setup():
-    global lena
-    lena = datasets.lena()
+    global mandrill
+    mandrill = datasets.mandrill()
 
-def test_lena_loaded():
-    assert lena.shape == (512, 512)
-    assert lena.min() >= 0
-    assert lena.max() <= 1
-    assert lena.dtype == np.float32
+def test_mandrill_loaded():
+    assert mandrill.shape == (512, 512)
+    assert mandrill.min() >= 0
+    assert mandrill.max() <= 1
+    assert mandrill.dtype == np.float32
 
 def _compare_transforms(A, B):
     Yl_A, Yh_A = A
@@ -31,28 +31,28 @@ def _compare_transforms(A, B):
 
 @skip_if_no_cl
 def test_simple():
-    _compare_transforms(dtwavexfm2_np(lena), dtwavexfm2_cl(lena))
+    _compare_transforms(dtwavexfm2_np(mandrill), dtwavexfm2_cl(mandrill))
 
 @skip_if_no_cl
 def test_specific_wavelet():
-    a = dtwavexfm2_np(lena, biort=biort('antonini'), qshift=qshift('qshift_06'))
-    b = dtwavexfm2_cl(lena, biort=biort('antonini'), qshift=qshift('qshift_06'))
+    a = dtwavexfm2_np(mandrill, biort=biort('antonini'), qshift=qshift('qshift_06'))
+    b = dtwavexfm2_cl(mandrill, biort=biort('antonini'), qshift=qshift('qshift_06'))
     _compare_transforms(a, b)
 
 @skip_if_no_cl
 def test_1d():
-    a = dtwavexfm2_np(lena[0,:])
-    b = dtwavexfm2_cl(lena[0,:])
+    a = dtwavexfm2_np(mandrill[0,:])
+    b = dtwavexfm2_cl(mandrill[0,:])
     _compare_transforms(a, b)
 
 @skip_if_no_cl
 def test_3d():
     with raises(ValueError):
-        Yl, Yh = dtwavexfm2_cl(np.dstack((lena, lena)))
+        Yl, Yh = dtwavexfm2_cl(np.dstack((mandrill, mandrill)))
 
 @skip_if_no_cl
 def test_simple_w_scale():
-    Yl, Yh, Yscale = dtwavexfm2_cl(lena, include_scale=True)
+    Yl, Yh, Yscale = dtwavexfm2_cl(mandrill, include_scale=True)
 
     assert len(Yscale) > 0
     for x in Yscale:
@@ -61,32 +61,32 @@ def test_simple_w_scale():
 @skip_if_no_cl
 @skip_if_no_cl
 def test_odd_rows():
-    a = dtwavexfm2_np(lena[:509,:])
-    b = dtwavexfm2_cl(lena[:509,:])
+    a = dtwavexfm2_np(mandrill[:509,:])
+    b = dtwavexfm2_cl(mandrill[:509,:])
     _compare_transforms(a, b)
 
 @skip_if_no_cl
 def test_odd_cols():
-    a = dtwavexfm2_np(lena[:,:509])
-    b = dtwavexfm2_cl(lena[:,:509])
+    a = dtwavexfm2_np(mandrill[:,:509])
+    b = dtwavexfm2_cl(mandrill[:,:509])
     _compare_transforms(a, b)
 
 @skip_if_no_cl
 def test_odd_rows_and_cols():
-    a = dtwavexfm2_np(lena[:509,:509])
-    b = dtwavexfm2_cl(lena[:509,:509])
+    a = dtwavexfm2_np(mandrill[:509,:509])
+    b = dtwavexfm2_cl(mandrill[:509,:509])
     _compare_transforms(a, b)
 
 @skip_if_no_cl
 def test_0_levels():
-    a = dtwavexfm2_np(lena, nlevels=0)
-    b = dtwavexfm2_cl(lena, nlevels=0)
+    a = dtwavexfm2_np(mandrill, nlevels=0)
+    b = dtwavexfm2_cl(mandrill, nlevels=0)
     _compare_transforms(a, b)
 
 @skip_if_no_cl
 def test_modified():
-    a = dtwavexfm2_np(lena, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))
-    b = dtwavexfm2_cl(lena, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))
+    a = dtwavexfm2_np(mandrill, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))
+    b = dtwavexfm2_cl(mandrill, biort=biort('near_sym_b_bp'), qshift=qshift('qshift_b_bp'))
     _compare_transforms(a, b)
 
 # vim:sw=4:sts=4:et

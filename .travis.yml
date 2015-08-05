@@ -1,14 +1,34 @@
 language: python
 sudo: false
+cache: apt
+addons:
+    apt:
+        sources:
+        - llvm-toolchain-precise-3.6
+        - llvm-toolchain-precise
+        - ubuntu-toolchain-r-test
+        packages:
+        - clang-3.6
+        - cmake
+        - g++-5
+        - hwloc
+        - libclang-3.6-dev
+        - libedit-dev
+        - libgl1-mesa-dev
+        - libhwloc-dev
+        - libltdl-dev
+        - llvm-3.6-dev
+        - pkg-config
 env:
     - TOX_ENV=py34
     - TOX_ENV=py27
     - TOX_ENV=py34-opencl
     - TOX_ENV=py27-opencl
-    - TOX_ENV=docs
+      #    - TOX_ENV=docs
 install:
     - pip install --upgrade pip
     - pip install tox coveralls
+    - scripts/travis-install.sh
 script:
     - tox -e $TOX_ENV
 after_success:

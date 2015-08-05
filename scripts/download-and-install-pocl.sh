@@ -51,6 +51,7 @@ if [ ! -f "${AKSETUP_DEFAULTS}" ]; then
 import os
 CL_INC_DIR=[os.path.expanduser('~/opt/pocl/include')]
 CL_LIB_DIR=[os.path.expanduser('~/opt/pocl/lib')]
+CL_PRETEND_VERSION='1.1'
 EOL
 else
 	echo "WARNING: not updating $AKSETUP_DEFAULTS as file exists. PyOpenCL may not build."

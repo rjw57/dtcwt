@@ -26,6 +26,7 @@ addons:
 env:
     global:
         - LD_LIBRARY_PATH=$HOME/opt/pocl/lib
+        - TOX_TESTENV_PASSENV=LD_LIBRARY_PATH
     matrix:
         - TOX_ENV=py34
         - TOX_ENV=py27

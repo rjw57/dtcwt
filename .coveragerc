@@ -1,7 +1,0 @@
-# Workaround for nosetests overriding coverage output
-# See: https://github.com/coagulant/coveralls-python#nosetests
-[report]
-omit =
-    */python?.?/*
-    */site-packages/nose/*
-    tests/*

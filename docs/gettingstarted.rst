@@ -32,7 +32,8 @@ may verify the code works on your system:
 
 .. code-block:: console
 
-    $ python setup.py nosetests
+    $ pip install -r tests/requirements.txt
+    $ py.test
 
 This will also write test-coverage information to the ``cover/`` directory.
 

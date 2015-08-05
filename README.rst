@@ -64,7 +64,8 @@ Python project::
 significant modification to the library.) A test suite is provided so that you
 may verify the code works on your system::
 
-    $ python setup.py nosetests
+    $ pip install -r tests/requirements.txt
+    $ py.test
 
 This will also write test-coverage information to the ``cover/`` directory.
 

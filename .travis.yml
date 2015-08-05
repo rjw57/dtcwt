@@ -4,7 +4,6 @@ cache: apt
 addons:
     apt:
         sources:
-        - llvm-toolchain-precise-3.4
         - llvm-toolchain-precise
         - ubuntu-toolchain-r-test
         packages:

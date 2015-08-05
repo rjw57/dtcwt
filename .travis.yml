@@ -4,27 +4,30 @@ cache: apt
 addons:
     apt:
         sources:
-        - llvm-toolchain-precise-3.6
+        - llvm-toolchain-precise-3.4
         - llvm-toolchain-precise
         - ubuntu-toolchain-r-test
         packages:
-        - clang-3.6
+        - clang-3.4
         - cmake
         - g++-5
         - hwloc
-        - libclang-3.6-dev
+        - libclang-3.4-dev
         - libedit-dev
         - libgl1-mesa-dev
         - libhwloc-dev
         - libltdl-dev
-        - llvm-3.6-dev
+        - llvm-3.4-dev
         - pkg-config
 env:
-    - TOX_ENV=py34
-    - TOX_ENV=py27
-    - TOX_ENV=py34-opencl
-    - TOX_ENV=py27-opencl
-      #    - TOX_ENV=docs
+    global:
+        - LD_LIBRARY_PATH=$HOME/opt/pocl/lib
+    matrix:
+        - TOX_ENV=py34
+        - TOX_ENV=py27
+        - TOX_ENV=py34-opencl
+        - TOX_ENV=py27-opencl
+          # - TOX_ENV=docs
 install:
     - pip install --upgrade pip
     - pip install tox coveralls
@@ -34,3 +37,4 @@ script:
 after_success:
     - coveralls
 
+# vim:sw=4:sts=4:et:ts=4

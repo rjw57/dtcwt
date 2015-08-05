@@ -25,7 +25,7 @@ echo "Extracting..."
 tar xvf pocl-${POCL_VERSION}.tar.gz
 
 echo "Overriding llvm-config tool."
-LLVM_VERSION=3.6
+LLVM_VERSION=3.4
 LLVM_CONFIG=$(which llvm-config-${LLVM_VERSION})
 if [ -z "${LLVM_CONFIG}" ]; then
 	echo "No llvm-config-${LLVM_VERSION} tool found." >&2

@@ -10,6 +10,7 @@ env:
     - TOX_ENV=py27
     - TOX_ENV=py34-opencl
     - TOX_ENV=py27-opencl
+    - TOX_ENV=docs
 install:
     - pip install --upgrade pip
     - pip install tox coveralls

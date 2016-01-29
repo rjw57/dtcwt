@@ -14,8 +14,8 @@ def setup():
     grid = slice(-(GRID_SIZE>>1), (GRID_SIZE>>1))
     X, Y, Z = np.mgrid[grid,grid,grid]
 
-    Y *= 1.2
-    Z *= 1.4
+    Y = Y * 1.2
+    Z = Z * 1.4
 
     r = np.sqrt(X*X + Y*Y + Z*Z)
     ellipsoid = np.where(r <= SPHERE_RAD, 1.0, 0.0).astype(np.float64)

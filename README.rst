@@ -96,6 +96,10 @@ Changes
 
 * Use fixed random number generator seed when generating documentation.
 * Replace use of Lena image with mandrill.
+* Refactor test suite to use tox + py.test.
+* Documentation formatting fixes.
+* Fix unsafe use of inplace casting (3D transform).
+* Use explicit integer division to close #123.
 
 0.10.1
 ''''''

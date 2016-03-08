@@ -19,7 +19,7 @@ import struct
 from dtcwt.utils import asfarray, as_column_vector, memoize
 
 def empty(shape, dtype, queue=None):
-    return cl_array.empty(to_queue(queue), shape, dtype)
+    return cl_array.empty(to_queue(queue), tuple(shape), dtype)
 
 def colfilter(X, h):
     """Filter the columns of image *X* using filter vector *h*, without decimation.
@@ -253,7 +253,7 @@ def axis_convolve(X, h, axis=0, queue=None, output=None):
         output_shape = list(X.shape)
         if h.shape[0] % 2 == 0:
             output_shape[axis] += 1
-        output = cl_array.empty(queue, output_shape, np.float32)
+        output = cl_array.empty(queue, tuple(output_shape), np.float32)
 
     return _apply_kernel(X, h, kern, output, axis=axis)
 
@@ -266,7 +266,7 @@ def axis_convolve_dfilter(X, h, axis=0, queue=None, output=None):
     if output is None:
         output_shape = list(X.shape)
         output_shape[axis] >>= 1
-        output = cl_array.empty(queue, output_shape, np.float32)
+        output = cl_array.empty(queue, tuple(output_shape), np.float32)
 
     return _apply_kernel(X, h, kern, output, axis=axis, elementstep=2)
 
@@ -279,7 +279,7 @@ def axis_convolve_ifilter(X, h, axis=0, queue=None, output=None):
     if output is None:
         output_shape = list(X.shape)
         output_shape[axis] <<= 1
-        output = cl_array.empty(queue, output_shape, np.float32)
+        output = cl_array.empty(queue, tuple(output_shape), np.float32)
 
     return _apply_kernel(X, h, kern, output, axis=axis, elementstep=0.5)
 
@@ -298,7 +298,7 @@ def q2c(X1, X2, X3, queue=None, output=None):
         output_shape[0] >>= 1
         output_shape[1] >>= 1
         output_shape[2] = 6
-        output = cl_array.empty(queue, output_shape, np.complex64)
+        output = cl_array.empty(queue, tuple(output_shape), np.complex64)
 
     # If necessary, convert X
     X1_device = to_device(X1, queue)
@@ -619,7 +619,7 @@ void __kernel q2c_kernel(
         X1[coord_to_offset(X_coord + (int4)(1,0,0,0), X1_spec)], // c
         X1[coord_to_offset(X_coord + (int4)(1,1,0,0), X1_spec)], // d
     };
-    X1_samples *= sqrt(0.5);
+    X1_samples *= (float)sqrt(0.5);
 
     float4 X2_samples = {
         X2[coord_to_offset(X_coord,                   X2_spec)], // a
@@ -627,7 +627,7 @@ void __kernel q2c_kernel(
         X2[coord_to_offset(X_coord + (int4)(1,0,0,0), X2_spec)], // c
         X2[coord_to_offset(X_coord + (int4)(1,1,0,0), X2_spec)], // d
     };
-    X2_samples *= sqrt(0.5);
+    X2_samples *= (float)sqrt(0.5);
 
     float4 X3_samples = {
         X3[coord_to_offset(X_coord,                   X3_spec)], // a
@@ -635,7 +635,7 @@ void __kernel q2c_kernel(
         X3[coord_to_offset(X_coord + (int4)(1,0,0,0), X3_spec)], // c
         X3[coord_to_offset(X_coord + (int4)(1,1,0,0), X3_spec)], // d
     };
-    X3_samples *= sqrt(0.5);
+    X3_samples *= (float)sqrt(0.5);
 
     float2 z1a = { X1_samples.x - X1_samples.w, X1_samples.y + X1_samples.z };
     float2 z1b = { X1_samples.x + X1_samples.w, X1_samples.y - X1_samples.z };

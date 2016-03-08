@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 __all__ = [ 'colfilter', 'colifilt', 'coldfilt', ]
 
@@ -137,7 +137,7 @@ def coldfilt(X, ha, hb):
     hbo = as_column_vector(hb[0:m:2])
     hbe = as_column_vector(hb[1:m:2])
     t = np.arange(5, r+2*m-2, 4)
-    r2 = r/2;
+    r2 = r//2;
     Y = np.zeros((r2,c), dtype=X.dtype)
 
     if np.sum(ha*hb) > 0:

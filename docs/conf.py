@@ -109,9 +109,7 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'alabaster'
-if os.environ.get('READTHEDOCS', None) == 'True':
-    html_theme = 'default'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -185,11 +183,6 @@ html_static_path = ['_static']
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'dtcwtdoc'
-
-# On read the docs we need to use a different CDN URL for MathJax which loads
-# over HTTPS.
-if os.environ.get('READTHEDOCS', None) == 'True':
-    mathjax_path = 'https://c328740.ssl.cf1.rackcdn.com/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'
 
 # -- Options for LaTeX output --------------------------------------------------
 

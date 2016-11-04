@@ -137,6 +137,7 @@ def confidence(sb1, sb2, epsilon=1e-6):
 
 Q_TRIU_INDICES = list(zip(*np.triu_indices(6)))
 Q_TRIU_FLAT_INDICES = np.ravel_multi_index(np.triu_indices(6), (6,6))
+Q_TRIL_FLAT_INDICES = np.ravel_multi_index(np.triu_indices(6)[::-1], (6,6))
 
 def qtildematrices(t_ref, t_target, levels):
     r"""
@@ -227,7 +228,11 @@ def solvetransform(Qtilde_vec):
 
     # Convert from 27-element vector into Q matrix and vector
     Q = np.zeros(Qtilde_vec.shape[:-1] + (6*6,))
+
+    # Q matrices are symmetric
     Q[..., Q_TRIU_FLAT_INDICES] = Qtilde_vec[...,:21]
+    Q[..., Q_TRIL_FLAT_INDICES] = Qtilde_vec[...,:21]
+
     q = Qtilde_vec[...,-6:]
     Q = np.reshape(Q, Qtilde_vec.shape[:-1] + (6,6))
 

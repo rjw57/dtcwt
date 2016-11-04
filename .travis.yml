@@ -9,9 +9,9 @@ before_install:
     - sudo apt-get update -qq
     - sudo apt-get install -y opencl-headers fglrx
 env:
-    - TOX_ENV=py34
+    - TOX_ENV=py3
     - TOX_ENV=py27
-    - TOX_ENV=py34-opencl
+    - TOX_ENV=py3-opencl
     - TOX_ENV=py27-opencl
     - TOX_ENV=docs
 install:

@@ -43,8 +43,23 @@ class Transform2d(object):
         except TypeError:
             self.qshift = qshift
 
+        self.forward_ops = []
+
+    def forward(self, X, nlevels=3, include_scale=False, graph=tf.get_default_graph()):
+        # Give info back to the user recommending they don't use the forward function
+        logging.info("""Calling the forward function will create operations on 
+            the graph each time it is called, then create a session and execute
+            them. This is quite time consuming and wasteful. It is better to
+            call Transform2d.forward_op(), which returns a Pyramid of ops. To
+            evaluate this for a given input, call the Pyramid's .eval()
+            function, providing the input to it.""")
+
+        #with graph as g
+
+
+
             
-    def forward(self, X, nlevels=3, include_scale=False):
+    def forward_op(self, X, nlevels=3, include_scale=False, graph=tf.get_default_graph()):
         """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
         :param X: 3D real array of size [Batch, rows, cols]
         :param nlevels: Number of levels of wavelet decomposition

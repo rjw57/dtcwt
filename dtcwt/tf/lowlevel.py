@@ -2,6 +2,51 @@ from __future__ import absolute_import
 
 import tensorflow as tf
 import numpy as np
+from dtcwt.utils import asfarray, as_column_vector
+
+def _as_row_tensor(h):
+    if isinstance(h, tf.Tensor):
+        h = tf.reshape(h, [1, -1])
+    else:
+        h = as_column_vector(h).T
+        h = tf.constant(h, tf.float32)
+    return h
+
+def _as_col_tensor(h):
+    if isinstance(h, tf.Tensor):
+        h = tf.reshape(h, [-1, 1])
+    else:
+        h = as_column_vector(h)
+        h = tf.constant(h, tf.float32)
+    return h
+
+def _conv_2d(X, h, strides=[1,1,1,1]):
+    """Perform 2d convolution in tensorflow. X will to be manipulated to be of
+    shape [batch, height, width, ch], and h to be of shape 
+    [height, width, ch, num]. This function does the necessary reshaping before 
+    calling the conv2d function, and does the reshaping on the output, returning 
+    Y of shape [batch, height, width]"""
+    
+    # Check the shape of X is what we expect
+    if len(X.shape) != 3:
+        raise ValueError('X needs to be of shape [batch, height, width] for conv_2d') 
+    
+    # Check the shape of h is what we expect
+    if len(h.shape) != 2:
+        raise ValueError('Filter inputs must only have height and width for conv_2d')
+
+    # Add in the unit dimensions for conv
+    X = tf.expand_dims(X, axis=-1)
+    h = tf.expand_dims(tf.expand_dims(h, axis=-1),axis=-1)
+
+    # Have to reverse h as tensorflow 2d conv is actually cross-correlation
+    h = tf.reverse(h, axis=[0,1])
+    Y = tf.nn.conv2d(X, h, strides=strides, padding='VALID')
+
+    # Remove the final dimension, returning a result of shape [batch, height, width]
+    Y = tf.squeeze(Y, axis=-1)
+
+    return Y
 
 def colfilter(X, h):
     """Filter the columns of image *X* using filter vector *h*, without decimation.
@@ -16,25 +61,21 @@ def colfilter(X, h):
     .. codeauthor:: Cian Shaffrey, Cambridge University, August 2000
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
     """
-
-    m = h.get_shape().as_list()[0]
+    # Make the function flexible to accepting h in multiple forms
+    h_t = _as_col_tensor(h)
+    m = h_t.get_shape().as_list()[0]
     m2 = m // 2
+    print(m2)
+    print(h_t.shape)
 
     # Symmetrically extend with repeat of end samples.
     # Pad only the second dimension of the tensor X (the columns)
     X = tf.pad(X, [[0, 0], [m2, m2], [0, 0]], 'SYMMETRIC')
 
-    # Reshape h to be a col filter. We have to flip h too as the tf conv2d
-    # operation is cross-correlation, not true convolution
-    h = tf.reshape(h[::-1], [-1, 1, 1, 1])
+    Y = _conv_2d(X, h_t, strides=[1,1,1,1])
 
-    # Reshape X from [batch, rows, cols] to [batch, rows, cols, 1] for conv2d
-    X = tf.expand_dims(X, axis=-1)
+    return Y
 
-    Y = tf.nn.conv2d(X, h, strides=[1, 1, 1, 1], padding='VALID')
-
-    # Drop the last dimension
-    return tf.unstack(Y, num=1, axis=-1)[0]
 
 def rowfilter(X, h):
     """Filter the rows of image *X* using filter vector *h*, without decimation.
@@ -42,32 +83,26 @@ def rowfilter(X, h):
     and *Y* is the same size as *X*.  If len(h) is even, each output sample is
     aligned with the mid point of each pair of input samples, and Y.shape =
     X.shape + [0 1].
-    :param X: an image whose columns are to be filtered
+    :param X: a tensor of images whose rows are to be filtered
     :param h: the filter coefficients.
     :returns Y: the filtered image.
+    .. codeauthor:: Fergal Cotter <fbc23@cam.ac.uk>, Feb 2017
     .. codeauthor:: Rich Wareham <rjw57@cantab.net>, August 2013
     .. codeauthor:: Cian Shaffrey, Cambridge University, August 2000
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
     """
-
-    m = h.get_shape().as_list()[0]
+    # Make the function flexible to accepting h in multiple forms
+    h_t = _as_row_tensor(h)
+    m = h_t.get_shape().as_list()[1]
     m2 = m // 2
 
     # Symmetrically extend with repeat of end samples.
     # Pad only the second dimension of the tensor X (the columns)
     X = tf.pad(X, [[0, 0], [0, 0], [m2, m2]], 'SYMMETRIC')
 
-    # Reshape h to be a row filter. We have to flip h too as the tf conv2d
-    # operation is cross-correlation, not true convolution
-    h = tf.reshape(h[::-1], [1, -1, 1, 1])
+    Y = _conv_2d(X, h_t, strides=[1,1,1,1])
 
-    # Reshape X from [batch, rows, cols] to [batch, rows, cols, 1] for conv2d
-    X = tf.expand_dims(X, axis=-1)
-
-    Y = tf.nn.conv2d(X, h, strides=[1, 1, 1, 1], padding='VALID')
-
-    # Drop the last dimension
-    return tf.unstack(Y, num=1, axis=-1)[0]
+    return Y
 
 
 def coldfilt(X, ha, hb, a_first=True):
@@ -91,6 +126,7 @@ def coldfilt(X, ha, hb, a_first=True):
     before each filter is applied.
     Raises ValueError if the number of rows in X is not a multiple of 4, the
     length of ha does not match hb or the lengths of ha or hb are non-even.
+    .. codeauthor:: Fergal Cotter <fbc23@cam.ac.uk>, Feb 2017
     .. codeauthor:: Rich Wareham <rjw57@cantab.net>, August 2013
     .. codeauthor:: Cian Shaffrey, Cambridge University, August 2000
     .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
@@ -101,10 +137,12 @@ def coldfilt(X, ha, hb, a_first=True):
     if r % 4 != 0:
         raise ValueError('No. of rows in X must be a multiple of 4')
 
-    if ha.shape != hb.shape:
+    ha_t = _as_col_tensor(ha)
+    hb_t = _as_col_tensor(hb)
+    if ha_t.shape != hb_t.shape:
         raise ValueError('Shapes of ha and hb must be the same')
 
-    m = ha.get_shape().as_list()[0]
+    m = ha_t.get_shape().as_list()[0]
     if m % 2 != 0:
         raise ValueError('Lengths of ha and hb must be even')
 
@@ -113,28 +151,20 @@ def coldfilt(X, ha, hb, a_first=True):
     X = tf.pad(X, [[0, 0], [m, m], [0, 0]], 'SYMMETRIC')    
 
     # Take the odd and even columns of X
-    X_odd = tf.expand_dims(X[:,2:r+2*m-2:2,:], axis=-1)
-    X_even =tf.expand_dims(X[:,3:r+2*m-2:2,:], axis=-1)
-
-    # Transform ha and hb to be col filters. We must reverse them as tf conv is
-    # cross correlation, not true convolution
-    ha = tf.reshape(ha[::-1], [m,1,1,1])
-    hb = tf.reshape(hb[::-1], [m,1,1,1])
+    X_odd = X[:,2:r+2*m-2:2,:]
+    X_even =X[:,3:r+2*m-2:2,:]
 
     # Do the 2d convolution, but only evaluated at every second sample
     # for both X_odd and X_even
-    a_rows = tf.nn.conv2d(X_odd, ha, strides=[1,2,1,1], padding='VALID')
-    b_rows = tf.nn.conv2d(X_even, hb, strides=[1,2,1,1], padding='VALID')
+    a_rows = _conv_2d(X_odd, ha_t, strides=[1,2,1,1])
+    b_rows = _conv_2d(X_even, hb_t, strides=[1,2,1,1])
     
-    # We interleave the two results into a tensor of size [Batch, r/2, c]
-    # Concat a_rows and b_rows (both of shape [Batch, r/4, c, 1])     
-    Y = tf.cond(tf.reduce_sum(ha*hb) > 0,
-                lambda: tf.concat([a_rows,b_rows],axis=-1),
-                lambda: tf.concat([b_rows,a_rows],axis=-1))
-        
-    # Permute result to be shape [Batch, r/4, 2, c]
-    Y = tf.transpose(Y, perm=[0,1,3,2])
-    
+    # Stack a_rows and b_rows (both of shape [Batch, r/4, c]) along the third
+    # dimension to make a tensor of shape [Batch, r/4, 2, c].    
+    Y = tf.cond(tf.reduce_sum(ha_t*hb_t) > 0,
+                lambda: tf.stack([a_rows,b_rows],axis=2),
+                lambda: tf.stack([b_rows,a_rows],axis=2))
+
     # Reshape result to be shape [Batch, r/2, c]. This reshaping interleaves
     # the columns
     Y = tf.reshape(Y, [-1, r2, c])   
@@ -172,11 +202,13 @@ def rowdfilt(X, ha, hb):
     c2 = c // 2
     if c % 4 != 0:
         raise ValueError('No. of rows in X must be a multiple of 4')
-
-    if ha.shape != hb.shape:
+    
+    ha_t = _as_row_tensor(ha)
+    hb_t = _as_row_tensor(hb)
+    if ha_t.shape != hb_t.shape:
         raise ValueError('Shapes of ha and hb must be the same')
 
-    m = ha.get_shape().as_list()[0]
+    m = ha_t.get_shape().as_list()[1]
     if m % 2 != 0:
         raise ValueError('Lengths of ha and hb must be even')
 
@@ -187,25 +219,20 @@ def rowdfilt(X, ha, hb):
     X = tf.pad(X, [[0, 0], [0, 0], [m, m]], 'SYMMETRIC')
 
     # Take the odd and even columns of X
-    X_odd = tf.expand_dims(X[:,:,2:c+2*m-2:2], axis=-1)
-    X_even =tf.expand_dims(X[:,:,3:c+2*m-2:2], axis=-1)
-
-    # Transform ha and hb to be col filters. We must reverse them as tf conv is
-    # cross correlation, not true convolution
-    ha = tf.reshape(ha[::-1], [m,1,1,1])
-    hb = tf.reshape(hb[::-1], [m,1,1,1])
+    X_odd = X[:,:,2:c+2*m-2:2]
+    X_even= X[:,:,3:c+2*m-2:2]
 
     # Do the 2d convolution, but only evaluated at every second sample
     # for both X_odd and X_even
-    a_cols = tf.nn.conv2d(X_odd, ha, strides=[1,1,2,1], padding='VALID')
-    b_cols = tf.nn.conv2d(X_even, hb, strides=[1,1,2,1], padding='VALID')
+    a_cols = _conv_2d(X_odd, ha_t, strides=[1,1,2,1])
+    b_cols = _conv_2d(X_even, hb_t, strides=[1,1,2,1])
     
-    # We interleave the two results into a tensor of size [Batch, r/2, c]
-    # Concat a_cols and b_cols (both of shape [Batch, r, c/4, 1])      
-    Y = tf.cond(tf.reduce_sum(ha*hb) > 0,
-                lambda: tf.concat([a_cols,b_cols],axis=-1),
-                lambda: tf.concat([b_cols,a_cols],axis=-1))
-        
+    # Stack a_cols and b_cols (both of shape [Batch, r, c/4]) along the fourth 
+    # dimension to make a tensor of shape [Batch, r, c/4, 2].    
+    Y = tf.cond(tf.reduce_sum(ha_t*hb_t) > 0,
+                lambda: tf.stack([a_cols,b_cols],axis=3),
+                lambda: tf.stack([b_cols,a_cols],axis=3))
+
     # Reshape result to be shape [Batch, r, c/2]. This reshaping interleaves
     # the columns
     Y = tf.reshape(Y, [-1, r, c2])   

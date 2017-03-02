@@ -25,12 +25,21 @@ class Pyramid_tf(object):
         self.scales = scales
         
     def eval(self, sess, placeholder, data):
-        lo = sess.run(self.lowpass, {placeholder : data})
-        hi = sess.run(self.highpasses, {placeholder : data})
-        if self.scales is not None:
-            scales = sess.run(self.scales, {placeholder : data})
-        else:
-            scales = None
+        try:
+            lo = sess.run(self.lowpass, {placeholder : data})
+            hi = sess.run(self.highpasses, {placeholder : data})
+            if self.scales is not None:
+                scales = sess.run(self.scales, {placeholder : data})
+            else:
+                scales = None
+        except ValueError:
+            lo = sess.run(self.lowpass, {placeholder : [data]})
+            hi = sess.run(self.highpasses, {placeholder : [data]})
+            if self.scales is not None:
+                scales = sess.run(self.scales, {placeholder : [data]})
+            else:
+                scales = None
+
 
         return Pyramid(lo, hi, scales)
     

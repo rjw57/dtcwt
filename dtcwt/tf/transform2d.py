@@ -6,6 +6,7 @@ import logging
 
 from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
+from dtcwt.utils import asfarray
 
 from dtcwt.tf.common import Pyramid_tf
 from dtcwt.tf.lowlevel import *
@@ -33,82 +34,15 @@ class Transform2d(object):
         # Load bi-orthogonal wavelets
         try:
             self.biort = _biort(biort)
-            b = self.biort
         except TypeError:
             self.biort = biort
-            b = self.biort
 
         # Load quarter sample shift wavelets
         try:
             self.qshift = _qshift(qshift)
-            q = self.qshift
         except TypeError:
             self.qshift = qshift
-            q = self.qshift
 
-        ### Load the ops onto the graph for the filter banks
-
-        # If biort has 6 elements instead of 4, then it's a modified
-        # rotationally symmetric wavelet
-        # h0o - analysis low pass filter
-        # g0o - synthesis low pass filter
-        # h1o - analysis high pass filter
-        # g1o - synthesis high pass filter
-        # h2o - analysis band pass filter for 45 deg wavelets
-        # g2o - synthesis band pass filter for 45 deg wavelets
-        if len(b) == 4:
-            # h0o, g0o, h1o, g1o = b            
-            self.h0o = tf.constant(b[0], dtype=tf.float32, name='dtcwt/h0o')
-            self.g0o = tf.constant(b[1], dtype=tf.float32, name='dtcwt/g0o')
-            self.h1o = tf.constant(b[2], dtype=tf.float32, name='dtcwt/h1o')
-            self.g1o = tf.constant(b[3], dtype=tf.float32, name='dtcwt/g1o')
-        elif len(b) == 6:
-            #h0o, g0o, h1o, g1o, h2o, g2o = b
-            self.h0o = tf.constant(b[0], dtype=tf.float32, name='dtcwt/h0o')
-            self.g0o = tf.constant(b[1], dtype=tf.float32, name='dtcwt/g0o')
-            self.h1o = tf.constant(b[2], dtype=tf.float32, name='dtcwt/h1o')
-            self.g1o = tf.constant(b[3], dtype=tf.float32, name='dtcwt/g1o')
-            self.h2o = tf.constant(b[4], dtype=tf.float32, name='dtcwt/h2o')
-            self.g2o = tf.constant(b[5], dtype=tf.float32, name='dtcwt/g2o')
-        else:
-            raise ValueError('Biort wavelet must have 6 or 4 components.')
-
-            
-        # If qshift has 12 elements instead of 8, then it's a modified
-        # rotationally symmetric wavelet        
-        # h0a - analysis low pass filter tree a
-        # h0b - analysis low pass filter tree b
-        # h1a - analysis high pass filter tree a
-        # h1b - analysis high pass filter tree b
-        # h2a - analysis band pass filter tree a (for 45 deg wavelets)
-        # h2b - analysis band pass filter tree b (for 45 deg wavelets)
-        # g.. - synthesis equivalents
-        if len(q) == 8:
-            #h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = q
-            self.h0a = tf.constant(q[0], dtype=tf.float32, name='dtcwt/h0a')
-            self.h0b = tf.constant(q[1], dtype=tf.float32, name='dtcwt/h0b')
-            self.g0a = tf.constant(q[2], dtype=tf.float32, name='dtcwt/g0a')
-            self.g0b = tf.constant(q[3], dtype=tf.float32, name='dtcwt/g0b')
-            self.h1a = tf.constant(q[4], dtype=tf.float32, name='dtcwt/h1a')
-            self.h1b = tf.constant(q[5], dtype=tf.float32, name='dtcwt/h1b')
-            self.g1a = tf.constant(q[6], dtype=tf.float32, name='dtcwt/g1a')
-            self.g1b = tf.constant(q[7], dtype=tf.float32, name='dtcwt/g1b')
-        elif len(q) == 12:
-            #h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = q[:10]
-            self.h0a = tf.constant(q[0], dtype=tf.float32, name='dtcwt/h0a')
-            self.h0b = tf.constant(q[1], dtype=tf.float32, name='dtcwt/h0b')
-            self.g0a = tf.constant(q[2], dtype=tf.float32, name='dtcwt/g0a')
-            self.g0b = tf.constant(q[3], dtype=tf.float32, name='dtcwt/g0b')
-            self.h1a = tf.constant(q[4], dtype=tf.float32, name='dtcwt/h1a')
-            self.h1b = tf.constant(q[5], dtype=tf.float32, name='dtcwt/h1b')
-            self.g1a = tf.constant(q[6], dtype=tf.float32, name='dtcwt/g1a')
-            self.g1b = tf.constant(q[7], dtype=tf.float32, name='dtcwt/g1b')
-            self.h2a = tf.constant(q[8], dtype=tf.float32, name='dtcwt/h2a')
-            self.h2b = tf.constant(q[9], dtype=tf.float32, name='dtcwt/h2b')
-        else:
-            raise ValueError('Qshift wavelet must have 12 or 8 components.')
-
-            
             
     def forward(self, X, nlevels=3, include_scale=False):
         """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
@@ -123,12 +57,38 @@ class Transform2d(object):
         .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
         """
 
-        # Check the shape of the input
+        # If biort has 6 elements instead of 4, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.biort) == 4:
+            h0o, g0o, h1o, g1o = self.biort
+        elif len(self.biort) == 6:
+            h0o, g0o, h1o, g1o, h2o, g2o = self.biort
+        else:
+            raise ValueError('Biort wavelet must have 6 or 4 components.')
+
+        # If qshift has 12 elements instead of 8, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.qshift) == 8:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
+        elif len(self.qshift) == 12:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b = self.qshift[:10]
+        else:
+            raise ValueError('Qshift wavelet must have 12 or 8 components.')
+
+        # Check the shape and form of the input
+        if not isinstance(X, tf.Tensor):
+            raise ValueError('Please provide the forward function with ' +
+                'a tensorflow placeholder or variable of size [batch, width,' +
+                'height] (batch can be None if you do not wish to specify it).')
+
         original_size = X.get_shape().as_list()[1:]
         
         if len(original_size) >= 3:
-            raise ValueError('The entered image is {0}, please enter each image slice separately.'.
-                             format('x'.join(list(str(s) for s in X.get_shape().as_list()))))
+            raise ValueError('The entered variable has too many dimensions {}. If '
+                    'the final dimension are colour channels, please enter each ' +
+                    'channel separately.'.format(original_size))
 
 
         ############################## Resize #################################
@@ -170,26 +130,26 @@ class Transform2d(object):
         # Uses the biorthogonal filters
         if nlevels >= 1:
             # Do odd top-level filters on cols.
-            Lo = colfilter(X, self.h0o)
-            Hi = colfilter(X, self.h1o)
+            Lo = colfilter(X, h0o)
+            Hi = colfilter(X, h1o)
             if len(self.biort) >= 6:
-                Ba = colfilter(X, self.h2o)
+                Ba = colfilter(X, h2o)
 
             # Do odd top-level filters on rows.
-            LoLo = rowfilter(Lo, self.h0o)
+            LoLo = rowfilter(Lo, h0o)
             LoLo_shape = LoLo.get_shape().as_list()[1:3]            
             
             # Horizontal wavelet pair (15 & 165 degrees)
-            horiz = q2c(rowfilter(Hi, self.h0o))  
+            horiz = q2c(rowfilter(Hi, h0o))  
             
             # Vertical wavelet pair (75 & 105 degrees)
-            vertic = q2c(rowfilter(Lo, self.h1o))  
+            vertic = q2c(rowfilter(Lo, h1o))  
             
             # Diagonal wavelet pair (45 & 135 degrees)
             if len(self.biort) >= 6:
-                diag = q2c(rowfilter(Ba, self.h2o))  
+                diag = q2c(rowfilter(Ba, h2o))  
             else:
-                diag = q2c(rowfilter(Hi, self.h1o))  
+                diag = q2c(rowfilter(Hi, h1o))  
             
             # Pack all 6 tensors into one 
             Yh[0] = tf.stack(
@@ -217,26 +177,26 @@ class Transform2d(object):
                 LoLo = tf.concat([LoLo, right_col], axis=2)
 
             # Do even Qshift filters on cols.
-            Lo = coldfilt(LoLo, self.h0b, self.h0a)
-            Hi = coldfilt(LoLo, self.h1b, self.h1a)
+            Lo = coldfilt(LoLo, h0b, h0a)
+            Hi = coldfilt(LoLo, h1b, h1a)
             if len(self.qshift) >= 12:
-                Ba = coldfilt(LoLo, self.h2b, self.h2a)
+                Ba = coldfilt(LoLo, h2b, h2a)
 
             # Do even Qshift filters on rows.
-            LoLo = rowdfilt(Lo, self.h0b, self.h0a)
+            LoLo = rowdfilt(Lo, h0b, h0a)
             LoLo_shape = LoLo.get_shape().as_list()[1:3]            
             
             # Horizontal wavelet pair (15 & 165 degrees)
-            horiz = q2c(rowdfilt(Hi, self.h0b, self.h0a))  
+            horiz = q2c(rowdfilt(Hi, h0b, h0a))  
             
             # Vertical wavelet pair (75 & 105 degrees)
-            vertic = q2c(rowdfilt(Lo, self.h1b, self.h1a))  
+            vertic = q2c(rowdfilt(Lo, h1b, h1a))  
             
             # Diagonal wavelet pair (45 & 135 degrees)
             if len(self.qshift) >= 12:
-                diag = q2c(rowdfilt(Ba, self.h2b, self.h2a))  
+                diag = q2c(rowdfilt(Ba, h2b, h2a))  
             else:
-                diag = q2c(rowdfilt(Hi, self.h1b, self.h1a))  
+                diag = q2c(rowdfilt(Hi, h1b, h1a))  
             
             # Pack all 6 tensors into one 
             Yh[level] = tf.stack(

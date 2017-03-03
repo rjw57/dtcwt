@@ -279,7 +279,7 @@ class Transform2d(Transform2dNumPy):
 
             # Do odd top-level filters on rows.
             LoLo = rowfilter(Lo, h0o)
-            LoLo_shape = LoLo.get_shape().as_list()[1:3]            
+            LoLo_shape = LoLo.get_shape().as_list()[1:]
             
             # Horizontal wavelet pair (15 & 165 degrees)
             horiz = q2c(rowfilter(Hi, h0o))  
@@ -309,14 +309,17 @@ class Transform2d(Transform2dNumPy):
             # If the row count of LoLo is not divisible by 4 (it will be
             # divisible by 2), add 2 extra rows to make it so
             if row_size % 4 != 0:
-                bottom_row = tf.slice(LoLo, [0, row_size - 2, 0], [-1, 2, -1])
-                LoLo = tf.concat([LoLo, bottom_row], axis=1)
+                LoLo = tf.pad(LoLo, [[0, 0], [1, 1], [0, 0]], 'SYMMETRIC')    
+                #top_row = tf.slice(LoLo, [0, 0, 0], [-1, 1, -1])
+                #bottom_row = tf.slice(LoLo, [0, row_size - 1, 0], [-1, 1, -1])
+                #LoLo = tf.concat([top_row, LoLoLoLo, bottom_row], axis=1)
 
             # If the col count of LoLo is not divisible by 4 (it will be
             # divisible by 2), add 2 extra cols to make it so
             if col_size % 4 != 0:
-                right_col = tf.slice(LoLo, [0, 0, col_size - 2], [-1, -1, 2])
-                LoLo = tf.concat([LoLo, right_col], axis=2)
+                LoLo = tf.pad(LoLo, [[0, 0], [0, 0], [1, 1]], 'SYMMETRIC')    
+                #right_col = tf.slice(LoLo, [0, 0, col_size - 2], [-1, -1, 2])
+                #LoLo = tf.concat([LoLo, right_col], axis=2)
 
             # Do even Qshift filters on cols.
             Lo = coldfilt(LoLo, h0b, h0a)

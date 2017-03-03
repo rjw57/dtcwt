@@ -135,10 +135,10 @@ def test_results_match1():
 def test_results_match2():
     im = mandrill[100:400,50:450]
     f_np = Transform2d_np(biort='near_sym_b', qshift='qshift_c')
-    p_np = f_np.forward(im, nlevels=3, include_scale=True) 
+    p_np = f_np.forward(im, nlevels=4, include_scale=True) 
 
     f_tf = Transform2d(biort='near_sym_b', qshift='qshift_c')
-    p_tf = f_tf.forward(im, nlevels=3, include_scale=True)
+    p_tf = f_tf.forward(im, nlevels=4, include_scale=True)
     
     np.testing.assert_array_almost_equal(
             p_np.lowpass, p_tf.lowpass, decimal=PRECISION_DECIMAL) 

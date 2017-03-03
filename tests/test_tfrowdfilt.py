@@ -48,11 +48,34 @@ def test_output_size():
     y_op = rowdfilt(mandrill_t, (-1,1), (1,-1))
     assert y_op.shape[1:] == (mandrill.shape[0], mandrill.shape[1]/2)
 
-def test_equal_numpy_qshift():
+@pytest.mark.skip(reason='Cant pad by more than half the dimension of the input')
+def test_equal_small_in():
+    ha = qshift('qshift_b')[0]
+    hb = qshift('qshift_b')[1]
+    im = mandrill[0:4,0:4]
+    im_t = tf.expand_dims(tf.constant(im, tf.float32), axis=0)
+    ref = np_coldfilt(im.T, ha, hb).T
+    y_op = rowdfilt(im_t, ha, hb)
+    with tf.Session() as sess:
+        y = sess.run(y_op)
+    np.testing.assert_array_almost_equal(y[0], ref, decimal=4)
+
+def test_equal_numpy_qshift1():
     ha = qshift('qshift_c')[0]
     hb = qshift('qshift_c')[1]
     ref = np_coldfilt(mandrill.T, ha, hb).T
     y_op = rowdfilt(mandrill_t, ha, hb)
+    with tf.Session() as sess:
+        y = sess.run(y_op)
+    np.testing.assert_array_almost_equal(y[0], ref, decimal=4)
+
+def test_equal_numpy_qshift2():
+    ha = qshift('qshift_c')[0]
+    hb = qshift('qshift_c')[1]
+    im = mandrill[:508, :504]
+    im_t = tf.expand_dims(tf.constant(im, tf.float32), axis=0)
+    ref = np_coldfilt(im.T, ha, hb).T
+    y_op = rowdfilt(im_t, ha, hb)
     with tf.Session() as sess:
         y = sess.run(y_op)
     np.testing.assert_array_almost_equal(y[0], ref, decimal=4)

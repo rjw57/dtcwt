@@ -51,6 +51,17 @@ def test_even_size():
         y = sess.run(y_op)
     assert not np.any(y[:] != 0.0)
 
+@pytest.mark.skip(reason='Cant pad by more than half the dimension of the input')
+def test_equal_small_in():
+    h = qshift('qshift_b')[0]
+    im = mandrill[0:4,0:4]
+    im_t = tf.expand_dims(tf.constant(im, tf.float32), axis=0)
+    ref = np_colfilter(im.T, h).T
+    y_op = rowfilter(im_t, h)
+    with tf.Session() as sess:
+        y = sess.run(y_op)
+    np.testing.assert_array_almost_equal(y[0], ref, decimal=4)
+
 def test_equal_numpy_biort1():
     h = biort('near_sym_b')[0]
     ref = np_colfilter(mandrill.T, h).T

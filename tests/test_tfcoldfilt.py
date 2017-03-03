@@ -1,5 +1,9 @@
 import os
 
+import pytest
+from dtcwt.tf.lowlevel import _HAVE_TF as HAVE_TF
+pytest.mark.skipif(not HAVE_TF, reason="Tensorflow not present")
+
 import numpy as np
 import tensorflow as tf
 from dtcwt.coeffs import biort, qshift

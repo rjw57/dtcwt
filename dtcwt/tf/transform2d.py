@@ -7,11 +7,94 @@ import logging
 from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import asfarray
+from dtcwt.numpy import Transform2d as Transform2dNumPy
 
-from dtcwt.tf.common import Pyramid_tf
 from dtcwt.tf.lowlevel import *
 
-class Transform2d(object):
+def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
+    t = Transform2d(biort=biort, qshift=qshift, queue=queue)
+    r = t.forward(X, nlevels=nlevels, include_scale=include_scale)
+    if include_scale:
+        return r.lowpass, r.highpasses, r.scales
+    else:
+        return r.lowpass, r.highpasses
+
+
+class Pyramid(object):
+    """A representation of a transform domain signal.
+    Backends are free to implement any class which respects this interface for
+    storing transform-domain signals. The inverse transform may accept a
+    backend-specific version of this class but should always accept any class
+    which corresponds to this interface.
+    .. py:attribute:: lowpass
+        A NumPy-compatible array containing the coarsest scale lowpass signal.
+    .. py:attribute:: highpasses
+        A tuple where each element is the complex subband coefficients for
+        corresponding scales finest to coarsest.
+    .. py:attribute:: scales
+        *(optional)* A tuple where each element is a NumPy-compatible array
+        containing the lowpass signal for corresponding scales finest to
+        coarsest. This is not required for the inverse and may be *None*.
+    """
+    def __init__(self, p_holder, lowpass, highpasses, scales=None, data=None):
+        self.lowpass_op = lowpass
+        self.highpasses_ops = highpasses
+        self.scales_ops = scales
+        self.p_holder = p_holder
+        self.data = data
+
+    @property
+    def lowpass(self):
+        if not hasattr(self, '_lowpass'):
+            with tf.Session() as sess:
+                self._lowpass = sess.run(self.lowpass_op, {self.p_holder : self.data}) \
+                        if self.lowpass_op is not None else None
+        return self._lowpass
+
+    @property
+    def highpasses(self):
+        if not hasattr(self, '_highpasses'):
+            with tf.Session() as sess:
+                self._highpasses = tuple(
+                        sess.run(layer_highpass, {self.p_holder : self.data}) for 
+                        layer_highpass in self.highpasses_ops) if \
+                        self.highpasses_ops is not None else None
+        return self._highpasses
+
+    @property
+    def scales(self):
+        if not hasattr(self, '_scales'):
+            with tf.Session() as sess:
+                self._scales = tuple(
+                        sess.run(layer_scale, {self.p_holder : self.data}) for
+                        layer_scale in self.scales) if \
+                        self.scales_ops is not None else None
+
+        return self._scales
+       
+    '''
+    def eval(self, sess, placeholder, data):
+        try:
+            lo = sess.run(self.lowpass, {placeholder : data})
+            hi = sess.run(self.highpasses, {placeholder : data})
+            if self.scales is not None:
+                scales = sess.run(self.scales, {placeholder : data})
+            else:
+
+                scales = None
+        except ValueError:
+            lo = sess.run(self.lowpass, {placeholder : [data]})
+            hi = sess.run(self.highpasses, {placeholder : [data]})
+            if self.scales is not None:
+                scales = sess.run(self.scales, {placeholder : [data]})
+            else:
+                scales = None
+
+
+        return Pyramid(lo, hi, scales)
+        '''
+
+class Transform2d(Transform2dNumPy):
     """
     An implementation of the 2D DT-CWT via Tensorflow. 
     *biort* and *qshift* are the wavelets which parameterise the transform.
@@ -30,36 +113,46 @@ class Transform2d(object):
     function again.
     """
 
-    def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT):
-        # Load bi-orthogonal wavelets
-        try:
-            self.biort = _biort(biort)
-        except TypeError:
-            self.biort = biort
-
-        # Load quarter sample shift wavelets
-        try:
-            self.qshift = _qshift(qshift)
-        except TypeError:
-            self.qshift = qshift
-
-        self.forward_ops = []
-
-    def forward(self, X, nlevels=3, include_scale=False, graph=tf.get_default_graph()):
-        # Give info back to the user recommending they don't use the forward function
-        logging.info("""Calling the forward function will create operations on 
-            the graph each time it is called, then create a session and execute
-            them. This is quite time consuming and wasteful. It is better to
-            call Transform2d.forward_op(), which returns a Pyramid of ops. To
-            evaluate this for a given input, call the Pyramid's .eval()
-            function, providing the input to it.""")
-
-        #with graph as g
+    def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, 
+                 graph=tf.get_default_graph()):
+        super(Transform2d, self).__init__(biort=biort, qshift=qshift)
+        self.graph = graph
 
 
+    def forward(self, X, nlevels=3, include_scale=False):
+        # Check the shape and form of the input
+        if not isinstance(X, tf.Tensor) and not isinstance(X, tf.Variable):
+            self.in_data = X
+            X_shape = X.shape
+            if len(X.shape) >= 3: 
+                raise ValueError('''The entered variable has incorrect dimensions {}.
+                    If X is a numpy array (or any non tensorflow object), it
+                    must be of shape [height, width]. For colour images, please
+                    enter each channel separately. If you wish to enter a batch
+                    of images, please instead provide either a tf.Placeholder
+                    or a tf.Variable input of size [batch, height, width].
+                    '''.format(original_size))         
+            X = tf.placeholder([None, X_shape[0], X_shape[1]], tf.float32)
 
-            
-    def forward_op(self, X, nlevels=3, include_scale=False, graph=tf.get_default_graph()):
+        else: 
+            self.in_data = None
+            X_shape = X.get_shape().as_list()
+            if len(X_shape) != 3: 
+                raise ValueError('''The entered variable has incorrect dimensions {}.
+                    If X is a tf placeholder or variable, it must be of shape
+                    [batch, height, width] (batch can be None). For colour images, 
+                    please enter each channel separately. 
+                    '''.format(original_size))         
+
+        original_size = X.get_shape().as_list()[1:]
+
+        name = 'dtcwt_{}x{}'.format(original_size[0], original_size[1])
+
+        with self.graph.name_scope(name):
+            return forward_op(X, nlevels, include_scale, self.in_data)
+
+
+    def forward_op(self, X, nlevels=3, include_scale=False, in_data=None):
         """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
         :param X: 3D real array of size [Batch, rows, cols]
         :param nlevels: Number of levels of wavelet decomposition
@@ -93,13 +186,13 @@ class Transform2d(object):
             raise ValueError('Qshift wavelet must have 12 or 8 components.')
 
         # Check the shape and form of the input
-        if not isinstance(X, tf.Tensor):
-            raise ValueError('Please provide the forward function with ' +
-                'a tensorflow placeholder or variable of size [batch, width,' +
-                'height] (batch can be None if you do not wish to specify it).')
+        if not isinstance(X, tf.Tensor) and not isinstance(X, tf.Variable):
+            raise ValueError('''Please provide the forward function with 
+                a tensorflow placeholder or variable of size [batch, width,
+                height] (batch can be None if you do not wish to specify it).''')
 
         original_size = X.get_shape().as_list()[1:]
-        
+
         if len(original_size) >= 3:
             raise ValueError('The entered variable has too many dimensions {}. If '
                     'the final dimension are colour channels, please enter each ' +
@@ -130,9 +223,9 @@ class Transform2d(object):
 
         if nlevels == 0:
             if include_scale:
-                return Pyramid_ops(X, (), ())
+                return Pyramid(X, (), ())
             else:
-                return Pyramid_ops(X, ())
+                return Pyramid(X, ())
 
         
         ############################ Initialise ###############################
@@ -245,9 +338,9 @@ class Transform2d(object):
                 'The rightmost column has been duplicated, prior to decomposition.')
 
         if include_scale:
-            return Pyramid_ops(Yl, tuple(Yh), tuple(Yscale))
+            return Pyramid(Yl, tuple(Yh), tuple(Yscale))
         else:
-            return Pyramid_ops(Yl, tuple(Yh))
+            return Pyramid(Yl, tuple(Yh))
         
 
 def q2c(y):

@@ -43,14 +43,14 @@ def test_biort():
     assert y_op.get_shape()[1:] == mandrill.shape
 
 def test_even_size():
-    zero_t = tf.zeros([1, *mandrill.shape], tf.float32)
+    zero_t = tf.zeros([1, mandrill.shape[0], mandrill.shape[1]], tf.float32)
     y_op = colfilter(zero_t, [-1,1])
     assert y_op.get_shape()[1:] == (mandrill.shape[0]+1, mandrill.shape[1])
     with tf.Session() as sess:
         y = sess.run(y_op)
     assert not np.any(y[:] != 0.0)
 
-def test_equal_numpy_biort():
+def test_equal_numpy_biort1():
     h = biort('near_sym_b')[0]
     ref = np_colfilter(mandrill, h)
     y_op = colfilter(mandrill_t, h)
@@ -58,10 +58,30 @@ def test_equal_numpy_biort():
         y = sess.run(y_op)
     np.testing.assert_array_almost_equal(y[0], ref, decimal=4)
 
-def test_equal_numpy_qshift():
+def test_equal_numpy_biort2():
+    h = biort('near_sym_b')[0]
+    im = mandrill[52:407, 30:401]
+    im_t = tf.expand_dims(tf.constant(im, tf.float32), axis=0)
+    ref = np_colfilter(im, h)
+    y_op = colfilter(im_t, h)
+    with tf.Session() as sess:
+        y = sess.run(y_op)
+    np.testing.assert_array_almost_equal(y[0], ref, decimal=4)
+
+def test_equal_numpy_qshift1():
     h = qshift('qshift_c')[0]
     ref = np_colfilter(mandrill, h)
     y_op = colfilter(mandrill_t, h)
+    with tf.Session() as sess:
+        y = sess.run(y_op)
+    np.testing.assert_array_almost_equal(y[0], ref, decimal=4)
+
+def test_equal_numpy_qshift2():
+    h = qshift('qshift_c')[0]
+    im = mandrill[52:407, 30:401]
+    im_t = tf.expand_dims(tf.constant(im, tf.float32), axis=0)
+    ref = np_colfilter(im, h)
+    y_op = colfilter(im_t, h)
     with tf.Session() as sess:
         y = sess.run(y_op)
     np.testing.assert_array_almost_equal(y[0], ref, decimal=4)

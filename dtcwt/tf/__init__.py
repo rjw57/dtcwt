@@ -5,7 +5,7 @@ be available.
 """
 
 from .common import Pyramid_tf
-from .transform2d import Transform2d
+from .transform2d import Transform2d, dtwavexfm2
 
 __all__ = [
     'Pyramid',

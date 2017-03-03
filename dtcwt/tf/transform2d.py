@@ -4,15 +4,18 @@ import numpy as np
 import tensorflow as tf
 import logging
 
+from six.moves import xrange
+
 from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import asfarray
 from dtcwt.numpy import Transform2d as Transform2dNumPy
+from dtcwt.numpy import Pyramid as Pyramid_np
 
 from dtcwt.tf.lowlevel import *
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
-    t = Transform2d(biort=biort, qshift=qshift, queue=queue)
+    t = Transform2d(biort=biort, qshift=qshift)
     r = t.forward(X, nlevels=nlevels, include_scale=include_scale)
     if include_scale:
         return r.lowpass, r.highpasses, r.scales
@@ -20,7 +23,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         return r.lowpass, r.highpasses
 
 
-class Pyramid(object):
+class Pyramid_tf(object):
     """A representation of a transform domain signal.
     Backends are free to implement any class which respects this interface for
     storing transform-domain signals. The inverse transform may accept a
@@ -36,63 +39,58 @@ class Pyramid(object):
         containing the lowpass signal for corresponding scales finest to
         coarsest. This is not required for the inverse and may be *None*.
     """
-    def __init__(self, p_holder, lowpass, highpasses, scales=None, data=None):
+    def __init__(self, p_holder, lowpass, highpasses, scales=None,
+                 graph=tf.get_default_graph()):
         self.lowpass_op = lowpass
         self.highpasses_ops = highpasses
         self.scales_ops = scales
         self.p_holder = p_holder
-        self.data = data
+        self.graph = graph
 
-    @property
-    def lowpass(self):
-        if not hasattr(self, '_lowpass'):
-            with tf.Session() as sess:
-                self._lowpass = sess.run(self.lowpass_op, {self.p_holder : self.data}) \
-                        if self.lowpass_op is not None else None
-        return self._lowpass
+    def _get_lowpass(self, data):
+        if self.lowpass_op is None:
+            return None
+        with tf.Session(graph=self.graph) as sess:
+            try:
+                y = sess.run(self.lowpass_op, {self.p_holder : data})
+            except ValueError:
+                y = sess.run(self.lowpass_op, {self.p_holder : [data]})[0]
+        return y
+        
+    def _get_highpasses(self, data):
+        if self.highpasses_ops is None:
+            return None
+        with tf.Session(graph=self.graph) as sess:
+            try: 
+                y = tuple(
+                        [sess.run(layer_hp, {self.p_holder : data}) 
+                        for layer_hp in self.highpasses_ops])
+            except ValueError:
+                y = tuple(
+                        [sess.run(layer_hp, {self.p_holder : [data]})[0] 
+                        for layer_hp in self.highpasses_ops])
+        return y
 
-    @property
-    def highpasses(self):
-        if not hasattr(self, '_highpasses'):
-            with tf.Session() as sess:
-                self._highpasses = tuple(
-                        sess.run(layer_highpass, {self.p_holder : self.data}) for 
-                        layer_highpass in self.highpasses_ops) if \
-                        self.highpasses_ops is not None else None
-        return self._highpasses
+    def _get_scales(self, data):
+        if self.scales_ops is None:
+            return None
+        with tf.Session(graph=self.graph) as sess:
+            try:
+                y = tuple(
+                        sess.run(layer_scale, {self.p_holder : data})
+                        for layer_scale in self.scales_ops)
+            except ValueError:
+                y = tuple(
+                        sess.run(layer_scale, {self.p_holder : [data]})[0]
+                        for layer_scale in self.scales_ops)
+        return y
 
-    @property
-    def scales(self):
-        if not hasattr(self, '_scales'):
-            with tf.Session() as sess:
-                self._scales = tuple(
-                        sess.run(layer_scale, {self.p_holder : self.data}) for
-                        layer_scale in self.scales) if \
-                        self.scales_ops is not None else None
+    def eval(self, data):
+        lo = self._get_lowpass(data)
+        hi = self._get_highpasses(data)
+        scales = self._get_scales(data)
+        return Pyramid_np(lo, hi, scales)
 
-        return self._scales
-       
-    '''
-    def eval(self, sess, placeholder, data):
-        try:
-            lo = sess.run(self.lowpass, {placeholder : data})
-            hi = sess.run(self.highpasses, {placeholder : data})
-            if self.scales is not None:
-                scales = sess.run(self.scales, {placeholder : data})
-            else:
-
-                scales = None
-        except ValueError:
-            lo = sess.run(self.lowpass, {placeholder : [data]})
-            hi = sess.run(self.highpasses, {placeholder : [data]})
-            if self.scales is not None:
-                scales = sess.run(self.scales, {placeholder : [data]})
-            else:
-                scales = None
-
-
-        return Pyramid(lo, hi, scales)
-        '''
 
 class Transform2d(Transform2dNumPy):
     """
@@ -113,17 +111,37 @@ class Transform2d(Transform2dNumPy):
     function again.
     """
 
-    def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, 
-                 graph=tf.get_default_graph()):
+    def __init__(self, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT):
         super(Transform2d, self).__init__(biort=biort, qshift=qshift)
-        self.graph = graph
+        # Use our own graph when the user calls forward with numpy arrays
+        self.np_graph = tf.Graph()
+        self.pyramids = {}
 
+    def _find_pyramid(self, shape):
+        find_key = '{}x{}'.format(shape[0], shape[1])
+        for key,val in self.pyramids.items():
+            if find_key == key:
+                return val
+        return None
 
     def forward(self, X, nlevels=3, include_scale=False):
-        # Check the shape and form of the input
+        '''
+        Perform a forward transform on an image. Can provide the forward
+        transform with either an np array (naive usage), or a tensorflow
+        variable or placeholder (designed usage).
+        If a numpy array is provided, the forward function will create a graph
+        of the right size to match the input (or check if it has previously
+        created one), and then feed the input into the graph and evaluate it.
+        This operation will return a Pyramid() object similar to running the
+        numpy version would.
+        If a tensorflow variable or placeholder is provided, the forward
+        function will create a graph of the right size, and return
+        a Pyramid_ops() object.
+        '''
+
+        # Check if a numpy array was provided
         if not isinstance(X, tf.Tensor) and not isinstance(X, tf.Variable):
-            self.in_data = X
-            X_shape = X.shape
+            X = np.atleast_2d(asfarray(X))
             if len(X.shape) >= 3: 
                 raise ValueError('''The entered variable has incorrect dimensions {}.
                     If X is a numpy array (or any non tensorflow object), it
@@ -132,10 +150,27 @@ class Transform2d(Transform2dNumPy):
                     of images, please instead provide either a tf.Placeholder
                     or a tf.Variable input of size [batch, height, width].
                     '''.format(original_size))         
-            X = tf.placeholder([None, X_shape[0], X_shape[1]], tf.float32)
 
+            # Check if the ops already exist for an input of the given size
+            p_ops = self._find_pyramid(X.shape)
+
+            # If not, create a graph
+            if p_ops is None:
+                ph = tf.placeholder(tf.float32, [None, X.shape[0], X.shape[1]])
+                size = '{}x{}'.format(X.shape[0], X.shape[1])
+                name = 'dtcwt_{}'.format(size)
+                with self.np_graph.name_scope(name):
+                    p_ops = self._create_graph_ops(ph, nlevels, include_scale)
+
+                # keep record of the pyramid so we can use it later if need be
+                self.pyramids[size] = p_ops
+
+            # Evaluate the graph with the given input
+            with self.np_graph.as_default():
+                return p_ops.eval(X)
+
+        # A tensorflow object was provided
         else: 
-            self.in_data = None
             X_shape = X.get_shape().as_list()
             if len(X_shape) != 3: 
                 raise ValueError('''The entered variable has incorrect dimensions {}.
@@ -144,15 +179,13 @@ class Transform2d(Transform2dNumPy):
                     please enter each channel separately. 
                     '''.format(original_size))         
 
-        original_size = X.get_shape().as_list()[1:]
-
-        name = 'dtcwt_{}x{}'.format(original_size[0], original_size[1])
-
-        with self.graph.name_scope(name):
-            return forward_op(X, nlevels, include_scale, self.in_data)
-
-
-    def forward_op(self, X, nlevels=3, include_scale=False, in_data=None):
+            original_size = X.get_shape().as_list()[1:]
+            size = '{}x{}'.format(original_size[0], original_size[1])
+            name = 'dtcwt_{}'.format(size)
+            with tf.name_scope(name):
+                return self._create_graph_ops(X, nlevels, include_scale)
+    
+    def _create_graph_ops(self, X, nlevels=3, include_scale=False):
         """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
         :param X: 3D real array of size [Batch, rows, cols]
         :param nlevels: Number of levels of wavelet decomposition
@@ -198,7 +231,8 @@ class Transform2d(Transform2dNumPy):
                     'the final dimension are colour channels, please enter each ' +
                     'channel separately.'.format(original_size))
 
-
+        # Save the input placeholder/variable
+        X_in = X
         ############################## Resize #################################
         # The next few lines of code check to see if the image is odd in size, 
         # if so an extra ... row/column will be added to the bottom/right of the 
@@ -223,9 +257,9 @@ class Transform2d(Transform2dNumPy):
 
         if nlevels == 0:
             if include_scale:
-                return Pyramid(X, (), ())
+                return Pyramid_tf(X_in, X, (), ())
             else:
-                return Pyramid(X, ())
+                return Pyramid_tf(X_in, X, ())
 
         
         ############################ Initialise ###############################
@@ -338,9 +372,11 @@ class Transform2d(Transform2dNumPy):
                 'The rightmost column has been duplicated, prior to decomposition.')
 
         if include_scale:
-            return Pyramid(Yl, tuple(Yh), tuple(Yscale))
+            return Pyramid_tf(X_in, Yl, tuple(Yh), tuple(Yscale))
         else:
-            return Pyramid(Yl, tuple(Yh))
+            return Pyramid_tf(X_in, Yl, tuple(Yh))
+    
+
         
 
 def q2c(y):

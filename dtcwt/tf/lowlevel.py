@@ -4,6 +4,12 @@ import tensorflow as tf
 import numpy as np
 from dtcwt.utils import asfarray, as_column_vector
 
+try:
+    import tensorflow as tf
+    _HAVE_TF = True
+except ImportError:
+    _HAVE_TF = False
+
 def _as_row_tensor(h):
     if isinstance(h, tf.Tensor):
         h = tf.reshape(h, [1, -1])
@@ -65,8 +71,6 @@ def colfilter(X, h):
     h_t = _as_col_tensor(h)
     m = h_t.get_shape().as_list()[0]
     m2 = m // 2
-    print(m2)
-    print(h_t.shape)
 
     # Symmetrically extend with repeat of end samples.
     # Pad only the second dimension of the tensor X (the columns)

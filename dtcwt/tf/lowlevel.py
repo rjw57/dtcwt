@@ -315,7 +315,7 @@ def colifilt(X, ha, hb):
     
     m = ha_t.get_shape().as_list()[0]
     m2 = m // 2
-    if ha.shape[0] % 2 != 0:
+    if ha_t.get_shape().as_list()[0] % 2 != 0:
         raise ValueError('Lengths of ha and hb must be even')
 
     X = tf.pad(X, [[0, 0], [m2, m2], [0, 0]], 'SYMMETRIC')

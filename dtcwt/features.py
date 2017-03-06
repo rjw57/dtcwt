@@ -5,20 +5,22 @@ import dtcwt.sampling
 from matplotlib.pyplot import *
 # The following are required for image resizing
 import scipy
-from scipy import misc 
+from scipy import misc
 
-"""Performs the mark II SLP operation on an image. 
+"""Performs the mark II SLP operation on an image.
 This relies on the weak linearity of DTCWT coefficient
-phase with feature shift. rjw57's dtcwt toolbox is 
+phase with feature shift. rjw57's dtcwt toolbox is
 required to use this class."""
 
 class slp2:
     """Class for the SLP2 operation on a DTCWT pyramid.
-    Includes a multiscale keypoint detector based on this feature space.
-    By S.C. Forshaw, August 2014."""
+    Includes a multiscale keypoint detector based on 
+    this feature space.
+    By S.C. Forshaw, August 2014.
+    Modified March 2017 (overhaul + new functions)"""
 
     def __init__(self, initimg, nlevels=5, full=True, firstlevel=0, plots=False, verbose=False):
-        "Will use these default settings unless told otherwise"
+        # Will use these default settings unless told otherwise
         self.nlevels = nlevels
         self.full = full
         self.plots = plots
@@ -28,18 +30,18 @@ class slp2:
             self.firstlevel = 0
         else:
             self.firstlevel = firstlevel-1
-            
-        # Copied/pasted from MATLAB, should regenerate these natively at some point.
+
+        # Copied/pasted from MATLAB, should regenerate these
+        # natively at some point.
         # row index: transform level, column index: subband
-        self.rotratio = np.multiply(\
-                        [[3.7962,    4.2812,    3.8327,    3.8327,    4.2812,    3.7962],
-                        [4.5437,    5.0473,    4.5336,    4.5336,    5.0473,    4.5437],
-                        [4.7176,    5.4489,    4.6981,    4.6981,    5.4489,    4.7176],
-                        [4.7651,    5.5655,    4.7443,    4.7443,    5.5655,    4.7651],
-                        [4.7692,    5.5909,    4.7507,    4.7507,    5.5909,    4.7692 ]], -1)
-        
+        self.rotratio = (np.multiply(-1,
+                        [[3.7962, 4.2812, 3.8327, 3.8327, 4.2812, 3.7962],
+                        [4.5437, 5.0473, 4.5336, 4.5336, 5.0473, 4.5437],
+                        [4.7176, 5.4489, 4.6981, 4.6981, 5.4489, 4.7176],
+                        [4.7651, 5.5655, 4.7443, 4.7443, 5.5655, 4.7651],
+                        [4.7692, 5.5909, 4.7507, 4.7507, 5.5909, 4.7692 ]]))
+
     def histnd(self, x, bins, wt=None):
-    
         """Form an N-dimensional histogram of the list of N-vectors in x.
         x is an N by M matrix, where the number of vectors is M.
         Bilinear interpolation over an N-dimensional hypercube is
@@ -47,104 +49,121 @@ class slp2:
         of the data distribution.  This is particularly important
         with coarse bin sizes, which are needed when N gets larger, to
         avoid the size of h becoming excessive.
-        
+
         The bins of the histogram are specified by the N by 3 matrix:
         bins = [x1_min  x1_max  x1_delta; x2... ; x3... ; ... ; xN...]
         The vector [x1_min:x1_delta:x1_max] specifies the bin centres.
         Vectors of the exact bin centres are output using the cell array
         binvecs.
-        
+
         wt is an optional M-vector which specifies the weight given to each
-        sample of x when added to the histogram.  The default wt = ones(1,M).    
-    
+        sample of x when added to the histogram.  The default wt = ones(1,M).
+
         MATLAB implementation by Nick Kingsbury, 2005
         Python port by S. C. Forshaw, 2013"""
-    
+
         # Initialisations and input size checks
-        
-        if len(np.shape(x)) == 1:           # i.e., if it is an 1xn vector
-            x = x.reshape(1,x.shape[0])     # reshape it so its shape becomes (N,1) not (N, )
-        
+
+        if len(np.shape(x)) == 1:  # i.e., if it is an 1xn vector
+            # reshape it so its shape becomes (N,1) not (N, )
+            x = x.reshape(1, x.shape[0])
+
         if len(np.shape(bins)) == 1:
-            bins = bins.reshape(1,bins.shape[0]) # Likewise for the bins vector
-        
+            # Likewise for the bins vector
+            bins = bins.reshape(1, bins.shape[0])
+
         # Assign the sizes to variables which control loops
         N = x.shape[0]
         M = x.shape[1]
         Nb = bins.shape[0]
         Mb = bins.shape[1]
-        
+
         # Checking input sizes
         if Nb != N:
             raise ValueError('HISTND: bins vectors do not match x vectors in size')
-            
+
         if Mb != 3:
             raise ValueError('HISTND: bin params must be [x_min x_max x_delta]')
-        
-        nbins = np.int32(np.round((bins[:,1] - bins[:,0])/bins[:,2])) # No. of bins in each dimension (must be integer values)
-        
+
+        # No. of bins in each dimension (must be integer values)
+        nbins = np.int32(np.round((bins[:, 1] - bins[:, 0])/bins[:, 2]))
+
         if np.any(nbins < 1):
             raise ValueError('HISTND: no. of bins not all positive')
-        
-        uM = np.ones([1,M], dtype='float') # unit M-vector. Not sure if this has to be an int, a double or what.
+
+        # unit M-vector. Not sure if this has to be an int, a double or what.
+        uM = np.ones([1, M], dtype='float')
         if wt is None:
             wt = uM.copy()
-        
+
         # Finished initialisations
-        # Subtract xn_min from x so all bins start at zero and scale them by 1/xn_delta
-        xr = (x - (bins[:,0]*uM.T).T) / (bins[:,2]*uM.T).T
-        
+        # Subtract xn_min from x so all bins start at zero and 
+        # scale them by 1/xn_delta
+        xr = (x - (bins[:, 0] * uM.T).T) / (bins[:, 2] * uM.T).T
+
         # Limit xr to the range 0 to nbins
-        xr = np.maximum((np.minimum(xr, (nbins*uM.T).T)),0)
-        
-        # Find integer xr, and set up weights for each component using fractional parts of xr
-        xi = np.minimum(np.floor(xr),((nbins - 1)*uM.T).T) # Do not allow xi to exceed (nbins-1).
-        
-        w1 = xr - xi # Fractional parts of each xr.
+        xr = np.maximum((np.minimum(xr, (nbins * uM.T).T)), 0)
+
+        # Find integer xr, and set up weights for each component
+        # using fractional parts of xr
+        # Do not allow xi to exceed (nbins-1).
+        xi = np.minimum(np.floor(xr), ((nbins - 1) * uM.T).T)
+
+        w1 = xr - xi  # Fractional parts of each xr.
         w0 = 1 - w1  # 1 - fractional parts.
-        
+
         # Initialise
-        h = np.zeros([np.prod(nbins + 1),1]) # The output histogram as a column vector
-        sh = nbins + 1 # Add 1 to accommodate upper and lower boundaries of each set of bins    
-        binvecs = list(range(0,N))
-    
-        for n in binvecs: # Loop to define exact bin centres in binvecs (which is a list in Python rather than a cell array in MATLAB)
-            binvecs[n] = np.arange(0,nbins[n]) * bins[n,2] + bins[n,0]
-    
-        p = np.append(np.array([1]), np.array(np.cumprod(sh[:]))) # Step sizes for t along each dimension
-        
-        ns = np.round(2**N) # No. of vertices on the N-dim hypercube of near-neighbours
-        
-        hi = np.zeros([ns,M]) # Array of histogram increments for each input vector
-        
-        hi[0,:] = wt # Initialise array for zero fractional parts
-        
-        t = np.ones([ns,M], dtype='int') # Locations to be incremented by each hi vector
-        
-        # Loop to calculate the histogram increments hi and the location vectors t.
-        # Each t vector specifies the ns locations that will be incremented by each hi vector.
+        # The output histogram as a column vector
+        h = np.zeros([np.prod(nbins + 1), 1])
+        # Add 1 to accommodate upper and lower boundaries of each set of bins
+        sh = nbins + 1
+        binvecs = list(range(0, N))
+
+        # Loop to define exact bin centres in binvecs
+        # (which is a list in Python rather than a cell array in MATLAB)
+        for n in binvecs:
+            binvecs[n] = np.arange(0, nbins[n]) * bins[n, 2] + bins[n, 0]
+
+        # Step sizes for t along each dimension
+        p = np.append(np.array([1]), np.array(np.cumprod(sh[:])))
+
+        # No. of vertices on the N-dim hypercube of near-neighbours
+        ns = np.round(2**N)
+        # Array of histogram increments for each input vector
+        hi = np.zeros([ns, M])
+        # Initialise array for zero fractional parts
+        hi[0, :] = wt
+
+        # Locations to be incremented by each hi vector
+        t = np.ones([ns, M], dtype='int')
+
+        # Loop to calculate the histogram increments
+        # hi and the location vectors t. Each t vector specifies the
+        # ns locations that will be incremented by each hi vector.
         s0 = np.array([1], dtype='int')
-        for n in range(0,N):
+        for n in range(0, N):
             s1 = s0 + s0[-1]
-            uS = np.ones([s0.shape[0],1])
-            hi[s1-1,:] = hi[s0-1,:]*(uS*w1[n,:])
-            hi[s0-1,:] = hi[s0-1,:]*(uS*w0[n,:])
-            t[s0-1,:] = t[s0-1,:] + ((p[n]*uS.T).T*xi[n,:])
-            t[s1-1,:] = t[s0-1,:] + p[n]
+            uS = np.ones([s0.shape[0], 1])
+            hi[s1-1, :] = hi[s0-1, :] * (uS * w1[n, :])
+            hi[s0-1, :] = hi[s0-1, :] * (uS * w0[n, :])
+            t[s0-1, :] = t[s0-1, :] + ((p[n] * uS.T).T * xi[n, :])
+            t[s1-1, :] = t[s0-1, :] + p[n]
             s0 = np.hstack((s0, s1))
-        
-        h = np.squeeze(h) # Remove the singleton dimension
-        
-        # Increment the histogram with each of the M input vectors. This loop is critical for speed in the MATLAB version.
-        for m in np.arange(0,M,1):
-            h[t[:,m]-1] = (h[t[:,m]-1] + hi[:,m])
-        
+
+        h = np.squeeze(h)  # Remove the singleton dimension
+
+        # Increment the histogram with each of the M input vectors. 
+        # This loop is critical for speed in the MATLAB version.
+        for m in np.arange(0, M, 1):
+            h[t[:, m]-1] = (h[t[:, m]-1] + hi[:, m])
+
         # Reshape h to N dimensions
         if N > 1:
-            h = np.swapaxes(np.reshape(h, (nbins+1).T, order='F'), 1, 0) # A lot of axis swapping and hacking is going on here...
-            
-        return h # binvecs is not returned     
-    
+            # A lot of axis swapping and hacking is going on here...
+            h = np.swapaxes(np.reshape(h, (nbins+1).T, order='F'), 1, 0)
+
+        return h  # binvecs is not returned   
+
     def init(self):
         """This will calculate the appropriate sampling locations.
         Rather than guessing what the DTCWT will do with 
@@ -152,51 +171,62 @@ class slp2:
         and find out for itself. This is costly now, but if working on
         multiple frames of the same size, it saves generating the meshes
         every frame. It also means it should work with the undecimated DTCWT."""
-        
+
         # Put a check in here somewhere to see if DTCWT object already exists
         # First, we perform the DTCWT (Tfm is of the class Pyramid;
         # we access the high-pass parts using Tfm.highpasses).
         transform = dtcwt.Transform2d('near_sym_b_bp', 'qshift_b_bp')     
         Tfm = transform.forward(self.image, self.nlevels)
-        
-        # Provide the space which is used to generate the relative sampling locations
-        # Not to be confused with the 'sb' used elsewhere to loop over subbands.
+
+        # Provide the space which is used to generate the relative
+        # sampling locations. Not to be confused with the 'sb'
+        # used elsewhere to loop over subbands.
         sb = np.array(list(range(1,13)))
-    
-        # We use negative angles (and ADD the offset) because we are working in uv coordinates
+
+        # We use negative angles (and ADD the offset) 
+        # because we are working in uv coordinates
         ru = 0.5*np.cos(sb*(np.pi/(-6)) + np.pi/12) + 0.5
         rv = 0.5*np.sin(sb*(np.pi/(-6)) + np.pi/12) + 0.5
-        
+
         U = list(range(0,self.nlevels))
         V = list(range(0,self.nlevels))
         sampleLocs = list(range(0,self.nlevels))
-        
+
         for level in range(self.firstlevel,self.nlevels):
-            
             # Generate the grid to which we will add the relative sampling locations
-            U[level], V[level] = np.meshgrid(np.arange(Tfm.highpasses[level].shape[1]), np.arange(Tfm.highpasses[level].shape[0]))
-            sampleLocs[level] = np.zeros([Tfm.highpasses[level].shape[0], Tfm.highpasses[level].shape[1], 4, 6])
+            U[level], V[level] = (np.meshgrid(
+                                  np.arange(Tfm.highpasses[level].shape[1]),
+                                  np.arange(Tfm.highpasses[level].shape[0])))
+            
+            sampleLocs[level] = (np.zeros([Tfm.highpasses[level].shape[0],
+                                 Tfm.highpasses[level].shape[1], 4, 6]))
 
             for sb in np.arange(0,6):
-                sampleLocs[level][:,:,:,sb] = np.dstack([U[level]+ru[sb], V[level]+rv[sb], U[level]+ru[sb+6], V[level]+rv[sb+6]])
-                # Coordinates are in the format [centre-u, centre-v, [upper-u/upper-v/lower-u/lower-v], subband]
+                sampleLocs[level][..., sb] = (np.dstack([U[level]+ru[sb],
+                                                          V[level]+rv[sb],
+                                                          U[level]+ru[sb+6],
+                                                          V[level]+rv[sb+6]]))
+                # Coordinates are in the format [centre-u, centre-v,
+                # [upper-u/upper-v/lower-u/lower-v], subband]
 
-        if self.verbose:        
+        if self.verbose:
             print("SLP2 sampling locations calculated.\n")
 
         return sampleLocs
-    
+
     def transform(self, image, sampleLocs):
-        """ Method to actually perform the SLP mk 2 without recalculating interpolation locations"""
+        """ Method to actually perform the SLP mk 2 
+            without recalculating interpolation locations"""
     
         # Specify the angles at which the DTCWT is selective to image features
-        sbangle = np.array([ np.pi/12, np.pi/4, 5*np.pi/12, 7*np.pi/12, 3*np.pi/4, 11*np.pi/12])
+        sbangle = (np.array([ np.pi/12, np.pi/4, 5*np.pi/12,
+                             7*np.pi/12, 3*np.pi/4, 11*np.pi/12]))
         gamma = list(range(0,self.nlevels))
-        
-       
-        transform = dtcwt.Transform2d('near_sym_b_bp', 'qshift_b_bp')#  
+
+
+        transform = dtcwt.Transform2d('near_sym_b_bp', 'qshift_b_bp')
         Tfm = transform.forward(image, self.nlevels)
-        
+
         # Check to make sure the SLP2 sampling locations match the specified image.
         if Tfm.highpasses[self.nlevels-1].shape[0:1] != sampleLocs[self.nlevels-1].shape[0:1]:
             raise ValueError('Precomputed SLP2 sampling locations do not match the dimensions of \n \
@@ -205,15 +235,20 @@ class slp2:
         # Begin loop over scales
         for level in range(self.firstlevel,self.nlevels):
             
-            # The following must be initialised as complex or the imaginary part will be lost!
-            samples = np.zeros([Tfm.highpasses[level].shape[0]*2,Tfm.highpasses[level].shape[1],6], dtype='complex')
- 
+            # The following must be initialised as complex
+            # or the imaginary part will be lost!
+            samples = (np.zeros([Tfm.highpasses[level].shape[0]*2,
+                                 Tfm.highpasses[level].shape[1],6], dtype='complex'))
+
             # This loop performs the actual interpolation
             for sb in range(0,6):
-                samples[:,:,sb] = np.squeeze(dtcwt.sampling.sample_highpass(\
-                Tfm.highpasses[level], np.vstack((sampleLocs[level][:,:,0,sb], sampleLocs[level][:,:,2,sb])), \
-                np.vstack((sampleLocs[level][:,:,1,sb], sampleLocs[level][:,:,3,sb])), method='bilinear', sbs=[sb]))
-  
+                samples[:,:,sb] = (np.squeeze(dtcwt.sampling.sample_highpass(
+                  Tfm.highpasses[level], np.vstack((sampleLocs[level][..., 0, sb], 
+                                                    sampleLocs[level][..., 2, sb])),
+                                         np.vstack((sampleLocs[level][..., 1, sb], 
+                                                    sampleLocs[level][..., 3, sb])), 
+                                         method='bilinear', sbs=[sb])))
+
             # Conjugate multiply the samples in the upper half of the sampling circle with their counterparts in the lower half
             W = samples[0:Tfm.highpasses[level].shape[0],:,:]*np.conj(samples[Tfm.highpasses[level].shape[0]:,:,:])
             # This is where the phase rotation takes place
@@ -226,7 +261,7 @@ class slp2:
             print("SLP2 coefficients computed.")
 
         return gamma # Return our final "cell array" (list of numpy arrays).
-  
+
     # SLP2 histogram generator
     def histgen(self, gamma, nbins=24, full=True, best=False):
     
@@ -240,42 +275,47 @@ class slp2:
             vdim = np.int(gamma[level].shape[1])
             grid = np.zeros([vdim, udim, 6], dtype='complex')
             rows, cols = np.meshgrid(np.arange(0,vdim,1), np.arange(0,udim,1))
-            
+
             # Binning array consists of:
             # Row 1: Row indices of SLP2 coefficients repeated 6 times
             # Row 2: Column indices of SLP2 coefficients repeated 6 times
-            # Row 3: Phase angles of SLP2 coefficients present at the locations in rows 1 and 2
+            # Row 3: Phase angles of SLP2 coefficients 
+            #        present at the locations in rows 1 and 2
             binningarray = np.vstack([\
             np.tile(rows.flatten('F'), 6), np.tile(cols.flatten('F'), 6),
             np.mod(np.angle(gamma[level].flatten('F')), np.pi)])
-            
-            # Present histnd() with the binning array, and weight by magnitude of SLP2 coefficients
+
+            # Present histnd() with the binning array, 
+            # and weight by magnitude of SLP2 coefficients
             ghist = (self.histnd(binningarray, 
-				 np.array([[0, vdim-1, 1], [0, udim-1, 1], [0, np.pi, np.pi/nbins]]),
-				 np.sqrt(np.abs(gamma[level].flatten('F')))))
-            # Make histogram wrap by placing all entries from the final orientation bin in the zeroth bin
+                                 np.array([[0, vdim-1, 1], 
+                                           [0, udim-1, 1], 
+                                           [0, np.pi, np.pi/nbins]]),
+                                 np.sqrt(np.abs(gamma[level].flatten('F')))))
+            # Make histogram wrap by placing all entries
+            # from the final orientation bin in the zeroth bin
             ghist[:,:,0] = ghist[:,:,0] + ghist[:,:,-1]
             # Only retain the first 24 orientation bins
             finalghists[level] = ghist[:,:,0:-1] + 10**-8
 
         if self.verbose:
             print("SLP2 histograms generated successfully.")
-            
+
         return finalghists
-    
+
     def histvis(self, w, bs):
         # Make picture of positive SLP2 block histogram contents
         # Intended to emulate the behaviour of the common HOG visualiser
-        
+
         # Get the number of orientation bins
         nbins = w.shape[-1]
-        
+
         # Construct a "glyph" for each orientation
         bim1 = np.zeros([bs, bs])
         bim1[:,np.arange(np.round(bs/2), np.round(bs/2)+1).astype('int32')] = 1
         bim = np.zeros([bim1.shape[0], bim1.shape[1], nbins])
         bim[:,:,0] = bim1
-        
+
         for i in range(1,nbins):
             bim[:,:,i] = scipy.misc.imrotate(bim1, 90 - i*(-180/nbins))
             
@@ -283,13 +323,14 @@ class slp2:
         s = w.shape
         w[w<0] = 0
         visimg = np.zeros([bs*s[0], bs*s[1]])
-        
+
         for i in range(1,s[0]+1):
             iis = np.arange((i-1)*bs+1, i*bs+1)-1
             for j in range(1,s[1]+1):
                 jjs = np.arange((j-1)*bs+1, j*bs+1)-1
                 for k in range(0,nbins):
-                    visimg[np.ix_(iis,jjs)] = visimg[np.ix_(iis,jjs)] + bim[:,:,k]*w[i-1,j-1,k]
+                    visimg[np.ix_(iis,jjs)] = (visimg[np.ix_(iis,jjs)] 
+					       + bim[:,:,k]*w[i-1,j-1,k])
                     
         return visimg
         
@@ -309,27 +350,31 @@ class slp2:
         """Bare working version of the SLP2 histogram keypoint detector.
         Now includes subpixel refinement.
         """
-        # TODO: It would be nice to have the option of 'gale' (cross product) or 'forshaw' (fourier autocorrelation) methods to achieve this
-        # Declare lists to contain the outputs of the detector for each transform level
+        # TODO: It would be nice to have the option of
+        # 'gale' (cross product) or 'forshaw'
+        # (fourier autocorrelation) methods to achieve this
+        # Declare lists to contain the outputs of the
+        # detector for each transform level
         rng = np.arange(len(hists))
         self.energymaps = list(rng)
         peakmaps = list(rng)
         kps = list(rng)
-        
+
         # Main loop over levels
         for k in range(0, self.nlevels):
             # Check to see whether histograms are present at all levels
             if hists[k] is None:
                 kps[k] = np.empty([0,4], dtype='float')
                 continue
-            
+
             nbins = hists[k].shape[-1]
-        
+
             # Edge-suppressing cosine window specified here
             weights = np.cos(np.arange(-1*np.pi/2, np.pi/2, np.pi/nbins))**edge_suppression
-            
-            # FIXME: Better scale invariance is achieved by having the histograms squared 
-            # (assuming they were square-rooted earlier in the process
+
+            # FIXME: Better scale invariance is achieved
+            # by having the histograms squared (assuming 
+            # they were square-rooted earlier in the process
             hists[k] = hists[k]**2
             
             # FFT-based weighted normalised autocorrelation FIXME: scale invariance is in doubt at the moment
@@ -346,13 +391,13 @@ class slp2:
             # Test each location in the searchable area to see if it is larger than its 8 neighbours
             peakmaps[k][1:-2:1,1:-2:1] = \
             np.all(np.array([y>self.energymaps[k][0:-3:1,0:-3:1],\
-            y>self.energymaps[k][1:-2:1,0:-3:1],\
-            y>self.energymaps[k][2:-1:1,0:-3:1],\
-            y>self.energymaps[k][0:-3:1,1:-2:1],\
-            y>self.energymaps[k][2:-1:1,1:-2:1],\
-            y>self.energymaps[k][0:-3:1,2:-1:1],\
-            y>self.energymaps[k][2:-1:1,2:-1:1],\
-            y>self.energymaps[k][1:-2:1,2:-1:1]]), axis=0)
+            y >  self.energymaps[k][1:-2:1,0:-3:1],\
+            y > self.energymaps[k][2:-1:1,0:-3:1],\
+            y > self.energymaps[k][0:-3:1,1:-2:1],\
+            y > self.energymaps[k][2:-1:1,1:-2:1],\
+            y > self.energymaps[k][0:-3:1,2:-1:1],\
+            y > self.energymaps[k][2:-1:1,2:-1:1],\
+            y > self.energymaps[k][1:-2:1,2:-1:1]]), axis=0)
             
             # Get the locations of non-zeros (i.e., peaks)
             uv = np.nonzero(peakmaps[k])
@@ -361,9 +406,9 @@ class slp2:
             # The locations need to be rearranged so that they are in [u,v] order
             locs = np.vstack([uv[1], uv[0]]).T
 
-            # Put the keypoint locations in a list, along with their scale and energy values. 
-            # Note that 1 must be added to the locations before scaling them to image size due 
-            # to zero indexing. 1 must then be subtracted again. 
+            # Put the keypoint locations in a list, along with their scale and energy values.
+            # Note that 1 must be added to the locations before scaling them to image size due
+            # to zero indexing. 1 must then be subtracted again.
             # This takes place after subpixel refinement.
             if self.verbose:
                 print("Found " + repr(locs.shape[0]) + " keypoints at level " + repr(k+1) + ".\n")
@@ -405,9 +450,9 @@ class slp2:
 
         imshow(img, cmap=cm.gray)
         axis('image')
-        hold('True')
         t = np.hstack([np.nan, np.arange(0,21*np.pi/10,np.pi/10), np.nan])
-        plot(np.transpose(kps[:,0,None]+2*kps[:,2,None]*np.cos(t)[:,None].T), np.transpose(kps[:,1,None]+2*kps[:,2,None]*np.sin(t)[:,None].T), color='y')
+        (plot(np.transpose(kps[:,0,None]+2*kps[:,2,None]*np.cos(t)[:,None].T), 
+         np.transpose(kps[:,1,None]+2*kps[:,2,None]*np.sin(t)[:,None].T), color='y'))
             
         scatter(kps[:,0], kps[:,1], marker='+', color='m')
         
@@ -464,13 +509,16 @@ class slp2:
         return coords + moves.T, stable
 
 def slp2interleaved(img, nlevels=5, full=True, firstlevel=1, plots=False, verbose=False, sampleLocs=None):
-    """Function with options to be specified as one would an slp2 object. The input image is scaled down
-    by a factor of sqrt(2) and a second DTCWT & SLP performed. The results are interleaved so that the
-    outputs are lists of numpy arrays in increasing order of coarseness. Keypoints are computed by default.
-    In general, unless one has a special reason to double the sampling rate in scale, one should use the 
-    slp2 class and its functions.
+    """Function with options to be specified as
+    one would an slp2 object. The input image is scaled down
+    by a factor of sqrt(2) and a second DTCWT & SLP performed.
+    The results are interleaved so that the outputs are lists
+    of numpy arrays in increasing order of coarseness.
+    Keypoints are computed by default. In general, unless one 
+    has a special reason to double the sampling rate in scale,
+    one should use the slp2 class and its functions.
     """
-    
+
     # Input parameters are as for an SLP object declaration
     scaledImage = list([None,None])
     gamma = list([None,None])
@@ -488,14 +536,14 @@ def slp2interleaved(img, nlevels=5, full=True, firstlevel=1, plots=False, verbos
         else:
             udim = np.ceil(udim+1)
             upad = np.mod(np.ceil(udim), 2)
-            
+
         if np.mod(np.ceil(vdim), 2) == 0:
             vdim = np.ceil(vdim)
             vpad = 0
         else:
             vdim = np.ceil(vdim+1)
             vpad = np.mod(np.ceil(vdim), 2)
-            
+
         # Rescale the input image FIXME: and round to the nearest even integer
         scaledImage = scipy.misc.imresize(img, (int(vdim+vpad), int(udim+upad)), interp='bilinear')
         s = slp2(scaledImage, nlevels=nlevels, full=full, firstlevel=firstlevel, plots=plots, verbose=verbose)

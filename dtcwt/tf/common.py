@@ -11,11 +11,12 @@ from dtcwt.utils import asfarray
 from dtcwt.numpy import Pyramid as Pyramid_np
 
 class Pyramid_tf(object):
-    """A representation of a transform domain signal.
+    """A tensorflow representation of a transform domain signal.
     Backends are free to implement any class which respects this interface for
-    storing transform-domain signals. The inverse transform may accept a
-    backend-specific version of this class but should always accept any class
-    which corresponds to this interface.
+    storing transform-domain signals, so long as the attributes have the
+    correct names and are tensorflow tensors (or placeholders).
+    The inverse transform may accept a backend-specific version of this class
+    but should always accept any class which corresponds to this interface.
 
     .. py:attribute:: X
         A placeholder which the user can use when they want to evaluate the
@@ -30,6 +31,14 @@ class Pyramid_tf(object):
         *(optional)* A tuple where each element is a tensorflow tensor 
         containing the lowpass signal for corresponding scales finest to
         coarsest. This is not required for the inverse and may be *None*.
+    .. py:method:: eval_fwd(X)
+        A helper method to evaluate the forward transform, feeding *X* as input
+        to the tensorflow session. Assumes that the object was returned from
+        the Transform2d().forward() method.
+    .. py:method:: eval_inv(Yl, Yh)
+        A helper method to evaluate the inverse transform, feeding *Yl* and
+        *Yh* to the tensorflow session. Assumes that the object was returned
+        from the Trasnform2d().inverse() method.
     """
     def __init__(self, X, lowpass, highpasses, scales=None,
                  graph=tf.get_default_graph()):
@@ -90,7 +99,7 @@ class Pyramid_tf(object):
             except ValueError:
                 data = [Yl, *list(Yh)]
                 placeholders = [self.lowpass_op, *list(self.highpasses_ops)]
-                X = sess.run(self.X, {i : [d] for i,d in zip(placeholders,data)})
+                X = sess.run(self.X, {i : [d] for i,d in zip(placeholders,data)})[0]
         return X
 
     def eval_fwd(self, X):

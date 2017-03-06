@@ -11,10 +11,11 @@ from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import asfarray
 from dtcwt.numpy import Transform2d as Transform2dNumPy
 from dtcwt.numpy import Pyramid as Pyramid_np
+from dtcwt.tf import Pyramid_tf
 
 from dtcwt.tf.lowlevel import *
 
-def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False, queue=None):
+def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     t = Transform2d(biort=biort, qshift=qshift)
     r = t.forward(X, nlevels=nlevels, include_scale=include_scale)
     if include_scale:
@@ -22,74 +23,10 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
     else:
         return r.lowpass, r.highpasses
 
-
-class Pyramid_tf(object):
-    """A representation of a transform domain signal.
-    Backends are free to implement any class which respects this interface for
-    storing transform-domain signals. The inverse transform may accept a
-    backend-specific version of this class but should always accept any class
-    which corresponds to this interface.
-    .. py:attribute:: lowpass
-        A NumPy-compatible array containing the coarsest scale lowpass signal.
-    .. py:attribute:: highpasses
-        A tuple where each element is the complex subband coefficients for
-        corresponding scales finest to coarsest.
-    .. py:attribute:: scales
-        *(optional)* A tuple where each element is a NumPy-compatible array
-        containing the lowpass signal for corresponding scales finest to
-        coarsest. This is not required for the inverse and may be *None*.
-    """
-    def __init__(self, p_holder, lowpass, highpasses, scales=None,
-                 graph=tf.get_default_graph()):
-        self.lowpass_op = lowpass
-        self.highpasses_ops = highpasses
-        self.scales_ops = scales
-        self.p_holder = p_holder
-        self.graph = graph
-
-    def _get_lowpass(self, data):
-        if self.lowpass_op is None:
-            return None
-        with tf.Session(graph=self.graph) as sess:
-            try:
-                y = sess.run(self.lowpass_op, {self.p_holder : data})
-            except ValueError:
-                y = sess.run(self.lowpass_op, {self.p_holder : [data]})[0]
-        return y
-        
-    def _get_highpasses(self, data):
-        if self.highpasses_ops is None:
-            return None
-        with tf.Session(graph=self.graph) as sess:
-            try: 
-                y = tuple(
-                        [sess.run(layer_hp, {self.p_holder : data}) 
-                        for layer_hp in self.highpasses_ops])
-            except ValueError:
-                y = tuple(
-                        [sess.run(layer_hp, {self.p_holder : [data]})[0] 
-                        for layer_hp in self.highpasses_ops])
-        return y
-
-    def _get_scales(self, data):
-        if self.scales_ops is None:
-            return None
-        with tf.Session(graph=self.graph) as sess:
-            try:
-                y = tuple(
-                        sess.run(layer_scale, {self.p_holder : data})
-                        for layer_scale in self.scales_ops)
-            except ValueError:
-                y = tuple(
-                        sess.run(layer_scale, {self.p_holder : [data]})[0]
-                        for layer_scale in self.scales_ops)
-        return y
-
-    def eval(self, data):
-        lo = self._get_lowpass(data)
-        hi = self._get_highpasses(data)
-        scales = self._get_scales(data)
-        return Pyramid_np(lo, hi, scales)
+def dtwaveifm2(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, gain_mask=None):
+    t = Transform2d(biort=biort, qshift=qshift)
+    r = t.inverse(Pyramid_np(Yl, Yh), gain_mask=gain_mask)
+    return r
 
 
 class Transform2d(Transform2dNumPy):
@@ -115,14 +52,34 @@ class Transform2d(Transform2dNumPy):
         super(Transform2d, self).__init__(biort=biort, qshift=qshift)
         # Use our own graph when the user calls forward with numpy arrays
         self.np_graph = tf.Graph()
-        self.pyramids = {}
+        self.forward_graphs = {}
+        self.inverse_graphs = {}
 
-    def _find_pyramid(self, shape):
+    def _find_forward_graph(self, shape):
+        ''' See if we can reuse an old graph for the forward transform '''
         find_key = '{}x{}'.format(shape[0], shape[1])
-        for key,val in self.pyramids.items():
+        for key,val in self.forward_graphs.items():
             if find_key == key:
                 return val
         return None
+
+    def _add_forward_graph(self, p_ops, shape):
+        ''' Keep record of the pyramid so we can use it later if need be '''
+        find_key = '{}x{}'.format(shape[0], shape[1])
+        self.forward_graphs[find_key] = p_ops
+
+    def _find_inverse_graph(self, Lo_shape, nlevels):
+        ''' See if we can reuse an old graph for the inverse transform '''
+        find_key = '{}x{}'.format(Lo_shape[0], Lo_shape[1])
+        for key,val in self.forward_graphs.items():
+            if find_key == key:
+                return val
+        return None
+
+    def _add_inverse_graph(self, p_ops, Lo_shape, nlevels):
+        ''' Keep record of the pyramid so we can use it later if need be '''
+        find_key = '{}x{} up {}'.format(Lo_shape[0], Lo_shape[1], nlevels)
+        self.inverse_graphs[find_key] = p_ops
 
     def forward(self, X, nlevels=3, include_scale=False):
         '''
@@ -152,22 +109,21 @@ class Transform2d(Transform2dNumPy):
                     '''.format(original_size))         
 
             # Check if the ops already exist for an input of the given size
-            p_ops = self._find_pyramid(X.shape)
+            p_ops = self._find_forward_graph(X.shape)
 
             # If not, create a graph
             if p_ops is None:
                 ph = tf.placeholder(tf.float32, [None, X.shape[0], X.shape[1]])
                 size = '{}x{}'.format(X.shape[0], X.shape[1])
-                name = 'dtcwt_{}'.format(size)
+                name = 'dtcwt_fwd_{}'.format(size)
                 with self.np_graph.name_scope(name):
-                    p_ops = self._create_graph_ops(ph, nlevels, include_scale)
+                    p_ops = self._forward_ops(ph, nlevels, include_scale)
 
-                # keep record of the pyramid so we can use it later if need be
-                self.pyramids[size] = p_ops
+                self._add_forward_graph(p_ops, X.shape)
 
             # Evaluate the graph with the given input
             with self.np_graph.as_default():
-                return p_ops.eval(X)
+                return p_ops.eval_fwd(X)
 
         # A tensorflow object was provided
         else: 
@@ -181,11 +137,77 @@ class Transform2d(Transform2dNumPy):
 
             original_size = X.get_shape().as_list()[1:]
             size = '{}x{}'.format(original_size[0], original_size[1])
-            name = 'dtcwt_{}'.format(size)
+            name = 'dtcwt_fwd_{}'.format(size)
             with tf.name_scope(name):
-                return self._create_graph_ops(X, nlevels, include_scale)
+                return self._forward_ops(X, nlevels, include_scale)
+
+    def inverse(self, pyramid, gain_mask=None):
+        '''
+        Perform an inverse transform on an image. Can provide the inverse 
+        transform with either an np array (naive usage), or a tensorflow
+        variable or placeholder (designed usage).
+
+        :param pyramid: A :py:class:`dtcwt.Pyramid` or
+        `:py:class:`dtcwt.tf.Pyramid_tf` like class holding the transform
+        domain representation to invert
+        :param gain_mask: Gain to be applied to each subband. Should have shape
+        [6, nlevels]. 
+        :returns: Either a tf.Variable or a numpy array compatible with the
+        reconstruction. A tf.Variable is returned if the pyramid input was
+        a Pyramid_tf class. If it wasn't, then, we return a numpy array (note
+        that this is inefficient, as in both cases we have to construct the
+        graph - in the second case, we then execute it and discard it).
+
+        The (*d*, *l*)-th element of *gain_mask* is gain for subband with direction
+        *d* at level *l*. If gain_mask[d,l] == 0, no computation is performed for
+        band (d,l). Default *gain_mask* is all ones. Note that both *d* and *l* are
+        zero-indexed.
+
+        '''
+
+        # Check if a numpy array was provided
+        if isinstance(pyramid, Pyramid_np) or (hasattr(pyramid, 'lowpass') 
+                and hasattr(pyramid, 'highpasses')):
+
+            Yl, Yh = pyramid.lowpass, pyramid.highpasses
+
+            # Check if the ops already exist for an input of the given size
+            nlevels = len(Yh)
+            p_ops = self._find_inverse_graph(Yl.shape, nlevels)
+
+            # If not, create a graph
+            if p_ops is None:
+                Lo_ph = tf.placeholder(tf.float32, [None, Yl.shape[0], Yl.shape[1]])
+                Hi_ph = tuple(
+                            tf.placeholder(tf.complex64, [None, *level.shape]) for
+                            level in Yh)
+                p_in = Pyramid_tf(None, Lo_ph, Hi_ph)
+                size = '{}x{}_up_{}'.format(Yl.shape[0], Yl.shape[1], nlevels)
+                name = 'dtcwt_inv_{}'.format(size) 
+
+                with self.np_graph.name_scope(name):
+                    p_ops = self._inverse_ops(p_in, gain_mask)
+
+                # keep record of the pyramid so we can use it later if need be
+                self.forward_graphs[size] = p_ops
+
+            # Evaluate the graph with the given input
+            with self.np_graph.as_default():
+                return p_ops.eval_inv(Yl, Yh)
+
+        # A tensorflow object was provided
+        elif isinstance(pyramid, Pyramid_tf): 
+            s = pyramid.lowpass_op.get_shape().as_list()[1:]
+            nlevels = len(pyramid.highpasses_ops)
+            size = '{}x{}_up_{}'.format(s[0], s[1], nlevels)
+            name = 'dtcwt_inv_{}'.format(size)
+            with tf.name_scope(name):
+                return self._inverse_ops(pyramid, gain_mask)
+        else:
+            raise ValueError('''Unknown pyramid provided to inverse transform''')
     
-    def _create_graph_ops(self, X, nlevels=3, include_scale=False):
+
+    def _forward_ops(self, X, nlevels=3, include_scale=False):
         """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
         :param X: 3D real array of size [Batch, rows, cols]
         :param nlevels: Number of levels of wavelet decomposition
@@ -380,6 +402,125 @@ class Transform2d(Transform2dNumPy):
             return Pyramid_tf(X_in, Yl, tuple(Yh))
     
 
+    def _inverse_ops(self, pyramid, gain_mask=None):
+        """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D
+        reconstruction.
+
+        :param pyramid: A :py:class:`dtcwt.tf.Pyramid_tf`-like class holding the 
+        transform domain representation to invert.
+        :param gain_mask: Gain to be applied to each subband.
+
+        :returns: A :py:class:`dtcwt.tf.Pyramid_tf` class which can be
+        evaluated to get the inverted signal, X.
+
+        The (*d*, *l*)-th element of *gain_mask* is gain for subband with direction
+        *d* at level *l*. If gain_mask[d,l] == 0, no computation is performed for
+        band (d,l). Default *gain_mask* is all ones. Note that both *d* and *l* are
+        zero-indexed.
+
+        .. codeauthor:: Fergal Cotter <fbc23@cam.ac.uk>, Feb 2017
+        .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
+        .. codeauthor:: Nick Kingsbury, Cambridge University, May 2002
+        .. codeauthor:: Cian Shaffrey, Cambridge University, May 2002
+
+        """
+        Yl = pyramid.lowpass_op
+        Yh = pyramid.highpasses_ops
+
+        a = len(Yh) # No of levels.
+
+        if gain_mask is None:
+            gain_mask = np.ones((6, a)) # Default gain_mask.
+
+        gain_mask = np.array(gain_mask)
+
+        # If biort has 6 elements instead of 4, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.biort) == 4:
+            h0o, g0o, h1o, g1o = self.biort
+        elif len(self.biort) == 6:
+            h0o, g0o, h1o, g1o, h2o, g2o = self.biort
+        else:
+            raise ValueError('Biort wavelet must have 6 or 4 components.')
+
+        # If qshift has 12 elements instead of 8, then it's a modified
+        # rotationally symmetric wavelet
+        # FIXME: there's probably a nicer way to do this
+        if len(self.qshift) == 8:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b = self.qshift
+        elif len(self.qshift) == 12:
+            h0a, h0b, g0a, g0b, h1a, h1b, g1a, g1b, h2a, h2b, g2a, g2b = self.qshift
+        else:
+            raise ValueError('Qshift wavelet must have 12 or 8 components.')
+
+        current_level = a
+        Z = Yl
+
+        while current_level >= 2: # this ensures that for level 1 we never do the following
+            lh = c2q(Yh[current_level-1][:,:,:,0:6:5], gain_mask[[0, 5], current_level-1])
+            hl = c2q(Yh[current_level-1][:,:,:,2:4:1], gain_mask[[2, 3], current_level-1])
+            hh = c2q(Yh[current_level-1][:,:,:,1:5:3], gain_mask[[1, 4], current_level-1])
+
+            # Do even Qshift filters on columns.
+            y1 = colifilt(Z, g0b, g0a) + colifilt(lh, g1b, g1a)
+
+            if len(self.qshift) >= 12:
+                y2 = colifilt(hl, g0b, g0a)
+                y2bp = colifilt(hh, g2b, g2a)
+
+                # Do even Qshift filters on rows.
+                Z = tf.transpose(colifilt(tf.transpose(y1,perm=[0,2,1]), g0b, g0a) + 
+                                 colifilt(tf.transpose(y2,perm=[0,2,1]), g1b, g1a) + 
+                                 colifilt(tf.transpose(y2bp,perm=[0,2,1]), g2b, g2a),
+                        perm=[0,2,1])
+            else:
+                y2 = colifilt(hl, g0b, g0a) + colifilt(hh, g1b, g1a)
+
+                # Do even Qshift filters on rows.
+                Z = tf.transpose(colifilt(tf.transpose(y1, perm=[0,2,1]), g0b, g0a) + 
+                                 colifilt(tf.transpose(y2, perm=[0,2,1]), g1b, g1a),
+                        perm=[0,2,1])
+
+            # Check size of Z and crop as required
+            Z_r, Z_c = Z.get_shape().as_list()[1:3]
+            S_r, S_c = Yh[current_level-2].get_shape().as_list()[1:3]
+            # check to see if this result needs to be cropped for the rows
+            if Z_r != S_r * 2:    
+                Z = Z[:,1:-1,:]
+            # check to see if this result needs to be cropped for the cols
+            if Z_c != S_c*2:    
+                Z = Z[:,:,1:-1]
+
+            # Assert that the size matches at this stage
+            Z_r, Z_c = Z.get_shape().as_list()[1:3]
+            if Z_r != S_r * 2 or Z_c != S_c*2: 
+                raise ValueError('Sizes of highpasses are not valid for DTWAVEIFM2')
+            
+            current_level = current_level - 1
+
+        if current_level == 1:
+            lh = c2q(Yh[current_level-1][:,:,:,0:6:5],gain_mask[[0, 5],current_level-1])
+            hl = c2q(Yh[current_level-1][:,:,:,2:4:1],gain_mask[[2, 3],current_level-1])
+            hh = c2q(Yh[current_level-1][:,:,:,1:5:3],gain_mask[[1, 4],current_level-1])
+
+            # Do odd top-level filters on columns.
+            y1 = colfilter(Z, g0o) + colfilter(lh, g1o)
+
+            if len(self.biort) >= 6:
+                y2 = colfilter(hl, g0o)
+                y2bp = colfilter(hh, g2o)
+
+                # Do odd top-level filters on rows.
+                Z = rowfilter(y1, g0o) + rowfilter(y2, g1o) + rowfilter(y2bp, g2o)
+            else:
+                y2 = colfilter(hl, g0o) + colfilter(hh, g1o)
+
+                # Do odd top-level filters on rows.
+                Z = rowfilter(y1, g0o) + rowfilter(y2, g1o)
+
+        return Pyramid_tf(Z, Yl, Yh)
+
         
 
 def q2c(y):
@@ -401,4 +542,46 @@ def q2c(y):
 
     # Form the 2 highpasses in z.
     return (p-q, p+q)        
+
+
+def c2q(w, gain):
+    """
+    Scale by gain and convert from complex w(:,:,1:2) to real quad-numbers
+    in z.
+
+    Arrange pixels from the real and imag parts of the 2 highpasses
+    into 4 separate subimages .
+     A----B     Re   Im of w(:,:,1)
+     |    |
+     |    |
+     C----D     Re   Im of w(:,:,2)
+
+    """
+
+    # Input has shape [batch, r, c, 2]
+    r,c = w.get_shape().as_list()[1:3]
+
+    sc = np.sqrt(0.5) * gain
+    P = w[:,:,:,0]*sc[0] + w[:,:,:,1]*sc[1]
+    Q = w[:,:,:,0]*sc[0] - w[:,:,:,1]*sc[1]
+
+    # Recover each of the 4 corners of the quads.
+    x1 = tf.real(P)
+    x2 = tf.imag(P)
+    x3 = tf.real(Q)
+    x4 = -tf.imag(Q)
+
+    # Stack 2 inputs of shape [batch, r, c] to [batch, r, 2, c]
+    x_rows1 = tf.stack([x1,x3], axis=2)
+    # Reshaping interleaves the results
+    x_rows1 = tf.reshape(x_rows1, [-1, 2*r, c])
+    # Do the same for the even columns
+    x_rows2 = tf.stack([x2,x3], axis=2)
+    x_rows2 = tf.reshape(x_rows2, [-1, 2*r, c])
+
+    # Stack the two [batch, 2*r, c] tensors to [batch, 2*r, c, 2]
+    x_cols = tf.stack([x_rows1, x_rows2], axis=-1)
+    y = tf.reshape(x_cols, [-1, 2*r, 2*c])
+
+    return y
 

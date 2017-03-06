@@ -7,7 +7,7 @@ from pytest import raises
 
 import numpy as np
 import tensorflow as tf
-from dtcwt.tf import Transform2d, dtwavexfm2
+from dtcwt.tf import Transform2d, dtwavexfm2, dtwaveifm2
 from dtcwt.numpy import Transform2d as Transform2d_np
 from dtcwt.numpy import Pyramid
 from dtcwt.coeffs import biort, qshift
@@ -69,7 +69,6 @@ def test_odd_rows_and_cols():
 def test_odd_rows_and_cols_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(mandrill[:509,:509], include_scale=True)
 
-@pytest.mark.skip(reason='Inverse not currently implemented')
 def test_rot_symm_modified():
     # This test only checks there is no error running these functions, not that they work
     Yl, Yh, Yscale = dtwavexfm2(mandrill, biort='near_sym_b_bp', qshift='qshift_b_bp', include_scale=True)
@@ -93,7 +92,7 @@ def test_integer_input():
     Yl, Yh = dtwavexfm2([[1,2,3,4], [1,2,3,4]])
     assert np.any(Yl != 0)
 
-@pytest.mark.skip(reason='Inverse not currently implemented')
+@pytest.mark.skip(reason='Cant pad by more than half the dimension of the input')
 def test_integer_perfect_recon():
     # Check that an integer input is correctly coerced into a floating point
     # array and reconstructed
@@ -101,6 +100,13 @@ def test_integer_perfect_recon():
     Yl, Yh = dtwavexfm2(A)
     B = dtwaveifm2(Yl, Yh)
     assert np.max(np.abs(A-B)) < 1e-5
+
+def test_mandrill_perfect_recon():
+    # Check that an integer input is correctly coerced into a floating point
+    # array and reconstructed
+    Yl, Yh = dtwavexfm2(mandrill)
+    B = dtwaveifm2(Yl, Yh)
+    assert np.max(np.abs(mandrill-B)) < 1e-5
 
 def test_float32_input():
     # Check that an float32 input is correctly output as float32

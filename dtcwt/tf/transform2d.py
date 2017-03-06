@@ -179,7 +179,8 @@ class Transform2d(Transform2dNumPy):
             if p_ops is None:
                 Lo_ph = tf.placeholder(tf.float32, [None, Yl.shape[0], Yl.shape[1]])
                 Hi_ph = tuple(
-                            tf.placeholder(tf.complex64, [None, *level.shape]) for
+                            tf.placeholder(tf.complex64, [None, level.shape[1],
+                                level.shape[2], level.shape[3]]) for
                             level in Yh)
                 p_in = Pyramid_tf(None, Lo_ph, Hi_ph)
                 size = '{}x{}_up_{}'.format(Yl.shape[0], Yl.shape[1], nlevels)
@@ -568,15 +569,15 @@ def c2q(w, gain):
     # Recover each of the 4 corners of the quads.
     x1 = tf.real(P)
     x2 = tf.imag(P)
-    x3 = tf.real(Q)
-    x4 = -tf.imag(Q)
+    x3 = tf.imag(Q)
+    x4 = -tf.real(Q)
 
     # Stack 2 inputs of shape [batch, r, c] to [batch, r, 2, c]
     x_rows1 = tf.stack([x1,x3], axis=2)
     # Reshaping interleaves the results
     x_rows1 = tf.reshape(x_rows1, [-1, 2*r, c])
     # Do the same for the even columns
-    x_rows2 = tf.stack([x2,x3], axis=2)
+    x_rows2 = tf.stack([x2,x4], axis=2)
     x_rows2 = tf.reshape(x_rows2, [-1, 2*r, c])
 
     # Stack the two [batch, 2*r, c] tensors to [batch, 2*r, c, 2]

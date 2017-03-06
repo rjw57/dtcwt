@@ -154,5 +154,35 @@ def test_results_match2():
     [np.testing.assert_array_almost_equal(
             s_np, s_tf, decimal=PRECISION_DECIMAL) for s_np, s_tf in 
             zip(p_np.scales, p_tf.scales)]
-   
+
+def test_results_match3():
+    im = mandrill
+    f_np = Transform2d_np(biort='near_sym_b', qshift='qshift_c')
+    p_np = f_np.forward(im, nlevels=4, include_scale=True) 
+    X_np = f_np.inverse(p_np)
+
+    f_tf = Transform2d(biort='near_sym_b', qshift='qshift_c')
+    p_tf = f_tf.forward(im, nlevels=4, include_scale=True)
+    X_tf = f_tf.inverse(p_tf)
+    
+    np.testing.assert_array_almost_equal(
+            X_np, X_tf, decimal=PRECISION_DECIMAL) 
+
+def test_results_match4():
+    im = mandrill
+    gain_mask = np.ones((6,4))
+    gain_mask[4,2] = 0;
+    gain_mask[2,1] = 0;
+
+    f_np = Transform2d_np(biort='near_sym_b', qshift='qshift_c')
+    p_np = f_np.forward(im, nlevels=4, include_scale=True) 
+    X_np = f_np.inverse(p_np, gain_mask)
+
+    f_tf = Transform2d(biort='near_sym_b', qshift='qshift_c')
+    p_tf = f_tf.forward(im, nlevels=4, include_scale=True)
+    X_tf = f_tf.inverse(p_tf, gain_mask)
+    
+    np.testing.assert_array_almost_equal(
+            X_np, X_tf, decimal=PRECISION_DECIMAL) 
+ 
 # vim:sw=4:sts=4:et

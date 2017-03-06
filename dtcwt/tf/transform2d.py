@@ -179,9 +179,8 @@ class Transform2d(Transform2dNumPy):
             if p_ops is None:
                 Lo_ph = tf.placeholder(tf.float32, [None, Yl.shape[0], Yl.shape[1]])
                 Hi_ph = tuple(
-                            tf.placeholder(tf.complex64, [None, level.shape[1],
-                                level.shape[2], level.shape[3]]) for
-                            level in Yh)
+                            tf.placeholder(tf.complex64, [None, *level.shape])
+                            for level in Yh)
                 p_in = Pyramid_tf(None, Lo_ph, Hi_ph)
                 size = '{}x{}_up_{}'.format(Yl.shape[0], Yl.shape[1], nlevels)
                 name = 'dtcwt_inv_{}'.format(size) 

@@ -330,7 +330,7 @@ class slp2:
                 jjs = np.arange((j-1)*bs+1, j*bs+1)-1
                 for k in range(0,nbins):
                     visimg[np.ix_(iis,jjs)] = (visimg[np.ix_(iis,jjs)] 
-					       + bim[:,:,k]*w[i-1,j-1,k])
+                                               + bim[:,:,k]*w[i-1,j-1,k])
                     
         return visimg
         
@@ -346,7 +346,7 @@ class slp2:
         # There are still memory-saving improvements to be made
         return complexArray[ii[0], ii[1], si]
     
-    def keypoints(self, hists, edge_suppression, threshold=5):
+    def keypoints(self, featuremaps, edge_suppression, method='gale', threshold=5):
         """Bare working version of the SLP2 histogram keypoint detector.
         Now includes subpixel refinement.
         """
@@ -355,32 +355,63 @@ class slp2:
         # (fourier autocorrelation) methods to achieve this
         # Declare lists to contain the outputs of the
         # detector for each transform level
-        rng = np.arange(len(hists))
-        self.energymaps = list(rng)
-        peakmaps = list(rng)
-        kps = list(rng)
-
+        rng = [None] * len(featuremaps)
+        self.energymaps = [None] * len(featuremaps)
+        peakmaps = [None] * len(featuremaps)
+        kps = []
+        
+        if method == 'forshaw':
         # Main loop over levels
-        for k in range(0, self.nlevels):
-            # Check to see whether histograms are present at all levels
-            if hists[k] is None:
-                kps[k] = np.empty([0,4], dtype='float')
-                continue
+            for k in range(0, self.nlevels):
+                # Check to see whether histograms are present at all levels
+                if featuremaps[k] is None:
+                    continue
+                
+                if featuremaps[k].dtype =='complex128':
+                    raise TypeError('This keypoint detector requires fully real SLP2 histograms.')
 
-            nbins = hists[k].shape[-1]
+                nbins = featuremaps[k].shape[-1]
 
-            # Edge-suppressing cosine window specified here
-            weights = np.cos(np.arange(-1*np.pi/2, np.pi/2, np.pi/nbins))**edge_suppression
+                # Edge-suppressing cosine window specified here
+                weights = np.cos(np.arange(-1*np.pi/2, np.pi/2, np.pi/nbins))**edge_suppression
 
-            # FIXME: Better scale invariance is achieved
-            # by having the histograms squared (assuming 
-            # they were square-rooted earlier in the process
-            hists[k] = hists[k]**2
+                # FIXME: Better scale invariance is achieved
+                # by having the histograms squared (assuming 
+                # they were square-rooted earlier in the process
+                featuremaps[k] = featuremaps[k]**2
+                
+                # FFT-based weighted normalised autocorrelation FIXME: scale invariance is in doubt at the moment
+                self.energymaps[k] = np.sqrt(np.real(np.sum(np.fft.ifft(np.fft.fft(featuremaps[k]*(2**-(k-1)), nbins, 2)*\
+                np.conj(np.fft.fft(featuremaps[k]*(2**-(k-1)), nbins, 2)), nbins, 2)*weights, axis=2, dtype='complex')\
+                /np.sqrt(np.sum(featuremaps[k]**2, axis=2)/nbins)))
             
-            # FFT-based weighted normalised autocorrelation FIXME: scale invariance is in doubt at the moment
-            self.energymaps[k] = np.sqrt(np.real(np.sum(np.fft.ifft(np.fft.fft(hists[k]*(2**-(k-1)), nbins, 2)*\
-            np.conj(np.fft.fft(hists[k]*(2**-(k-1)), nbins, 2)), nbins, 2)*weights, axis=2, dtype='complex')\
-            /np.sqrt(np.sum(hists[k]**2, axis=2)/nbins)))
+        else:
+            # Default to Gale keypoint detector
+            gamma_tilde = list(rng)
+            # Main loop over levels
+            for k in range(0, self.nlevels):
+                # Check to see whether histograms are present at all levels
+                if featuremaps[k] is None:
+                    continue
+
+                gamma_tilde[k] = (np.stack([np.real(featuremaps[k]), 
+                                            np.imag(featuremaps[k]), 
+                                            ], axis=-1))
+                
+                mag_cp = np.zeros([featuremaps[k].shape[0], featuremaps[k].shape[1], 6, 6])
+                max_abs = np.zeros([featuremaps[k].shape[0], featuremaps[k].shape[1], 6, 6])
+
+                for d1 in range(0, 6):
+                    for d2 in range(0, 6):
+                        mag_cp[:,:,d1,d2] = np.abs(np.cross(gamma_tilde[k][:,:,d1,:], gamma_tilde[k][:,:,d2,:]))
+                        max_abs[:,:,d1,d2] = np.max(np.abs(featuremaps[k][:,:,[d1,d2]]), axis=-1)  + 10**-8
+
+                self.energymaps[k] = np.sum(np.sum(mag_cp / max_abs, axis=-1), axis=-1)
+        
+        # Now method-independent steps
+        for k in range(0, self.nlevels):
+            if self.energymaps[k] is None:
+                continue
             
             # Initialise the logical map
             peakmaps[k] = np.zeros([self.energymaps[k].shape[0],self.energymaps[k].shape[1]], dtype='int')
@@ -390,7 +421,7 @@ class slp2:
             
             # Test each location in the searchable area to see if it is larger than its 8 neighbours
             peakmaps[k][1:-2:1,1:-2:1] = \
-            np.all(np.array([y>self.energymaps[k][0:-3:1,0:-3:1],\
+            np.all(np.array([y > self.energymaps[k][0:-3:1,0:-3:1],\
             y >  self.energymaps[k][1:-2:1,0:-3:1],\
             y > self.energymaps[k][2:-1:1,0:-3:1],\
             y > self.energymaps[k][0:-3:1,1:-2:1],\
@@ -422,17 +453,16 @@ class slp2:
             values = values[stable]
             
             # Stack the relevant attributes into the keypoint list element for this level
-            kps[k] = np.array(np.hstack([(locs[:,::-1]+1)*2**(k+1)-1, np.ones([locs.shape[0], 1])*2**(k+1), values[:,None]]))
+            kps.append(np.array(np.hstack([(locs[:,::-1]+1)*2**(k+1)-1, np.ones([locs.shape[0], 1])*2**(k+1), values[:,None]])))
             if self.verbose:
-                print("Found " + repr(locs.shape[0]) + " keypoints at level " + repr(k+1) + ".\n")
+                print(repr(locs.shape[0]) + " keypoints were stable at level " + repr(k+1) + ".\n")
             
             # Eliminate keypoints with responses below the threshold
-            kps[k] = kps[k][values>threshold,:]
-    
+            kps[-1] = kps[-1][values>threshold,:]
+
             if self.verbose:
-                print(repr(kps[k].shape[0]) + " keypoints were above the threshold.\n")
-            
-            
+                print(repr(kps[-1].shape[0]) + " keypoints were above the threshold.\n")
+                            
         # Convert the unwieldy list into a numpy array
         kps = np.vstack(kps)
         # Sort the array by energy. It is descending by default and reversed on return
@@ -508,7 +538,7 @@ class slp2:
         
         return coords + moves.T, stable
 
-def slp2interleaved(img, nlevels=5, full=True, firstlevel=1, plots=False, verbose=False, sampleLocs=None):
+def slp2interleaved(img, nlevels=5, full=True, firstlevel=1, plots=False, verbose=False, sampleLocs=None, kpmethod='gale', edge_suppression=1):
     """Function with options to be specified as
     one would an slp2 object. The input image is scaled down
     by a factor of sqrt(2) and a second DTCWT & SLP performed.
@@ -554,8 +584,10 @@ def slp2interleaved(img, nlevels=5, full=True, firstlevel=1, plots=False, verbos
         # Actual slp operations
         gamma[n] = s.transform(scaledImage, sampleLocs[n])
         hists[n] = s.histgen(gamma[n])
-        kps[n] = s.keypoints(hists[n], 2, 5)
-        
+        if kpmethod == 'forshaw':
+            kps[n] = s.keypoints(hists[n], 1, method='forshaw', threshold=5)
+        else:
+            kps[n] = s.keypoints(gamma[n], 1, method='gale', threshold=0.5)
         # Scale the keypoints as necessary
         kps[n][:,0:2] = kps[n][:,0:2] * (np.sqrt(2)**n)
         kps[n][:,2] = kps[n][:,2] / (np.sqrt(2)**n)

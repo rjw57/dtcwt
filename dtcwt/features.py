@@ -6,6 +6,9 @@ from matplotlib.pyplot import *
 # The following are required for image resizing
 import scipy
 from scipy import misc
+from scipy.interpolate import griddata
+from scipy.ndimage import map_coordinates
+from skimage.transform import ProjectiveTransform, warp
 
 """Performs the mark II SLP operation on an image.
 This relies on the weak linearity of DTCWT coefficient
@@ -261,7 +264,34 @@ class slp2:
             print("SLP2 coefficients computed.")
 
         return gamma # Return our final "cell array" (list of numpy arrays).
-
+    
+    def global_warp(self, slp2pyramid, Tfm, resample=True):
+        # Initialise the returned list
+        warped = [None,] * len(slp2pyramid)
+    
+        # Begin loop over scales
+        for level in range(0, len(slp2pyramid)):
+            if slp2pyramid[level] is None:
+                continue
+            
+            tfmObject = ProjectiveTransform(Tfm)
+            
+            delta = (np.array([np.real(slp2pyramid[level].flatten()), 
+                               -np.imag(slp2pyramid[level].flatten()), 
+                               np.ones_like(np.real(slp2pyramid[level]).flatten())]))
+            warpedDelta = np.dot(Tfm, delta)
+            print(warpedDelta[2,:])
+            warpedDelta = warpedDelta/warpedDelta[2,:]
+            
+            warpedField = (warpedDelta[0,:] + 1j*warpedDelta[1,:]).reshape(slp2pyramid[level].shape)
+            
+            if resample:
+                warpedField = (warp(np.real(warpedField), inverse_map=tfmObject) 
+                            - 1j*warp(np.imag(warpedField), inverse_map=tfmObject))
+            
+            warped[level] = warpedField
+      
+        return warped
     # SLP2 histogram generator
     def histgen(self, gamma, nbins=24, full=True, best=False):
     
@@ -346,7 +376,7 @@ class slp2:
         # There are still memory-saving improvements to be made
         return complexArray[ii[0], ii[1], si]
     
-    def keypoints(self, featuremaps, edge_suppression, method='gale', threshold=5):
+    def keypoints(self, featuremaps, method='gale', edge_suppression=None, threshold=5):
         """Bare working version of the SLP2 histogram keypoint detector.
         Now includes subpixel refinement.
         """
@@ -396,6 +426,9 @@ class slp2:
 
                 gamma_tilde[k] = (np.stack([np.real(featuremaps[k]), 
                                             np.imag(featuremaps[k]), 
+                                            # np.zeros_like(np.real(featuremaps[k])) 
+                                            # Zeros not needed because cross product will 
+                                            # assume 2d vectors are coplanar in 3D
                                             ], axis=-1))
                 
                 mag_cp = np.zeros([featuremaps[k].shape[0], featuremaps[k].shape[1], 6, 6])
@@ -403,6 +436,7 @@ class slp2:
 
                 for d1 in range(0, 6):
                     for d2 in range(0, 6):
+                        # mag_cp[:,:,d1,d2] = np.sqrt(np.sum(np.cross(gamma_tilde[k][:,:,d1,:], gamma_tilde[k][:,:,d2,:])**2, axis=-1))
                         mag_cp[:,:,d1,d2] = np.abs(np.cross(gamma_tilde[k][:,:,d1,:], gamma_tilde[k][:,:,d2,:]))
                         max_abs[:,:,d1,d2] = np.max(np.abs(featuremaps[k][:,:,[d1,d2]]), axis=-1)  + 10**-8
 
@@ -422,7 +456,7 @@ class slp2:
             # Test each location in the searchable area to see if it is larger than its 8 neighbours
             peakmaps[k][1:-2:1,1:-2:1] = \
             np.all(np.array([y > self.energymaps[k][0:-3:1,0:-3:1],\
-            y >  self.energymaps[k][1:-2:1,0:-3:1],\
+            y > self.energymaps[k][1:-2:1,0:-3:1],\
             y > self.energymaps[k][2:-1:1,0:-3:1],\
             y > self.energymaps[k][0:-3:1,1:-2:1],\
             y > self.energymaps[k][2:-1:1,1:-2:1],\
@@ -458,8 +492,10 @@ class slp2:
                 print(repr(locs.shape[0]) + " keypoints were stable at level " + repr(k+1) + ".\n")
             
             # Eliminate keypoints with responses below the threshold
+            print(values)
+            print(kps[-1].shape)
             kps[-1] = kps[-1][values>threshold,:]
-
+            print(kps[-1].shape)
             if self.verbose:
                 print(repr(kps[-1].shape[0]) + " keypoints were above the threshold.\n")
                             
@@ -538,7 +574,7 @@ class slp2:
         
         return coords + moves.T, stable
 
-def slp2interleaved(img, nlevels=5, full=True, firstlevel=1, plots=False, verbose=False, sampleLocs=None, kpmethod='gale', edge_suppression=1):
+def slp2interleaved(img, nlevels=5, full=True, firstlevel=1, plots=False, verbose=False, sampleLocs=None, kpmethod='gale', edge_suppression=None):
     """Function with options to be specified as
     one would an slp2 object. The input image is scaled down
     by a factor of sqrt(2) and a second DTCWT & SLP performed.
@@ -585,9 +621,12 @@ def slp2interleaved(img, nlevels=5, full=True, firstlevel=1, plots=False, verbos
         gamma[n] = s.transform(scaledImage, sampleLocs[n])
         hists[n] = s.histgen(gamma[n])
         if kpmethod == 'forshaw':
-            kps[n] = s.keypoints(hists[n], 1, method='forshaw', threshold=5)
+            print('Using Forshaw keypoint detector.')
+            kps[n] = s.keypoints(hists[n], method='forshaw', edge_suppression=2, threshold=5)
         else:
-            kps[n] = s.keypoints(gamma[n], 1, method='gale', threshold=0.5)
+            print('Using Gale keypoint detector')
+            # FIXME: This produces keypoints with huge energy values for some reason, haven't found the cause yet
+            kps[n] = s.keypoints(gamma[n], method='gale', edge_suppression=None, threshold=10000)
         # Scale the keypoints as necessary
         kps[n][:,0:2] = kps[n][:,0:2] * (np.sqrt(2)**n)
         kps[n][:,2] = kps[n][:,2] / (np.sqrt(2)**n)

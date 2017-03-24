@@ -12,7 +12,7 @@ __all__ = (
     'overlay_quiver',
 )
 
-def overlay_quiver(image, vectorField, level, offset):
+def overlay_quiver(image, vectorField, level, offset, scaleOverride=None):
     """Overlays nicely coloured quiver plot of complex coefficients over original full-size image,
     providing a useful phase visualisation.
 
@@ -57,8 +57,11 @@ def overlay_quiver(image, vectorField, level, offset):
 
     # Choose a coloUrmap
     cmap = cm.spectral
-    scalefactor = np.max(np.max(np.max(np.max(np.abs(vectorField)))))
-    vectorField[-1,-1,:] = scalefactor
+    if scaleOverride is None:
+        scalefactor = np.max(np.max(np.max(np.max(np.abs(vectorField)))))
+        vectorField[-1,-1,:] = scalefactor
+    else:
+        scalefactor = scaleOverride
 
     for sb in range(0, vectorField.shape[2]):
         thiscolour = cmap(sb / float(vectorField.shape[2])) # Select colour for this subband

@@ -8,7 +8,7 @@ import scipy
 from scipy import misc
 from scipy.interpolate import griddata
 from scipy.ndimage import map_coordinates
-from skimage.transform import ProjectiveTransform, warp
+from skimage.transform import ProjectiveTransform, warp, matrix_transform, resize, AffineTransform
 
 """Performs the mark II SLP operation on an image.
 This relies on the weak linearity of DTCWT coefficient
@@ -268,30 +268,49 @@ class slp2:
     def global_warp(self, slp2pyramid, Tfm, resample=True):
         # Initialise the returned list
         warped = [None,] * len(slp2pyramid)
-    
+        
+        # Set up a transformation matrix with just the upper 2x2
+        affine = np.eye(3)
+        affine[0:2,0:2] = Tfm[0:2,0:2]
+        
         # Begin loop over scales
         for level in range(0, len(slp2pyramid)):
             if slp2pyramid[level] is None:
                 continue
             
-            tfmObject = ProjectiveTransform(Tfm)
+            # Create grid of sampling locations
+            U, V = np.meshgrid(np.arange(2**level, slp2pyramid[level].shape[1]*(2**level)*2, 2**(level+1)), np.arange(2**level, slp2pyramid[level].shape[0]*(2**level)*2, 2**(level+1)))
             
-            delta = (np.array([np.real(slp2pyramid[level].flatten()), 
-                               -np.imag(slp2pyramid[level].flatten()), 
+            # Create transformable position vectors from the complex SLP2 coefficients
+            delta = (np.array([np.real(slp2pyramid[level]).flatten(), 
+                               -np.imag(slp2pyramid[level]).flatten(), 
                                np.ones_like(np.real(slp2pyramid[level]).flatten())]))
-            warpedDelta = np.dot(Tfm, delta)
-            print(warpedDelta[2,:])
-            warpedDelta = warpedDelta/warpedDelta[2,:]
             
-            warpedField = (warpedDelta[0,:] + 1j*warpedDelta[1,:]).reshape(slp2pyramid[level].shape)
+            # Warp the coefficients themselves using only the upper 2x2 portion
+            # of the matrix. this is done because the translation parameters
+            # only affect the sampling locations
+            warpedDelta = np.dot(affine, delta)
+            warpedField = (warpedDelta[0,:] - 1j*warpedDelta[1,:]).reshape(slp2pyramid[level].shape)
+            #sc = np.abs(warpedField).max()
+            #sc = 1
+            #warpedField = warpedField/sc
             
             if resample:
-                warpedField = (warp(np.real(warpedField), inverse_map=tfmObject) 
-                            - 1j*warp(np.imag(warpedField), inverse_map=tfmObject))
+                # Warp the sampling locations using the transformation full matrix
+                warpedLocs = np.dot(Tfm, np.array([U.flatten(), V.flatten(), np.ones_like(U.flatten())]))
             
+                for sb in range(0,slp2pyramid[level].shape[-1]):
+                    #warpedField[:,:,sb] = (warp(np.real(warpedField[:,:,sb]), inverse_map=ProjectiveTransform(Tfm)) 
+                    #        - 1j*warp(np.imag(warpedField[:,:,sb]), inverse_map=ProjectiveTransform(Tfm)))
+                    
+                    # This works, but is probably slower than warp() would be if I could fix it
+                    warpedField[:,:,sb] = griddata(warpedLocs[0:2,:].T, warpedField[:,:,sb].flatten(), (U.flatten(), V.flatten()), fill_value=0).reshape(slp2pyramid[level].shape[0], slp2pyramid[level].shape[1])
+            
+            # Place in the returned list
             warped[level] = warpedField
-      
+            
         return warped
+      
     # SLP2 histogram generator
     def histgen(self, gamma, nbins=24, full=True, best=False):
     

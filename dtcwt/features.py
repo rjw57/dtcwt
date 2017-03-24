@@ -7,8 +7,6 @@ from matplotlib.pyplot import *
 import scipy
 from scipy import misc
 from scipy.interpolate import griddata
-from scipy.ndimage import map_coordinates
-from skimage.transform import ProjectiveTransform, warp, matrix_transform, resize, AffineTransform
 
 """Performs the mark II SLP operation on an image.
 This relies on the weak linearity of DTCWT coefficient

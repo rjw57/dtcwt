@@ -3,3 +3,4 @@ pytest
 pytest-capturelog
 pytest-cov
 coverage
+scipy

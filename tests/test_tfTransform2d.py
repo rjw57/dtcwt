@@ -12,6 +12,7 @@ from dtcwt.numpy import Transform2d as Transform2d_np
 from dtcwt.numpy import Pyramid
 from dtcwt.coeffs import biort, qshift
 import tests.datasets as datasets
+from scipy import stats
 #from .util import skip_if_no_tf
 
 PRECISION_DECIMAL = 5
@@ -22,6 +23,8 @@ def setup():
     in_p = tf.placeholder(tf.float32, [None, 512, 512])
     f = Transform2d()
     pyramid_ops = f.forward(in_p, include_scale=True)
+    # Make sure we run tests on cpu rather than gpus
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 def test_mandrill_loaded():
     assert mandrill.shape == (512, 512)
@@ -114,20 +117,41 @@ def test_float32_input():
     assert np.issubsctype(Yl.dtype, np.float32)
     assert np.all(list(np.issubsctype(x.dtype, np.complex64) for x in Yh))
 
-def test_multiple_inputs():
-    y = pyramid_ops.eval(mandrill)
-    y3 = pyramid_ops.eval([mandrill, mandrill, mandrill])
+def test_eval_fwd():
+    y = pyramid_ops.eval_fwd(mandrill)
     assert y3.lowpass.shape == (3, *y.lowpass.shape)
     for hi3, hi in zip(y3.highpasses, y.highpasses):
         assert hi3.shape == (3, *hi.shape)
     for s3, s in zip(y3.scales, y.scales):
         assert s3.shape == (3, *s.shape)
 
-def test_results_match1():
-    f_np = Transform2d_np()
-    p_np = f_np.forward(mandrill, include_scale=True) 
-    
-    p_tf = pyramid_ops.eval(mandrill)
+def test_multiple_inputs():
+    y = pyramid_ops.eval_fwd(mandrill)
+    y3 = pyramid_ops.eval_fwd([mandrill, mandrill, mandrill])
+    assert y3.lowpass.shape == (3, *y.lowpass.shape)
+    for hi3, hi in zip(y3.highpasses, y.highpasses):
+        assert hi3.shape == (3, *hi.shape)
+    for s3, s in zip(y3.scales, y.scales):
+        assert s3.shape == (3, *s.shape)
+
+@pytest.mark.parametrize("test_input,biort,qshift", [
+    (datasets.mandrill(),'antonini','qshift_a'),
+    (datasets.mandrill()[100:400,40:450],'legall','qshift_a'),
+    (datasets.mandrill(),'near_sym_a','qshift_c'),
+    (datasets.mandrill()[100:375,30:322],'near_sym_b','qshift_d'),
+    (datasets.mandrill(),'near_sym_b_bp', 'qshift_b_bp')
+])
+def test_results_match(test_input, biort, qshift):
+    """
+    Compare forward transform with numpy forward transform for mandrill image
+    """
+    im=test_input
+    f_np = Transform2d_np(biort=biort,qshift=qshift)
+    p_np = f_np.forward(im, include_scale=True) 
+
+    in_p = tf.placeholder(tf.float32, [None, im.shape[0], im.shape[1]]) 
+    f_tf = Transform2d(biort=biort,qshift=qshift)
+    p_tf = f_tf.forward(in_p, include_scale=True).eval_fwd(im)
     
     np.testing.assert_array_almost_equal(
             p_np.lowpass, p_tf.lowpass, decimal=PRECISION_DECIMAL) 
@@ -138,51 +162,76 @@ def test_results_match1():
             s_np, s_tf, decimal=PRECISION_DECIMAL) for s_np, s_tf in 
             zip(p_np.scales, p_tf.scales)]
 
-def test_results_match2():
-    im = mandrill[100:400,50:450]
-    f_np = Transform2d_np(biort='near_sym_b', qshift='qshift_c')
-    p_np = f_np.forward(im, nlevels=4, include_scale=True) 
 
-    f_tf = Transform2d(biort='near_sym_b', qshift='qshift_c')
-    p_tf = f_tf.forward(im, nlevels=4, include_scale=True)
-    
-    np.testing.assert_array_almost_equal(
-            p_np.lowpass, p_tf.lowpass, decimal=PRECISION_DECIMAL) 
-    [np.testing.assert_array_almost_equal(
-            h_np, h_tf, decimal=PRECISION_DECIMAL) for h_np, h_tf in 
-            zip(p_np.highpasses, p_tf.highpasses)]
-    [np.testing.assert_array_almost_equal(
-            s_np, s_tf, decimal=PRECISION_DECIMAL) for s_np, s_tf in 
-            zip(p_np.scales, p_tf.scales)]
-
-def test_results_match3():
-    im = mandrill
-    f_np = Transform2d_np(biort='near_sym_b', qshift='qshift_c')
+@pytest.mark.parametrize("test_input,biort,qshift", [
+    (datasets.mandrill(),'antonini','qshift_c'),
+    (datasets.mandrill()[100:411,44:460],'near_sym_a','qshift_a'),
+    (datasets.mandrill(),'legall','qshift_c'),
+    (datasets.mandrill()[100:378,20:322],'near_sym_b','qshift_06'),
+    (datasets.mandrill(),'near_sym_b_bp', 'qshift_b_bp')
+])
+def test_results_match_inverse(test_input,biort,qshift):
+    im = test_input
+    f_np = Transform2d_np(biort=biort, qshift=qshift)
     p_np = f_np.forward(im, nlevels=4, include_scale=True) 
     X_np = f_np.inverse(p_np)
+    
+    # Use a zero input and the fwd transform to get the shape of 
+    # the pyramid easily
+    in_ = tf.zeros([1, im.shape[0], im.shape[1]])
+    f_tf = Transform2d(biort=biort, qshift=qshift)
+    p_tf = f_tf.forward(in_, nlevels=4, include_scale=True)
 
-    f_tf = Transform2d(biort='near_sym_b', qshift='qshift_c')
-    p_tf = f_tf.forward(im, nlevels=4, include_scale=True)
-    X_tf = f_tf.inverse(p_tf)
+    # Create ops for the inverse transform 
+    pi_tf = f_tf.inverse(p_tf)
+    X_tf = pi_tf.eval_inv(p_np.lowpass, p_np.highpasses)
     
     np.testing.assert_array_almost_equal(
             X_np, X_tf, decimal=PRECISION_DECIMAL) 
 
-def test_results_match4():
+@pytest.mark.parametrize("biort,qshift,gain_mask", [
+    ('antonini','qshift_c',stats.bernoulli(0.8).rvs(size=(6,4))),
+    ('near_sym_a','qshift_a',stats.bernoulli(0.8).rvs(size=(6,4))),
+    ('legall','qshift_c',stats.bernoulli(0.8).rvs(size=(6,4))),
+    ('near_sym_b','qshift_06',stats.bernoulli(0.8).rvs(size=(6,4))),
+    ('near_sym_b_bp', 'qshift_b_bp',stats.bernoulli(0.8).rvs(size=(6,4)))
+])
+def test_results_match_invmask(biort,qshift,gain_mask):
     im = mandrill
-    gain_mask = np.ones((6,4))
-    gain_mask[4,2] = 0;
-    gain_mask[2,1] = 0;
 
-    f_np = Transform2d_np(biort='near_sym_b', qshift='qshift_c')
+    f_np = Transform2d_np(biort=biort, qshift=qshift)
     p_np = f_np.forward(im, nlevels=4, include_scale=True) 
     X_np = f_np.inverse(p_np, gain_mask)
 
-    f_tf = Transform2d(biort='near_sym_b', qshift='qshift_c')
+    f_tf = Transform2d(biort=biort, qshift=qshift)
     p_tf = f_tf.forward(im, nlevels=4, include_scale=True)
     X_tf = f_tf.inverse(p_tf, gain_mask)
     
     np.testing.assert_array_almost_equal(
             X_np, X_tf, decimal=PRECISION_DECIMAL) 
+
+@pytest.mark.parametrize("test_input,biort,qshift", [
+    (datasets.mandrill(),'antonini','qshift_06'),
+    (datasets.mandrill()[100:411,44:460],'near_sym_b','qshift_a'),
+    (datasets.mandrill(),'near_sym_b','qshift_c'),
+    (datasets.mandrill()[100:378,20:322],'near_sym_a','qshift_a'),
+    (datasets.mandrill(),'near_sym_b_bp', 'qshift_b_bp')
+])
+def test_results_match_endtoend(test_input,biort,qshift):
+    im = test_input
+    f_np = Transform2d_np(biort=biort, qshift=qshift)
+    p_np = f_np.forward(im, nlevels=4, include_scale=True) 
+    X_np = f_np.inverse(p_np)
+    
+    in_p = tf.placeholder(tf.float32, [None, im.shape[0], im.shape[1]]) 
+    f_tf = Transform2d(biort=biort, qshift=qshift)
+    p_tf = f_tf.forward(in_p, nlevels=4, include_scale=True)
+    pi_tf = f_tf.inverse(p_tf)
+    with tf.Session() as sess:
+        X_tf = sess.run(pi_tf.X, feed_dict={in_p: [im]})[0]
+
+    np.testing.assert_array_almost_equal(
+            X_np, X_tf, decimal=PRECISION_DECIMAL) 
+
  
 # vim:sw=4:sts=4:et

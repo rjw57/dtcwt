@@ -48,20 +48,28 @@ class Pyramid_tf(object):
         self.scales_ops = scales
         self.graph = graph
 
-    def _get_lowpass(self, data):
+    def _get_lowpass(self, data, sess=None):
         if self.lowpass_op is None:
             return None
-        with tf.Session(graph=self.graph) as sess:
+
+        if sess is None:
+            sess = tf.Session(graph=self.graph)
+
+        with sess:
             try:
                 y = sess.run(self.lowpass_op, {self.X : data})
             except ValueError:
                 y = sess.run(self.lowpass_op, {self.X : [data]})[0]
         return y
         
-    def _get_highpasses(self, data):
+    def _get_highpasses(self, data, sess=None):
         if self.highpasses_ops is None:
             return None
-        with tf.Session(graph=self.graph) as sess:
+
+        if sess is None:
+            sess = tf.Session(graph=self.graph)
+
+        with sess:
             try: 
                 y = tuple(
                         [sess.run(layer_hp, {self.X : data}) 
@@ -72,10 +80,14 @@ class Pyramid_tf(object):
                         for layer_hp in self.highpasses_ops])
         return y
 
-    def _get_scales(self, data):
+    def _get_scales(self, data, sess=None):
         if self.scales_ops is None:
             return None
-        with tf.Session(graph=self.graph) as sess:
+
+        if sess is None:
+            sess = tf.Session(graph=self.graph)
+
+        with sess:
             try:
                 y = tuple(
                         sess.run(layer_scale, {self.X : data})
@@ -86,10 +98,14 @@ class Pyramid_tf(object):
                         for layer_scale in self.scales_ops)
         return y
 
-    def _get_X(self, Yl, Yh):
+    def _get_X(self, Yl, Yh, sess=None):
         if self.X is None:
             return None
-        with tf.Session(graph=self.graph) as sess:
+
+        if sess is None:
+            sess = tf.Session(graph=self.graph)
+
+        with sess:
             try:
                 # Use dictionary comprehension to feed in our Yl and our
                 # multiple layers of Yh
@@ -102,12 +118,43 @@ class Pyramid_tf(object):
                 X = sess.run(self.X, {i : [d] for i,d in zip(placeholders,data)})[0]
         return X
 
-    def eval_fwd(self, X):
-        lo = self._get_lowpass(X)
-        hi = self._get_highpasses(X)
-        scales = self._get_scales(X)
+    def eval_fwd(self, X, sess=None):
+        """
+        A helper function to evaluate the forward transform on a given array of
+        input data.
+
+        :param X: A numpy array of shape [<any>, height, width], where height
+            and width match the size of the placeholder fed to the forward
+            transform.
+        :param sess: Tensorflow session to use. If none is provided a temporary
+            session will be used.
+            
+        :returns: A :py:class:`dtcwt.Pyramid` of the data. The variables in
+        this pyramid will typically be only 2-dimensional (when calling the
+        numpy forward transform), but these will be 3 dimensional.
+        """
+        lo = self._get_lowpass(X, sess)
+        hi = self._get_highpasses(X, sess)
+        scales = self._get_scales(X, sess)
         return Pyramid_np(lo, hi, scales)
 
-    def eval_inv(self, Yl, Yh):
-        return self._get_X(Yl, Yh)
+    def eval_inv(self, Yl, Yh, sess=None):
+        """
+        A helper function to evaluate the inverse transform on given wavelet
+        coefficients. 
+
+        :param Yl: A numpy array of shape [<batch>, h/(2**scale), w/(2**scale)],
+            where (h,w) was the size of the input image.
+        :param Yh: A tuple or list of the highpass coefficients. Each entry in
+            the tuple or list represents the scale the coefficients belong to. The
+            size of the coefficients must match the outputs of the forward
+            transform. I.e. Yh[0] should have shape [<batch>, 6, h/2, w/2], where the
+            input image had shape (h, w). <batch> should be the same across all
+            scales, and should match the size of the Yl first dimension.
+        :param sess: Tensorflow session to use. If none is provided a temporary
+            session will be used.
+
+        :returns: A numpy array of the inverted data. 
+        """
+        return self._get_X(Yl, Yh, sess)
 

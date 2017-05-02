@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import numpy as np
-import tensorflow as tf
 import logging
 
 from dtcwt.coeffs import biort as _biort, qshift as _qshift
@@ -9,6 +8,12 @@ from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import asfarray
 
 from dtcwt.numpy import Pyramid as Pyramid_np
+
+try:
+    import tensorflow as tf
+except ImportError:
+    # The lack of tensorflow will be caught by the low-level routines.
+    pass
 
 class Pyramid_tf(object):
     """A tensorflow representation of a transform domain signal.

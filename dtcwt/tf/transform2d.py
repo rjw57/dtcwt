@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import numpy as np
-import tensorflow as tf
 import logging
 
 from six.moves import xrange
@@ -14,6 +13,13 @@ from dtcwt.numpy import Pyramid as Pyramid_np
 from dtcwt.tf import Pyramid_tf
 
 from dtcwt.tf.lowlevel import *
+
+try:
+    import tensorflow as tf
+except ImportError:
+    # The lack of tensorflow will be caught by the low-level routines.
+    pass
+
 
 def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include_scale=False):
     t = Transform2d(biort=biort, qshift=qshift)

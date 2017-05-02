@@ -1,14 +1,13 @@
 from __future__ import absolute_import
 
-import tensorflow as tf
-import numpy as np
-from dtcwt.utils import asfarray, as_column_vector
-
 try:
     import tensorflow as tf
     _HAVE_TF = True
 except ImportError:
     _HAVE_TF = False
+
+import numpy as np
+from dtcwt.utils import asfarray, as_column_vector
 
 def _as_row_tensor(h):
     if isinstance(h, tf.Tensor):

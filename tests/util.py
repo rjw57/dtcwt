@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from dtcwt.opencl.lowlevel import _HAVE_CL as HAVE_CL
-from dtcwt.tf.lowlevel import _HAVE_TF as HAVE_TF
+from dtcwt.utils import _HAVE_TF as HAVE_TF
 
 from six.moves import xrange
 

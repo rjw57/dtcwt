@@ -5,6 +5,12 @@ from __future__ import absolute_import
 import functools
 import numpy as np
 
+try:
+    import tensorflow as tf
+    _HAVE_TF = True
+except ImportError:
+    _HAVE_TF = False
+
 def drawedge(theta,r,w,N):
     """Generate an image of size N * N pels, of an edge going from 0 to 1
     in height at theta degrees to the horizontal (top of image = 1 if angle = 0).

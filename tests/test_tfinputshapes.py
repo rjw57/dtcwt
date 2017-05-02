@@ -1,21 +1,28 @@
 import os
 import pytest
-from dtcwt.tf.lowlevel import _HAVE_TF as HAVE_TF
-pytest.mark.skipif(not HAVE_TF, reason="Tensorflow not present")
 
 from pytest import raises
 
 import numpy as np
-import tensorflow as tf
-from dtcwt.tf import Transform2d, dtwavexfm2, dtwaveifm2
 import tests.datasets as datasets
+from importlib import import_module
 
+from .util import skip_if_no_tf
 PRECISION_DECIMAL = 5
 
-def setup():
+@skip_if_no_tf
+def test_setup():
+    global tf, Transform2d, dtwavexfm2, dtwaveifm2
+    tf = import_module('tensorflow')
+    dtcwt_tf = import_module('dtcwt.tf')
+    Transform2d = getattr(dtcwt_tf, 'Transform2d')
+    dtwavexfm2 = getattr(dtcwt_tf, 'dtwavexfm2')
+    dtwaveifm2 = getattr(dtcwt_tf, 'dtwaveifm2')
+
     # Make sure we run tests on cpu rather than gpus
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
+@skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale", [
     (2,False),
     (2,True),
@@ -43,6 +50,7 @@ def test_2d_input(nlevels, include_scale):
             assert p.scales_ops[i].dtype == tf.float32
     
 
+@skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale", [
     (2,False),
     (2,True),
@@ -75,6 +83,7 @@ def test_apply_reshaping(nlevels, include_scale):
             assert p.scales_ops[i].dtype == tf.float32
 
 
+@skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale", [
     (2,False),
     (2,True),
@@ -106,6 +115,7 @@ def test_2d_input_tuple(nlevels, include_scale):
     
 
 
+@skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale, batch_size", [
     (2,False,None),
     (2,True,10),
@@ -132,6 +142,7 @@ def test_batch_input(nlevels, include_scale, batch_size):
             assert p.scales_ops[i].dtype == tf.float32
     
 
+@skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale, batch_size", [
     (2,False,None),
     (2,True,10),
@@ -160,6 +171,7 @@ def test_batch_input_tuple(nlevels, include_scale, batch_size):
             assert Yscale[i].get_shape().as_list() == [batch_size, 2*extent, 2*extent]
             assert Yscale[i].dtype == tf.float32
     
+@skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale, channels", [
     (2,False,5),
     (2,True,2),

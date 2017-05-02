@@ -1,24 +1,31 @@
 import os
 import pytest
-from dtcwt.tf.lowlevel import _HAVE_TF as HAVE_TF
-pytest.mark.skipif(not HAVE_TF, reason="Tensorflow not present")
 
 from pytest import raises
 
 import numpy as np
-import tensorflow as tf
-from dtcwt.tf import Transform2d, dtwavexfm2, dtwaveifm2
+from importlib import import_module
 from dtcwt.numpy import Transform2d as Transform2d_np
 from dtcwt.numpy import Pyramid
 from dtcwt.coeffs import biort, qshift
 import tests.datasets as datasets
 from scipy import stats
-#from .util import skip_if_no_tf
+from .util import skip_if_no_tf
 
 PRECISION_DECIMAL = 5
 
-def setup():
+@skip_if_no_tf
+def test_setup():
     global mandrill, in_p, pyramid_ops
+    global tf, Transform2d, dtwavexfm2, dtwaveifm2
+    # Import the tensorflow modules
+    tf = import_module('tensorflow')
+    dtcwt_tf = import_module('dtcwt.tf')
+    Transform2d = getattr(dtcwt_tf, 'Transform2d')
+    dtwavexfm2 = getattr(dtcwt_tf, 'dtwavexfm2')
+    dtwaveifm2 = getattr(dtcwt_tf, 'dtwaveifm2')
+
+
     mandrill = datasets.mandrill()
     in_p = tf.placeholder(tf.float32, [None, 512, 512])
     f = Transform2d()
@@ -26,27 +33,33 @@ def setup():
     # Make sure we run tests on cpu rather than gpus
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
+@skip_if_no_tf
 def test_mandrill_loaded():
     assert mandrill.shape == (512, 512)
     assert mandrill.min() >= 0
     assert mandrill.max() <= 1
     assert mandrill.dtype == np.float32
 
+@skip_if_no_tf
 def test_simple():
     Yl, Yh = dtwavexfm2(mandrill)
 
+@skip_if_no_tf
 def test_specific_wavelet():
     Yl, Yh = dtwavexfm2(mandrill, biort=biort('antonini'), qshift=qshift('qshift_06'))
 
+@skip_if_no_tf
 @pytest.mark.skip(reason='Cant pad by more than half the dimension of the input')
 def test_1d():
     Yl, Yh = dtwavexfm2(mandrill[0,:])
 
+@skip_if_no_tf
 @pytest.mark.skip(reason='Not currently implemented')
 def test_3d():
     with raises(ValueError):
         Yl, Yh = dtwavexfm2(np.dstack((mandrill, mandrill)))
 
+@skip_if_no_tf
 def test_simple_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(mandrill, include_scale=True)
 
@@ -54,40 +67,50 @@ def test_simple_w_scale():
     for x in Yscale:
         assert x is not None
 
+@skip_if_no_tf
 def test_odd_rows():
     Yl, Yh = dtwavexfm2(mandrill[:509,:])
 
+@skip_if_no_tf
 def test_odd_rows_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(mandrill[:509,:], include_scale=True)
 
+@skip_if_no_tf
 def test_odd_cols():
     Yl, Yh = dtwavexfm2(mandrill[:,:509])
 
+@skip_if_no_tf
 def test_odd_cols_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(mandrill[:509,:509], include_scale=True)
 
+@skip_if_no_tf
 def test_odd_rows_and_cols():
     Yl, Yh = dtwavexfm2(mandrill[:,:509])
 
+@skip_if_no_tf
 def test_odd_rows_and_cols_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(mandrill[:509,:509], include_scale=True)
 
+@skip_if_no_tf
 def test_rot_symm_modified():
     # This test only checks there is no error running these functions, not that they work
     Yl, Yh, Yscale = dtwavexfm2(mandrill, biort='near_sym_b_bp', qshift='qshift_b_bp', include_scale=True)
     Z = dtwaveifm2(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
 
+@skip_if_no_tf
 def test_0_levels():
     Yl, Yh = dtwavexfm2(mandrill, nlevels=0)
     np.testing.assert_array_almost_equal(Yl, mandrill, PRECISION_DECIMAL)
     assert len(Yh) == 0
 
+@skip_if_no_tf
 def test_0_levels_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(mandrill, nlevels=0, include_scale=True)
     np.testing.assert_array_almost_equal(Yl, mandrill, PRECISION_DECIMAL)
     assert len(Yh) == 0
     assert len(Yscale) == 0
 
+@skip_if_no_tf
 @pytest.mark.skip(reason='Cant pad by more than half the dimension of the input')
 def test_integer_input():
     # Check that an integer input is correctly coerced into a floating point
@@ -95,6 +118,7 @@ def test_integer_input():
     Yl, Yh = dtwavexfm2([[1,2,3,4], [1,2,3,4]])
     assert np.any(Yl != 0)
 
+@skip_if_no_tf
 @pytest.mark.skip(reason='Cant pad by more than half the dimension of the input')
 def test_integer_perfect_recon():
     # Check that an integer input is correctly coerced into a floating point
@@ -104,6 +128,7 @@ def test_integer_perfect_recon():
     B = dtwaveifm2(Yl, Yh)
     assert np.max(np.abs(A-B)) < 1e-5
 
+@skip_if_no_tf
 def test_mandrill_perfect_recon():
     # Check that an integer input is correctly coerced into a floating point
     # array and reconstructed
@@ -111,15 +136,18 @@ def test_mandrill_perfect_recon():
     B = dtwaveifm2(Yl, Yh)
     assert np.max(np.abs(mandrill-B)) < 1e-5
 
+@skip_if_no_tf
 def test_float32_input():
     # Check that an float32 input is correctly output as float32
     Yl, Yh = dtwavexfm2(mandrill.astype(np.float32))
     assert np.issubsctype(Yl.dtype, np.float32)
     assert np.all(list(np.issubsctype(x.dtype, np.complex64) for x in Yh))
 
+@skip_if_no_tf
 def test_eval_fwd():
     y = pyramid_ops.eval_fwd(mandrill)
 
+@skip_if_no_tf
 def test_multiple_inputs():
     y = pyramid_ops.eval_fwd(mandrill)
     y3 = pyramid_ops.eval_fwd([mandrill, mandrill, mandrill])
@@ -129,6 +157,7 @@ def test_multiple_inputs():
     for s3, s in zip(y3.scales, y.scales):
         assert s3.shape == (3, *s.shape)
 
+@skip_if_no_tf
 @pytest.mark.parametrize("test_input,biort,qshift", [
     (datasets.mandrill(),'antonini','qshift_a'),
     (datasets.mandrill()[100:400,40:450],'legall','qshift_a'),
@@ -158,6 +187,7 @@ def test_results_match(test_input, biort, qshift):
             zip(p_np.scales, p_tf.scales)]
 
 
+@skip_if_no_tf
 @pytest.mark.parametrize("test_input,biort,qshift", [
     (datasets.mandrill(),'antonini','qshift_c'),
     (datasets.mandrill()[100:411,44:460],'near_sym_a','qshift_a'),
@@ -184,6 +214,7 @@ def test_results_match_inverse(test_input,biort,qshift):
     np.testing.assert_array_almost_equal(
             X_np, X_tf, decimal=PRECISION_DECIMAL) 
 
+@skip_if_no_tf
 @pytest.mark.parametrize("biort,qshift,gain_mask", [
     ('antonini','qshift_c',stats.bernoulli(0.8).rvs(size=(6,4))),
     ('near_sym_a','qshift_a',stats.bernoulli(0.8).rvs(size=(6,4))),
@@ -205,6 +236,7 @@ def test_results_match_invmask(biort,qshift,gain_mask):
     np.testing.assert_array_almost_equal(
             X_np, X_tf, decimal=PRECISION_DECIMAL) 
 
+@skip_if_no_tf
 @pytest.mark.parametrize("test_input,biort,qshift", [
     (datasets.mandrill(),'antonini','qshift_06'),
     (datasets.mandrill()[100:411,44:460],'near_sym_b','qshift_a'),

@@ -153,10 +153,6 @@ class Pyramid_tf(object):
         this pyramid will typically be only 2-dimensional (when calling the
         numpy forward transform), but these will be 3 dimensional.
         """
-        if len(X.shape) == 2 and len(self.lowpass_op.get_shape()) == 3:
-            logging.warn('Fed with a 2d shape input. For efficient calculation'
-                        + ' feed batches of inputs.')
-
         lo = self._get_lowpass(X, sess)
         hi = self._get_highpasses(X, sess)
         scales = self._get_scales(X, sess)

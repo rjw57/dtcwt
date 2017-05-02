@@ -119,11 +119,6 @@ def test_float32_input():
 
 def test_eval_fwd():
     y = pyramid_ops.eval_fwd(mandrill)
-    assert y3.lowpass.shape == (3, *y.lowpass.shape)
-    for hi3, hi in zip(y3.highpasses, y.highpasses):
-        assert hi3.shape == (3, *hi.shape)
-    for s3, s in zip(y3.scales, y.scales):
-        assert s3.shape == (3, *s.shape)
 
 def test_multiple_inputs():
     y = pyramid_ops.eval_fwd(mandrill)

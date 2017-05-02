@@ -4,3 +4,4 @@ pytest-capturelog
 pytest-cov
 coverage
 scipy
+tensorflow

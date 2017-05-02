@@ -55,6 +55,7 @@ class Transform2d(Transform2dNumPy):
         self.forward_graphs = {}
         self.inverse_graphs = {}
 
+
     def _find_forward_graph(self, shape):
         ''' See if we can reuse an old graph for the forward transform '''
         find_key = '{}x{}'.format(shape[0], shape[1])
@@ -63,10 +64,12 @@ class Transform2d(Transform2dNumPy):
                 return val
         return None
 
+
     def _add_forward_graph(self, p_ops, shape):
         ''' Keep record of the pyramid so we can use it later if need be '''
         find_key = '{}x{}'.format(shape[0], shape[1])
         self.forward_graphs[find_key] = p_ops
+
 
     def _find_inverse_graph(self, Lo_shape, nlevels):
         ''' See if we can reuse an old graph for the inverse transform '''
@@ -76,28 +79,114 @@ class Transform2d(Transform2dNumPy):
                 return val
         return None
 
+
     def _add_inverse_graph(self, p_ops, Lo_shape, nlevels):
         ''' Keep record of the pyramid so we can use it later if need be '''
         find_key = '{}x{} up {}'.format(Lo_shape[0], Lo_shape[1], nlevels)
         self.inverse_graphs[find_key] = p_ops
 
-    def forward(self, X, nlevels=3, include_scale=False):
+
+    def forward_channels(self, X, nlevels=3, include_scale=False):
+        '''
+        Perform a forward transform on an image with multiplice channels. 
+        Must provide with a tensorflow variable or placeholder (unlike the more
+        general :py:method:`Transform2d.forward`).
+        :param X: Input image which you wish to transform. Input must be of
+        shape [batch, height, width, channels]. 
+        :param nlevels: Number of levels of the dtcwt transform to calculate.
+        :param include_scale: Whether or not to return the lowpass results at
+        each sclae of the transform, or only at the highest scale (as is custom
+        for multiresolution analysis)
+        :returns: A tuple of Yl, Yh, Yscale. 
+        The Yl corresponds to the lowpass
+        of the image, and has shape [batch, channels, height, width] of type
+        tf.float32.
+        Yh corresponds to the highpasses for the image, and is a list of length
+        nlevels, with each entry having shape [batch, channels, height', width',
+        6] of type tf.complex64.
+        Yscale corresponds to the lowpass outputs at each scale of the
+        transform, and is a list of length nlevels, with each entry having
+        shape [batch, channels, height', width'] of type tf.float32.
+        '''
+        if not tf.is_numeric_tensor(X):
+            raise ValueError(
+            '''The provided input must be a tensorflow variable or placeholder''')
+        else: 
+            X_shape = X.get_shape().as_list()
+            if len(X_shape) != 4: 
+                raise ValueError('''The entered variable has incorrect dimensions {}.
+                    It must be of shape [batch, height, width, channels] 
+                    (batch can be None).'''.format(X_shape))         
+
+            original_size = X.get_shape().as_list()[1:-1]
+            size = '{}x{}'.format(original_size[0], original_size[1])
+            name = 'dtcwt_fwd_{}'.format(size)
+            with tf.name_scope(name):
+                # Put the channel axis first
+                X = tf.transpose(X, perm=[3,0,1,2])
+                f = lambda x: self._forward_ops(x, nlevels, include_scale,
+                                                return_tuple=True)
+
+                # Calculate the dtcwt for each of the channels independently
+                # This will return tensors of shape: 
+                # Yl: [c, batch, height, width]
+                # Yh: list of length nlevels, each of shape [c, batch, height, width, 6]
+                # Yscale: list of length nlevels, each of shape [c, batch, height, width]
+                if include_scale:
+                    shape = (tf.float32, # lowpass object
+                            tuple(tf.complex64 for k in range(nlevels)), # highpasses
+                            tuple(tf.float32 for k in range(nlevels)))
+                    Yl, Yh, Yscale = tf.map_fn(f, X, dtype=shape)
+                    # Transpose the tensors to put the channel after the batch
+                    Yl = tf.transpose(Yl, perm=[1,0,2,3])
+                    Yh = tuple(
+                            [tf.transpose(x, perm=[1,0,2,3,4]) for x in Yh])
+                    Yscale = tuple(
+                            [tf.transpose(x, perm=[1,0,2,3]) for x in Yscale])
+                    return Yl, Yh, Yscale
+
+                else:
+                    shape = (tf.float32, 
+                            tuple(tf.complex64 for k in range(nlevels)))
+                    Yl, Yh = tf.map_fn(f, X, dtype=shape)
+                    # Transpose the tensors to put the channel after the batch
+                    Yl = tf.transpose(Yl, perm=[1,0,2,3])
+                    Yh = tuple(
+                            [tf.transpose(x, perm=[1,0,2,3,4]) for x in Yh])
+                    return Yl, Yh
+
+
+    def forward(self, X, nlevels=3, include_scale=False, return_tuple=False):
         '''
         Perform a forward transform on an image. Can provide the forward
         transform with either an np array (naive usage), or a tensorflow
         variable or placeholder (designed usage).
+        :param X: Input image which you wish to transform. Can be a numpy
+        array, tensorflow Variable or Tensorflow placeholder. See comments
+        below.
+        :param nlevels: Number of levels of the dtcwt transform to calculate.
+        :param include_scale: Whether or not to return the lowpass results at
+        each sclae of the transform, or only at the highest scale (as is custom
+        for multiresolution analysis)
+        :param return_tuple: If true, returns a tuple of lowpass, highpasses
+        and scales (if include_scale is True) rather than a Pyramid object.
+        :returns: A :py:class:`Pyramid_tf` object or a :py:class:`Pyramid`
+        object, depending on the type of input data provided.
+
+        Data Types for the :py:param:`X`:
         If a numpy array is provided, the forward function will create a graph
         of the right size to match the input (or check if it has previously
         created one), and then feed the input into the graph and evaluate it.
-        This operation will return a Pyramid() object similar to running the
-        numpy version would.
+        This operation will return a :py:class:`Pyramid` object similar to 
+        how running the numpy version would.
+
         If a tensorflow variable or placeholder is provided, the forward
         function will create a graph of the right size, and return
         a Pyramid_ops() object.
         '''
 
         # Check if a numpy array was provided
-        if not isinstance(X, tf.Tensor) and not isinstance(X, tf.Variable):
+        if not tf.is_numeric_tensor(X):
             X = np.atleast_2d(asfarray(X))
             if len(X.shape) >= 3: 
                 raise ValueError('''The entered variable has incorrect dimensions {}.
@@ -106,7 +195,7 @@ class Transform2d(Transform2dNumPy):
                     enter each channel separately. If you wish to enter a batch
                     of images, please instead provide either a tf.Placeholder
                     or a tf.Variable input of size [batch, height, width].
-                    '''.format(original_size))         
+                    '''.format(X.shape))         
 
             # Check if the ops already exist for an input of the given size
             p_ops = self._find_forward_graph(X.shape)
@@ -128,18 +217,30 @@ class Transform2d(Transform2dNumPy):
         # A tensorflow object was provided
         else: 
             X_shape = X.get_shape().as_list()
-            if len(X_shape) != 3: 
+            if len(X_shape) > 3: 
                 raise ValueError('''The entered variable has incorrect dimensions {}.
                     If X is a tf placeholder or variable, it must be of shape
-                    [batch, height, width] (batch can be None). For colour images, 
-                    please enter each channel separately. 
-                    '''.format(original_size))         
+                    [batch, height, width] (batch can be None) or 
+                    [height, width]. For colour images, please enter each
+                    channel separately.'''.format(X_shape))         
+
+            # If a batch wasn't provided, add a none dimension and remove it
+            # later
+            if len(X_shape) == 2:
+                logging.warn('Fed with a 2d shape input. For efficient calculation'
+                            + ' feed batches of inputs. Input was reshaped to'
+                            + ' have a 1 in the first dimension.')
+                X = tf.expand_dims(X,axis=0)
+
 
             original_size = X.get_shape().as_list()[1:]
             size = '{}x{}'.format(original_size[0], original_size[1])
             name = 'dtcwt_fwd_{}'.format(size)
             with tf.name_scope(name):
-                return self._forward_ops(X, nlevels, include_scale)
+                p_tf = self._forward_ops(X, nlevels, include_scale,
+                                         return_tuple)
+
+            return p_tf
 
     def inverse(self, pyramid, gain_mask=None):
         '''
@@ -207,14 +308,19 @@ class Transform2d(Transform2dNumPy):
             raise ValueError('''Unknown pyramid provided to inverse transform''')
     
 
-    def _forward_ops(self, X, nlevels=3, include_scale=False):
+    def _forward_ops(self, X, nlevels=3, include_scale=False,
+            return_tuple=False):
         """Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
         :param X: 3D real array of size [Batch, rows, cols]
         :param nlevels: Number of levels of wavelet decomposition
         :param include_scale: True if you want to receive the lowpass coefficients at
             intermediate layers.
-        :returns: A :py:class:`dtcwt.Pyramid` compatible object representing the transform-domain signal
-        .. codeauthor:: Fergal Cotter <fbc23@cam.ac.uk>, Feb 2017
+        :param return_tuple: If true, instead of returning
+        a :py:class`dtcwt.Pyramid_tf` object, return a tuple of (lowpass,
+        highpasses, scales) 
+        :returns: A :py:class:`dtcwt.Pyramid_tf` compatible
+        object representing the transform-domain signal .. codeauthor:: Fergal
+        Cotter <fbc23@cam.ac.uk>, Feb 2017
         .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
         .. codeauthor:: Nick Kingsbury, Cambridge University, Sept 2001
         .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
@@ -241,7 +347,7 @@ class Transform2d(Transform2dNumPy):
             raise ValueError('Qshift wavelet must have 12 or 8 components.')
 
         # Check the shape and form of the input
-        if not isinstance(X, tf.Tensor) and not isinstance(X, tf.Variable):
+        if not tf.is_numeric_tensor(X):
             raise ValueError('''Please provide the forward function with 
                 a tensorflow placeholder or variable of size [batch, width,
                 height] (batch can be None if you do not wish to specify it).''')
@@ -279,9 +385,15 @@ class Transform2d(Transform2dNumPy):
 
         if nlevels == 0:
             if include_scale:
-                return Pyramid_tf(X_in, X, (), ())
+                if return_tuple:
+                    return X_in, (), ()
+                else:
+                    return Pyramid_tf(X_in, X, (), ())
             else:
-                return Pyramid_tf(X_in, X, ())
+                if return_tuple:
+                    return X_in, ()
+                else: 
+                    return Pyramid_tf(X_in, X, ())
 
         
         ############################ Initialise ###############################
@@ -397,9 +509,15 @@ class Transform2d(Transform2dNumPy):
                 'The rightmost column has been duplicated, prior to decomposition.')
 
         if include_scale:
-            return Pyramid_tf(X_in, Yl, tuple(Yh), tuple(Yscale))
+            if return_tuple:
+                return Yl, tuple(Yh), tuple(Yscale)
+            else:
+                return Pyramid_tf(X_in, Yl, tuple(Yh), tuple(Yscale))
         else:
-            return Pyramid_tf(X_in, Yl, tuple(Yh))
+            if return_tuple:
+                return Yl, tuple(Yh)
+            else:
+                return Pyramid_tf(X_in, Yl, tuple(Yh))
     
 
     def _inverse_ops(self, pyramid, gain_mask=None):

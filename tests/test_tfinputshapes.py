@@ -177,14 +177,15 @@ def test_multichannel(nlevels, include_scale, channels):
     # At level 1, the lowpass output will be the same size as the input. At
     # levels above that, it will be half the size per level
     extent = 512 * 2**(-(nlevels-1))
-    assert Yl.get_shape().as_list() == [None, channels, extent, extent]
+    assert Yl.get_shape().as_list() == [None, extent, extent, channels]
     assert Yl.dtype == tf.float32
 
     for i in range(nlevels):
         extent = 512 * 2**(-(i+1))
-        assert Yh[i].get_shape().as_list() == [None, channels, extent, extent, 6]
+        assert Yh[i].get_shape().as_list() == [None, extent, extent, channels, 6]
         assert Yh[i].dtype == tf.complex64
         if include_scale:
-            assert Yscale[i].get_shape().as_list() == [None, channels, 2*extent, 2*extent]
+            assert Yscale[i].get_shape().as_list() == [ 
+                None, 2*extent, 2*extent, channels]
             assert Yscale[i].dtype == tf.float32
     

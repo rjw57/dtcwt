@@ -99,14 +99,14 @@ class Transform2d(Transform2dNumPy):
         for multiresolution analysis)
         :returns: A tuple of Yl, Yh, Yscale. 
         The Yl corresponds to the lowpass
-        of the image, and has shape [batch, channels, height, width] of type
+        of the image, and has shape [batch, height, width, channels] of type
         tf.float32.
         Yh corresponds to the highpasses for the image, and is a list of length
-        nlevels, with each entry having shape [batch, channels, height', width',
-        6] of type tf.complex64.
+        nlevels, with each entry having shape [batch, height', width',
+        channels, 6] of type tf.complex64.
         Yscale corresponds to the lowpass outputs at each scale of the
         transform, and is a list of length nlevels, with each entry having
-        shape [batch, channels, height', width'] of type tf.float32.
+        shape [batch, height', width', channels] of type tf.float32.
         '''
         if not tf.is_numeric_tensor(X):
             raise ValueError(
@@ -138,11 +138,11 @@ class Transform2d(Transform2dNumPy):
                             tuple(tf.float32 for k in range(nlevels)))
                     Yl, Yh, Yscale = tf.map_fn(f, X, dtype=shape)
                     # Transpose the tensors to put the channel after the batch
-                    Yl = tf.transpose(Yl, perm=[1,0,2,3])
+                    Yl = tf.transpose(Yl, perm=[1,2,3,0])
                     Yh = tuple(
-                            [tf.transpose(x, perm=[1,0,2,3,4]) for x in Yh])
+                            [tf.transpose(x, perm=[1,2,3,0,4]) for x in Yh])
                     Yscale = tuple(
-                            [tf.transpose(x, perm=[1,0,2,3]) for x in Yscale])
+                            [tf.transpose(x, perm=[1,2,3,0]) for x in Yscale])
                     return Yl, Yh, Yscale
 
                 else:
@@ -150,9 +150,9 @@ class Transform2d(Transform2dNumPy):
                             tuple(tf.complex64 for k in range(nlevels)))
                     Yl, Yh = tf.map_fn(f, X, dtype=shape)
                     # Transpose the tensors to put the channel after the batch
-                    Yl = tf.transpose(Yl, perm=[1,0,2,3])
+                    Yl = tf.transpose(Yl, perm=[1,2,3,0])
                     Yh = tuple(
-                            [tf.transpose(x, perm=[1,0,2,3,4]) for x in Yh])
+                            [tf.transpose(x, perm=[1,2,3,0,4]) for x in Yh])
                     return Yl, Yh
 
 

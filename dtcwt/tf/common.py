@@ -25,15 +25,15 @@ class Pyramid_tf(object):
 
     .. py:attribute:: X
         A placeholder which the user can use when they want to evaluate the
-        forward dtcwt. 
+        forward dtcwt.
     .. py:attribute:: lowpass_op
         A tensorflow tensor that can be evaluated in a session to return
-        the coarsest scale lowpass signal for the input, X. 
+        the coarsest scale lowpass signal for the input, X.
     .. py:attribute:: highpasses_op
         A tuple of tensorflow tensors, where each element is the complex
         subband coefficients for corresponding scales finest to coarsest.
     .. py:attribute:: scales
-        *(optional)* A tuple where each element is a tensorflow tensor 
+        *(optional)* A tuple where each element is a tensorflow tensor
         containing the lowpass signal for corresponding scales finest to
         coarsest. This is not required for the inverse and may be *None*.
     .. py:method:: apply_reshaping(fn)
@@ -60,16 +60,21 @@ class Pyramid_tf(object):
         if self.lowpass_op is None:
             return None
 
+        close_after = False
         if sess is None:
             sess = tf.Session(graph=self.graph)
+            close_after = True
 
-        with sess:
-            try:
-                y = sess.run(self.lowpass_op, {self.X : data})
-            except ValueError:
-                y = sess.run(self.lowpass_op, {self.X : [data]})[0]
+        try:
+            y = sess.run(self.lowpass_op, {self.X : data})
+        except ValueError:
+            y = sess.run(self.lowpass_op, {self.X : [data]})[0]
+
+        if close_after:
+            sess.close()
+
         return y
-        
+
     def _get_highpasses(self, data, sess=None):
         if self.highpasses_ops is None:
             return None
@@ -78,13 +83,13 @@ class Pyramid_tf(object):
             sess = tf.Session(graph=self.graph)
 
         with sess:
-            try: 
+            try:
                 y = tuple(
-                        [sess.run(layer_hp, {self.X : data}) 
+                        [sess.run(layer_hp, {self.X : data})
                         for layer_hp in self.highpasses_ops])
             except ValueError:
                 y = tuple(
-                        [sess.run(layer_hp, {self.X : [data]})[0] 
+                        [sess.run(layer_hp, {self.X : [data]})[0]
                         for layer_hp in self.highpasses_ops])
         return y
 
@@ -92,38 +97,47 @@ class Pyramid_tf(object):
         if self.scales_ops is None:
             return None
 
+        close_after = False
         if sess is None:
             sess = tf.Session(graph=self.graph)
+            close_after = True
 
-        with sess:
-            try:
-                y = tuple(
-                        sess.run(layer_scale, {self.X : data})
-                        for layer_scale in self.scales_ops)
-            except ValueError:
-                y = tuple(
-                        sess.run(layer_scale, {self.X : [data]})[0]
-                        for layer_scale in self.scales_ops)
+        try:
+            y = tuple(
+                    sess.run(layer_scale, {self.X : data})
+                    for layer_scale in self.scales_ops)
+        except ValueError:
+            y = tuple(
+                    sess.run(layer_scale, {self.X : [data]})[0]
+                    for layer_scale in self.scales_ops)
+
+        if close_after:
+            sess.close()
         return y
 
     def _get_X(self, Yl, Yh, sess=None):
         if self.X is None:
             return None
 
+        close_after = False
         if sess is None:
             sess = tf.Session(graph=self.graph)
+            close_after = True
 
-        with sess:
-            try:
-                # Use dictionary comprehension to feed in our Yl and our
-                # multiple layers of Yh
-                data = [Yl, *list(Yh)]
-                placeholders = [self.lowpass_op, *list(self.highpasses_ops)]
-                X = sess.run(self.X, {i : d for i,d in zip(placeholders,data)})
-            except ValueError:
-                data = [Yl, *list(Yh)]
-                placeholders = [self.lowpass_op, *list(self.highpasses_ops)]
-                X = sess.run(self.X, {i : [d] for i,d in zip(placeholders,data)})[0]
+        try:
+            # Use dictionary comprehension to feed in our Yl and our
+            # multiple layers of Yh
+            data = [Yl, *list(Yh)]
+            placeholders = [self.lowpass_op, *list(self.highpasses_ops)]
+            X = sess.run(self.X, {i : d for i,d in zip(placeholders,data)})
+        except ValueError:
+            data = [Yl, *list(Yh)]
+            placeholders = [self.lowpass_op, *list(self.highpasses_ops)]
+            X = sess.run(self.X, {i : [d] for i,d in zip(placeholders,data)})[0]
+
+        if close_after:
+            sess.close()
+
         return X
 
 
@@ -153,7 +167,7 @@ class Pyramid_tf(object):
             transform.
         :param sess: Tensorflow session to use. If none is provided a temporary
             session will be used.
-            
+
         :returns: A :py:class:`dtcwt.Pyramid` of the data. The variables in
         this pyramid will typically be only 2-dimensional (when calling the
         numpy forward transform), but these will be 3 dimensional.
@@ -166,7 +180,7 @@ class Pyramid_tf(object):
     def eval_inv(self, Yl, Yh, sess=None):
         """
         A helper function to evaluate the inverse transform on given wavelet
-        coefficients. 
+        coefficients.
 
         :param Yl: A numpy array of shape [<batch>, h/(2**scale), w/(2**scale)],
             where (h,w) was the size of the input image.
@@ -179,7 +193,7 @@ class Pyramid_tf(object):
         :param sess: Tensorflow session to use. If none is provided a temporary
             session will be used.
 
-        :returns: A numpy array of the inverted data. 
+        :returns: A numpy array of the inverted data.
         """
         return self._get_X(Yl, Yh, sess)
 

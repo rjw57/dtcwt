@@ -93,7 +93,8 @@ class Transform2d(Transform2dNumPy):
         find_key = '{}x{} up {}'.format(Lo_shape[0], Lo_shape[1], nlevels)
         self.inverse_graphs[find_key] = p_ops
 
-    def forward(self, X, nlevels=3, include_scale=False, return_tuple=False):
+    def forward(self, X, nlevels=3, include_scale=False, return_tuple=False,
+                undecimated=False, max_dec_scale=1):
         '''
         Perform a forward transform on an image.
 
@@ -151,7 +152,8 @@ class Transform2d(Transform2dNumPy):
                 size = '{}x{}'.format(X.shape[0], X.shape[1])
                 name = 'dtcwt_fwd_{}'.format(size)
                 with self.np_graph.name_scope(name):
-                    p_ops = self._forward_ops(ph, nlevels, include_scale)
+                    p_ops = self._forward_ops(
+                        ph, nlevels, include_scale, False, undecimated, max_dec_scale)
 
                 self._add_forward_graph(p_ops, X.shape)
 
@@ -182,13 +184,15 @@ class Transform2d(Transform2dNumPy):
             size = '{}x{}'.format(original_size[0], original_size[1])
             name = 'dtcwt_fwd_{}'.format(size)
             with tf.name_scope(name):
-                p_tf = self._forward_ops(X, nlevels, include_scale,
-                                         return_tuple)
+                p_tf = self._forward_ops(
+                    X, nlevels, include_scale, return_tuple, undecimated,
+                    max_dec_scale)
 
             return p_tf
 
     def forward_channels(self, X, nlevels=3, include_scale=False,
-                         data_format="nhwc"):
+                         data_format="nhwc", undecimated=False,
+                         max_dec_scale=1):
         '''
         Perform a forward transform on an image with multiple channels.
 
@@ -252,7 +256,9 @@ class Transform2d(Transform2dNumPy):
                     X = tf.transpose(X, perm=[1, 0, 2, 3])
 
                 f = lambda x: self._forward_ops(x, nlevels, include_scale,
-                                                return_tuple=True)
+                                                return_tuple=True,
+                                                undecimated=undecimated,
+                                                max_dec_scale=max_dec_scale)
 
                 # Calculate the dtcwt for each of the channels independently
                 # This will return tensors of shape:
@@ -345,8 +351,8 @@ class Transform2d(Transform2dNumPy):
 
             # If not, create a graph
             if p_ops is None:
-                Lo_ph = tf.placeholder(tf.float32,
-                                       [None, Yl.shape[0], Yl.shape[1]])
+                Lo_ph = tf.placeholder(
+                    tf.float32, [None, Yl.shape[0], Yl.shape[1]])
                 Hi_ph = tuple(
                     tf.placeholder(tf.complex64, [None, *level.shape])
                     for level in Yh)
@@ -482,7 +488,8 @@ class Transform2d(Transform2dNumPy):
             return X
 
     def _forward_ops(self, X, nlevels=3, include_scale=False,
-                     return_tuple=False):
+                     return_tuple=False, undecimated=False,
+                     max_dec_scale=1):
         """
         Perform a *n*-level DTCWT-2D decompostion on a 2D matrix *X*.
 
@@ -493,6 +500,10 @@ class Transform2d(Transform2dNumPy):
         :param return_tuple: If true, instead of returning
             a :py:class`dtcwt.Pyramid_tf` object, return a tuple of
             (lowpass, highpasses, scales)
+        :param undecimated: If true, will stop decimating the transform
+        :param max_undec_scale: The maximum undecimated scale. Will be used if
+            undecimated is set to True. Beyond this scale, stop decimating
+            (useful if you want to partially decimate)
 
         :returns: A :py:class:`dtcwt.Pyramid_tf` compatible
             object representing the transform-domain signal
@@ -624,27 +635,31 @@ class Transform2d(Transform2dNumPy):
             if col_size % 4 != 0:
                 LoLo = tf.pad(LoLo, [[0, 0], [0, 0], [1, 1]], 'SYMMETRIC')
 
+            no_decimate = False
+            if undecimated and level >= max_dec_scale:
+                no_decimate = True
+
             # Do even Qshift filters on cols.
-            Lo = coldfilt(LoLo, h0b, h0a)
-            Hi = coldfilt(LoLo, h1b, h1a)
+            Lo = coldfilt(LoLo, h0b, h0a, no_decimate)
+            Hi = coldfilt(LoLo, h1b, h1a, no_decimate)
             if len(self.qshift) >= 12:
-                Ba = coldfilt(LoLo, h2b, h2a)
+                Ba = coldfilt(LoLo, h2b, h2a, no_decimate)
 
             # Do even Qshift filters on rows.
-            LoLo = rowdfilt(Lo, h0b, h0a)
+            LoLo = rowdfilt(Lo, h0b, h0a, no_decimate)
             LoLo_shape = LoLo.get_shape().as_list()[1:3]
 
             # Horizontal wavelet pair (15 & 165 degrees)
-            horiz = q2c(rowdfilt(Hi, h0b, h0a))
+            horiz = q2c(rowdfilt(Hi, h0b, h0a, no_decimate))
 
             # Vertical wavelet pair (75 & 105 degrees)
-            vertic = q2c(rowdfilt(Lo, h1b, h1a))
+            vertic = q2c(rowdfilt(Lo, h1b, h1a, no_decimate))
 
             # Diagonal wavelet pair (45 & 135 degrees)
             if len(self.qshift) >= 12:
-                diag = q2c(rowdfilt(Ba, h2b, h2a))
+                diag = q2c(rowdfilt(Ba, h2b, h2a, no_decimate))
             else:
-                diag = q2c(rowdfilt(Hi, h1b, h1a))
+                diag = q2c(rowdfilt(Hi, h1b, h1a, no_decimate))
 
             # Pack all 6 tensors into one
             Yh[level] = tf.stack(
@@ -697,6 +712,10 @@ class Transform2d(Transform2dNumPy):
         :param pyramid: A :py:class:`dtcwt.tf.Pyramid_tf`-like class holding the
             transform domain representation to invert.
         :param gain_mask: Gain to be applied to each subband.
+        :param undecimated: If true, will stop decimating the transform
+        :param max_undec_scale: The maximum undecimated scale. Will be used if
+            undecimated is set to True. Beyond this scale, stop decimating
+            (useful if you want to partially decimate)
 
         :returns: A :py:class:`dtcwt.tf.Pyramid_tf` class which can be
             evaluated to get the inverted signal, X.
@@ -759,25 +778,38 @@ class Transform2d(Transform2dNumPy):
                      current_level - 1])
 
             # Do even Qshift filters on columns.
-            y1 = colifilt(Z, g0b, g0a) + colifilt(lh, g1b, g1a)
+            no_decimate = False
+            this_size = Yh[current_level - 1].get_shape().as_list()
+            next_size = Yh[current_level - 2].get_shape().as_list()
+            if this_size[1:3] == next_size[1:3]:
+                no_decimate = True
+
+            y1 = colifilt(Z, g0b, g0a, no_decimate) + \
+                colifilt(lh, g1b, g1a, no_decimate)
 
             if len(self.qshift) >= 12:
-                y2 = colifilt(hl, g0b, g0a)
-                y2bp = colifilt(hh, g2b, g2a)
+                y2 = colifilt(hl, g0b, g0a, no_decimate)
+                y2bp = colifilt(hh, g2b, g2a, no_decimate)
 
                 # Do even Qshift filters on rows.
+                y1T = tf.transpose(y1, perm=[0, 2, 1])
+                y2T = tf.transpose(y2, perm=[0, 2, 1])
+                y2bpT = tf.transpose(y2bp, perm=[0, 2, 1])
                 Z = tf.transpose(
-                    colifilt(tf.transpose(y1, perm=[0, 2, 1]), g0b, g0a) +
-                    colifilt(tf.transpose(y2, perm=[0, 2, 1]), g1b, g1a) +
-                    colifilt(tf.transpose(y2bp, perm=[0, 2, 1]), g2b, g2a),
+                    colifilt(y1T, g0b, g0a, no_decimate) +
+                    colifilt(y2T, g1b, g1a, no_decimate) +
+                    colifilt(y2bpT, g2b, g2a, no_decimate),
                     perm=[0, 2, 1])
             else:
-                y2 = colifilt(hl, g0b, g0a) + colifilt(hh, g1b, g1a)
+                y2 = colifilt(hl, g0b, g0a, no_decimate) + \
+                    colifilt(hh, g1b, g1a, no_decimate)
 
                 # Do even Qshift filters on rows.
+                y1T = tf.transpose(y1, perm=[0, 2, 1])
+                y2T = tf.transpose(y2, perm=[0, 2, 1])
                 Z = tf.transpose(
-                    colifilt(tf.transpose(y1, perm=[0, 2, 1]), g0b, g0a) +
-                    colifilt(tf.transpose(y2, perm=[0, 2, 1]), g1b, g1a),
+                    colifilt(y1T, g0b, g0a, no_decimate) +
+                    colifilt(y2T, g1b, g1a, no_decimate),
                     perm=[0, 2, 1])
 
             # Check size of Z and crop as required
@@ -794,7 +826,8 @@ class Transform2d(Transform2dNumPy):
             Z_r, Z_c = Z.get_shape().as_list()[1:3]
             if Z_r != S_r * 2 or Z_c != S_c * 2:
                 raise ValueError(
-                    'Sizes of highpasses are not valid for DTWAVEIFM2')
+                    'Sizes of highpasses {}x{} are not '.format(Z_r, Z_c) +
+                    'compatible with {}x{} from next level'.format(S_r, S_c))
 
             current_level = current_level - 1
 

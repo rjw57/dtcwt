@@ -635,31 +635,27 @@ class Transform2d(Transform2dNumPy):
             if col_size % 4 != 0:
                 LoLo = tf.pad(LoLo, [[0, 0], [0, 0], [1, 1]], 'SYMMETRIC')
 
-            no_decimate = False
-            if undecimated and level >= max_dec_scale:
-                no_decimate = True
-
             # Do even Qshift filters on cols.
-            Lo = coldfilt(LoLo, h0b, h0a, no_decimate)
-            Hi = coldfilt(LoLo, h1b, h1a, no_decimate)
+            Lo = coldfilt(LoLo, h0b, h0a)
+            Hi = coldfilt(LoLo, h1b, h1a)
             if len(self.qshift) >= 12:
-                Ba = coldfilt(LoLo, h2b, h2a, no_decimate)
+                Ba = coldfilt(LoLo, h2b, h2a)
 
             # Do even Qshift filters on rows.
-            LoLo = rowdfilt(Lo, h0b, h0a, no_decimate)
+            LoLo = rowdfilt(Lo, h0b, h0a)
             LoLo_shape = LoLo.get_shape().as_list()[1:3]
 
             # Horizontal wavelet pair (15 & 165 degrees)
-            horiz = q2c(rowdfilt(Hi, h0b, h0a, no_decimate))
+            horiz = q2c(rowdfilt(Hi, h0b, h0a))
 
             # Vertical wavelet pair (75 & 105 degrees)
-            vertic = q2c(rowdfilt(Lo, h1b, h1a, no_decimate))
+            vertic = q2c(rowdfilt(Lo, h1b, h1a))
 
             # Diagonal wavelet pair (45 & 135 degrees)
             if len(self.qshift) >= 12:
-                diag = q2c(rowdfilt(Ba, h2b, h2a, no_decimate))
+                diag = q2c(rowdfilt(Ba, h2b, h2a))
             else:
-                diag = q2c(rowdfilt(Hi, h1b, h1a, no_decimate))
+                diag = q2c(rowdfilt(Hi, h1b, h1a))
 
             # Pack all 6 tensors into one
             Yh[level] = tf.stack(
@@ -781,35 +777,30 @@ class Transform2d(Transform2dNumPy):
             no_decimate = False
             this_size = Yh[current_level - 1].get_shape().as_list()
             next_size = Yh[current_level - 2].get_shape().as_list()
-            if this_size[1:3] == next_size[1:3]:
-                no_decimate = True
-
-            y1 = colifilt(Z, g0b, g0a, no_decimate) + \
-                colifilt(lh, g1b, g1a, no_decimate)
+            y1 = colifilt(Z, g0b, g0a) + colifilt(lh, g1b, g1a)
 
             if len(self.qshift) >= 12:
-                y2 = colifilt(hl, g0b, g0a, no_decimate)
-                y2bp = colifilt(hh, g2b, g2a, no_decimate)
+                y2 = colifilt(hl, g0b, g0a)
+                y2bp = colifilt(hh, g2b, g2a)
 
                 # Do even Qshift filters on rows.
                 y1T = tf.transpose(y1, perm=[0, 2, 1])
                 y2T = tf.transpose(y2, perm=[0, 2, 1])
                 y2bpT = tf.transpose(y2bp, perm=[0, 2, 1])
                 Z = tf.transpose(
-                    colifilt(y1T, g0b, g0a, no_decimate) +
-                    colifilt(y2T, g1b, g1a, no_decimate) +
-                    colifilt(y2bpT, g2b, g2a, no_decimate),
+                    colifilt(y1T, g0b, g0a) +
+                    colifilt(y2T, g1b, g1a) +
+                    colifilt(y2bpT, g2b, g2a),
                     perm=[0, 2, 1])
             else:
-                y2 = colifilt(hl, g0b, g0a, no_decimate) + \
-                    colifilt(hh, g1b, g1a, no_decimate)
+                y2 = colifilt(hl, g0b, g0a) + colifilt(hh, g1b, g1a)
 
                 # Do even Qshift filters on rows.
                 y1T = tf.transpose(y1, perm=[0, 2, 1])
                 y2T = tf.transpose(y2, perm=[0, 2, 1])
                 Z = tf.transpose(
-                    colifilt(y1T, g0b, g0a, no_decimate) +
-                    colifilt(y2T, g1b, g1a, no_decimate),
+                    colifilt(y1T, g0b, g0a) +
+                    colifilt(y2T, g1b, g1a),
                     perm=[0, 2, 1])
 
             # Check size of Z and crop as required
@@ -911,11 +902,11 @@ def c2q(w, gain):
     x4 = -tf.real(Q)
 
     # Stack 2 inputs of shape [batch, r, c] to [batch, r, 2, c]
-    x_rows1 = tf.stack([x1, x3], axis=2)
+    x_rows1 = tf.stack([x1, x3], axis=-2)
     # Reshaping interleaves the results
     x_rows1 = tf.reshape(x_rows1, [-1, 2 * r, c])
     # Do the same for the even columns
-    x_rows2 = tf.stack([x2, x4], axis=2)
+    x_rows2 = tf.stack([x2, x4], axis=-2)
     x_rows2 = tf.reshape(x_rows2, [-1, 2 * r, c])
 
     # Stack the two [batch, 2*r, c] tensors to [batch, 2*r, c, 2]

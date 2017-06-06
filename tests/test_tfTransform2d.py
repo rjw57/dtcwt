@@ -53,7 +53,6 @@ def test_specific_wavelet():
 
 
 @skip_if_no_tf
-@pytest.mark.skip(reason='Cant pad by more than half the dimension of the input')
 def test_1d():
     Yl, Yh = dtwavexfm2(mandrill[0,:])
 
@@ -129,7 +128,6 @@ def test_0_levels_w_scale():
 
 
 @skip_if_no_tf
-@pytest.mark.skip(reason='Cant pad by more than half the dimension of the input')
 def test_integer_input():
     # Check that an integer input is correctly coerced into a floating point
     # array
@@ -138,7 +136,6 @@ def test_integer_input():
 
 
 @skip_if_no_tf
-@pytest.mark.skip(reason='Cant pad by more than half the dimension of the input')
 def test_integer_perfect_recon():
     # Check that an integer input is correctly coerced into a floating point
     # array and reconstructed

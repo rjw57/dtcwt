@@ -7,6 +7,7 @@ except ImportError:
     _HAVE_TF = False
 
 from dtcwt.utils import as_column_vector
+import numpy as np
 
 
 def _as_row_tensor(h):
@@ -100,6 +101,33 @@ def _conv_2d_transpose(X, h, out_shape, strides=[1,1,1,1]):
     return Y
 
 
+def _tf_pad(x, szs, padding='SYMMETRIC'):
+    """
+    Tensorflow can't handle padding by more than the dimension of the image.
+    This wrapper allows us to build padding up successively.
+    """
+    def get_size(x):
+        # Often the batch will be None. Convert these to 0s
+        x_szs = x.get_shape().as_list()
+        x_szs = [0 if val is None else val for val in x_szs]
+        return x_szs
+
+    x_szs = get_size(x)
+    gt = [[sz[0] > x_sz, sz[1] > x_sz] for sz,x_sz in zip(szs, x_szs)]
+    while np.any(gt):
+        # This creates an intermediate padding amount that will bring in
+        # dimensions that are too big by the size of x.
+        szs_step = np.int32(gt) * np.stack([x_szs, x_szs], axis=-1)
+        x = tf.pad(x, szs_step, padding)
+        szs = szs - szs_step
+        x_szs = get_size(x)
+        gt = [[sz[0] > x_sz, sz[1] > x_sz] for sz,x_sz in zip(szs, x_szs)]
+
+    # Pad by the remaining amount
+    x = tf.pad(x, szs, 'SYMMETRIC')
+    return x
+
+
 def colfilter(X, h, align=False):
     """
     Filter the columns of image *X* using filter vector *h*, without decimation.
@@ -129,9 +157,9 @@ def colfilter(X, h, align=False):
     # Symmetrically extend with repeat of end samples.
     # Pad only the second dimension of the tensor X (the columns)
     if m % 2 == 0 and align:
-        X = tf.pad(X, [[0, 0], [m2 - 1, m2], [0, 0]], 'SYMMETRIC')
+        X = _tf_pad(X, [[0, 0], [m2 - 1, m2], [0, 0]], 'SYMMETRIC')
     else:
-        X = tf.pad(X, [[0, 0], [m2, m2], [0, 0]], 'SYMMETRIC')
+        X = _tf_pad(X, [[0, 0], [m2, m2], [0, 0]], 'SYMMETRIC')
 
     Y = _conv_2d(X, h_t, strides=[1,1,1,1])
 
@@ -167,9 +195,9 @@ def rowfilter(X, h, align=False):
     # Symmetrically extend with repeat of end samples.
     # Pad only the second dimension of the tensor X (the columns)
     if m % 2 == 0 and align:
-        X = tf.pad(X, [[0, 0], [0, 0], [m2 - 1, m2]], 'SYMMETRIC')
+        X = _tf_pad(X, [[0, 0], [0, 0], [m2 - 1, m2]], 'SYMMETRIC')
     else:
-        X = tf.pad(X, [[0, 0], [0, 0], [m2, m2]], 'SYMMETRIC')
+        X = _tf_pad(X, [[0, 0], [0, 0], [m2, m2]], 'SYMMETRIC')
 
     Y = _conv_2d(X, h_t, strides=[1,1,1,1])
 
@@ -216,16 +244,19 @@ def coldfilt(X, ha, hb, no_decimate=False):
     r, c = X.get_shape().as_list()[1:]
     r2 = r // 2
     if r % 4 != 0:
-        raise ValueError('No. of rows in X must be a multiple of 4')
+        raise ValueError('No. of rows in X must be a multiple of 4\n' +
+                         'X was {}'.format(X.get_shape().as_list()))
 
     ha_t = _as_col_tensor(ha)
     hb_t = _as_col_tensor(hb)
     if ha_t.shape != hb_t.shape:
-        raise ValueError('Shapes of ha and hb must be the same')
+        raise ValueError('Shapes of ha and hb must be the same\n' +
+                         'ha was {}, hb was {}'.format(ha_t.shape, hb_t.shape))
 
     m = ha_t.get_shape().as_list()[0]
     if m % 2 != 0:
-        raise ValueError('Lengths of ha and hb must be even')
+        raise ValueError('Lengths of ha and hb must be even\n' +
+                         'ha was {}, hb was {}'.format(ha_t.shape, hb_t.shape))
 
     # Do the 2d convolution, but only evaluated at every second sample
     # for both X_odd and X_even
@@ -235,7 +266,7 @@ def coldfilt(X, ha, hb, no_decimate=False):
 
     # Symmetrically extend with repeat of end samples.
     # Pad only the second dimension of the tensor X (the columns).
-    X = tf.pad(X, [[0, 0], [m, m], [0, 0]], 'SYMMETRIC')
+    X = _tf_pad(X, [[0, 0], [m, m], [0, 0]], 'SYMMETRIC')
 
     # Take the odd and even columns of X
     X_odd = X[:, 2:r + 2 * m - 2:2, :]
@@ -296,22 +327,25 @@ def rowdfilt(X, ha, hb, no_decimate=False):
     r, c = X.get_shape().as_list()[1:]
     c2 = c // 2
     if c % 4 != 0:
-        raise ValueError('No. of rows in X must be a multiple of 4')
+        raise ValueError('No. of rows in X must be a multiple of 4\n' +
+                         'X was {}'.format(X.get_shape().as_list()))
 
     ha_t = _as_row_tensor(ha)
     hb_t = _as_row_tensor(hb)
     if ha_t.shape != hb_t.shape:
-        raise ValueError('Shapes of ha and hb must be the same')
+        raise ValueError('Shapes of ha and hb must be the same\n' +
+                         'ha was {}, hb was {}'.format(ha_t.shape, hb_t.shape))
 
     m = ha_t.get_shape().as_list()[1]
     if m % 2 != 0:
-        raise ValueError('Lengths of ha and hb must be even')
+        raise ValueError('Lengths of ha and hb must be even\n' +
+                         'ha was {}, hb was {}'.format(ha_t.shape, hb_t.shape))
 
     # Symmetrically extend with repeat of end samples.
     # Pad only the second dimension of the tensor X (the rows).
     # SYMMETRIC extension means the edge sample is repeated twice, whereas
     # REFLECT only has the edge sample once
-    X = tf.pad(X, [[0, 0], [0, 0], [m, m]], 'SYMMETRIC')
+    X = _tf_pad(X, [[0, 0], [0, 0], [m, m]], 'SYMMETRIC')
 
     # Take the odd and even columns of X
     X_odd = X[:,:,2:c + 2 * m - 2:2]
@@ -347,7 +381,7 @@ def colifilt(X, ha, hb, no_decimate=False):
     :param X: The input, of size [batch, h, w]
     :param ha: Filter to be used on the odd samples of x.
     :param hb: Filter to bue used on the even samples of x.
-    :param no_decimate: If true, keep the same input size
+    :param no_decimate: Not implemented yet
 
     Both filters should be even length, and h should be approx linear
     phase with a quarter sample advance from its mid pt (i.e `:math:`|h(m/2)| >
@@ -376,25 +410,24 @@ def colifilt(X, ha, hb, no_decimate=False):
 
     # A quick hack to handle undecimated inputs. Simply take every second sample
     # as if it had been decimated.
-    if no_decimate:
-        X = X[:,::2,:]
-
     r, c = X.get_shape().as_list()[1:]
     if r % 2 != 0:
-        raise ValueError('No. of rows in X must be a multiple of 2')
+        raise ValueError('No. of rows in X must be a multiple of 2.\n' +
+                         'X was {}'.format(X.get_shape().as_list()))
 
     ha_t = _as_col_tensor(ha)
     hb_t = _as_col_tensor(hb)
     if ha_t.shape != hb_t.shape:
-        raise ValueError('Shapes of ha and hb must be the same')
-
+        raise ValueError('Shapes of ha and hb must be the same.\n' +
+                         'ha was {}, hb was {}'.format(ha_t.shape, hb_t.shape))
 
     m = ha_t.get_shape().as_list()[0]
     m2 = m // 2
     if ha_t.get_shape().as_list()[0] % 2 != 0:
-        raise ValueError('Lengths of ha and hb must be even')
+        raise ValueError('Lengths of ha and hb must be even.\n' +
+                         'ha was {}, hb was {}'.format(ha_t.shape, hb_t.shape))
 
-    X = tf.pad(X, [[0, 0], [m2, m2], [0, 0]], 'SYMMETRIC')
+    X = _tf_pad(X, [[0, 0], [m2, m2], [0, 0]], 'SYMMETRIC')
 
     ha_odd_t = ha_t[::2,:]
     ha_even_t = ha_t[1::2,:]

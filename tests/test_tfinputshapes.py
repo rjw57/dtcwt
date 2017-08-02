@@ -1,14 +1,11 @@
 import os
 import pytest
 
-from pytest import raises
-
-import numpy as np
-import tests.datasets as datasets
 from importlib import import_module
 
 from .util import skip_if_no_tf
 PRECISION_DECIMAL = 5
+
 
 @skip_if_no_tf
 def test_setup():
@@ -21,6 +18,7 @@ def test_setup():
 
     # Make sure we run tests on cpu rather than gpus
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 
 @skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale", [
@@ -43,12 +41,15 @@ def test_2d_input(nlevels, include_scale):
 
     for i in range(nlevels):
         extent = 512 * 2**(-(i+1))
-        assert p.highpasses_ops[i].get_shape().as_list() == [1, extent, extent, 6]
-        assert p.highpasses_ops[i].dtype == tf.complex64
+        assert (p.highpasses_ops[i].get_shape().as_list() ==
+                [1, extent, extent, 6])
+        assert (p.highpasses_ops[i].dtype ==
+                tf.complex64)
         if include_scale:
-            assert p.scales_ops[i].get_shape().as_list() == [1, 2*extent, 2*extent]
+            assert (p.scales_ops[i].get_shape().as_list() ==
+                    [1, 2*extent, 2*extent])
             assert p.scales_ops[i].dtype == tf.float32
-    
+
 
 @skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale", [
@@ -95,7 +96,8 @@ def test_2d_input_tuple(nlevels, include_scale):
     t = Transform2d()
     # Calling forward with a 2d input will throw a warning
     if include_scale:
-        Yl, Yh, Yscale = t.forward(in_, nlevels, include_scale, return_tuple=True)
+        Yl, Yh, Yscale = t.forward(in_, nlevels, include_scale,
+                                   return_tuple=True)
     else:
         Yl, Yh = t.forward(in_, nlevels, include_scale, return_tuple=True)
 
@@ -112,7 +114,6 @@ def test_2d_input_tuple(nlevels, include_scale):
         if include_scale:
             assert Yscale[i].get_shape().as_list() == [1, 2*extent, 2*extent]
             assert Yscale[i].dtype == tf.float32
-    
 
 
 @skip_if_no_tf
@@ -135,12 +136,14 @@ def test_batch_input(nlevels, include_scale, batch_size):
 
     for i in range(nlevels):
         extent = 512 * 2**(-(i+1))
-        assert p.highpasses_ops[i].get_shape().as_list() == [batch_size, extent, extent, 6]
+        assert (p.highpasses_ops[i].get_shape().as_list() ==
+                [batch_size, extent, extent, 6])
         assert p.highpasses_ops[i].dtype == tf.complex64
         if include_scale:
-            assert p.scales_ops[i].get_shape().as_list() == [batch_size, 2*extent, 2*extent]
+            assert (p.scales_ops[i].get_shape().as_list() ==
+                    [batch_size, 2*extent, 2*extent])
             assert p.scales_ops[i].dtype == tf.float32
-    
+
 
 @skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale, batch_size", [
@@ -153,7 +156,8 @@ def test_batch_input_tuple(nlevels, include_scale, batch_size):
     in_ = tf.placeholder(tf.float32, [batch_size, 512, 512])
     t = Transform2d()
     if include_scale:
-        Yl, Yh, Yscale = t.forward(in_, nlevels, include_scale, return_tuple=True)
+        Yl, Yh, Yscale = t.forward(in_, nlevels, include_scale,
+                                   return_tuple=True)
     else:
         Yl, Yh = t.forward(in_, nlevels, include_scale, return_tuple=True)
 
@@ -168,9 +172,11 @@ def test_batch_input_tuple(nlevels, include_scale, batch_size):
         assert Yh[i].get_shape().as_list() == [batch_size, extent, extent, 6]
         assert Yh[i].dtype == tf.complex64
         if include_scale:
-            assert Yscale[i].get_shape().as_list() == [batch_size, 2*extent, 2*extent]
+            assert (Yscale[i].get_shape().as_list() ==
+                    [batch_size, 2*extent, 2*extent])
             assert Yscale[i].dtype == tf.float32
-    
+
+
 @skip_if_no_tf
 @pytest.mark.parametrize("nlevels, include_scale, channels", [
     (2,False,5),
@@ -194,10 +200,10 @@ def test_multichannel(nlevels, include_scale, channels):
 
     for i in range(nlevels):
         extent = 512 * 2**(-(i+1))
-        assert Yh[i].get_shape().as_list() == [None, extent, extent, channels, 6]
+        assert (Yh[i].get_shape().as_list() ==
+                [None, extent, extent, channels, 6])
         assert Yh[i].dtype == tf.complex64
         if include_scale:
-            assert Yscale[i].get_shape().as_list() == [ 
+            assert Yscale[i].get_shape().as_list() == [
                 None, 2*extent, 2*extent, channels]
             assert Yscale[i].dtype == tf.float32
-    

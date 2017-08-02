@@ -5,7 +5,6 @@ import logging
 
 from six.moves import xrange
 
-from dtcwt.coeffs import biort as _biort, qshift as _qshift
 from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
 from dtcwt.utils import asfarray
 from dtcwt.numpy import Transform2d as Transform2dNumPy
@@ -28,6 +27,7 @@ def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, include
         return r.lowpass, r.highpasses, r.scales
     else:
         return r.lowpass, r.highpasses
+
 
 def dtwaveifm2(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT, gain_mask=None):
     t = Transform2d(biort=biort, qshift=qshift)
@@ -153,7 +153,8 @@ class Transform2d(Transform2dNumPy):
                 name = 'dtcwt_fwd_{}'.format(size)
                 with self.np_graph.name_scope(name):
                     p_ops = self._forward_ops(
-                        ph, nlevels, include_scale, False, undecimated, max_dec_scale)
+                        ph, nlevels, include_scale, False, undecimated,
+                        max_dec_scale)
 
                 self._add_forward_graph(p_ops, X.shape)
 
@@ -262,11 +263,11 @@ class Transform2d(Transform2dNumPy):
 
                 # Calculate the dtcwt for each of the channels independently
                 # This will return tensors of shape:
-                # Yl: A tensor of shape [c, batch, h', w']
-                # Yh: list of length nlevels, each of shape
-                # [c, batch, h'', w'', 6]
-                # Yscale: list of length nlevels, each of shape
-                # [c, batch, h''', w''']
+                #   Yl: A tensor of shape [c, batch, h', w']
+                #   Yh: list of length nlevels, each of shape
+                #       [c, batch, h'', w'', 6]
+                #   Yscale: list of length nlevels, each of shape
+                #       [c, batch, h''', w''']
                 if include_scale:
                     # (lowpass, highpasses, scales)
                     shape = (tf.float32,
@@ -275,19 +276,18 @@ class Transform2d(Transform2dNumPy):
                     Yl, Yh, Yscale = tf.map_fn(f, X, dtype=shape)
                     # Transpose the tensors to put the channel after the batch
                     if data_format == "nhwc":
-                        Yl = tf.transpose(Yl, perm=[1, 2, 3, 0])
-                        Yh = tuple(
-                            [tf.transpose(x, perm=[1, 2, 3, 0, 4]) for x in Yh])
-                        Yscale = tuple(
-                            [tf.transpose(x, perm=[1, 2, 3, 0])
-                             for x in Yscale])
+                        perm_r = [1, 2, 3, 0]
+                        perm_c = [1, 2, 3, 0, 4]
                     else:
-                        Yl = tf.transpose(Yl, perm=[1, 0, 2, 3])
-                        Yh = tuple(
-                            [tf.transpose(x, perm=[1, 0, 2, 3, 4]) for x in Yh])
-                        Yscale = tuple(
-                            [tf.transpose(x, perm=[1, 0, 2, 3])
-                             for x in Yscale])
+                        perm_r = [1, 0, 2, 3]
+                        perm_c = [1, 0, 2, 3, 4]
+                    Yl = tf.transpose(Yl, perm=perm_r, name='Yl')
+                    Yh = tuple(
+                        [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
+                         for i, x in enumerate(Yh)])
+                    Yscale = tuple(
+                        [tf.transpose(x, perm=perm_r, name='Yscale_'+str(i+1))
+                         for i, x in enumerate(Yscale)])
 
                     return Yl, Yh, Yscale
 
@@ -297,13 +297,15 @@ class Transform2d(Transform2dNumPy):
                     Yl, Yh = tf.map_fn(f, X, dtype=shape)
                     # Transpose the tensors to put the channel after the batch
                     if data_format == "nhwc":
-                        Yl = tf.transpose(Yl, perm=[1, 2, 3, 0])
-                        Yh = tuple(
-                            [tf.transpose(x, perm=[1, 2, 3, 0, 4]) for x in Yh])
+                        perm_r = [1, 2, 3, 0]
+                        perm_c = [1, 2, 3, 0, 4]
                     else:
-                        Yl = tf.transpose(Yl, perm=[1, 0, 2, 3])
-                        Yh = tuple(
-                            [tf.transpose(x, perm=[1, 0, 2, 3, 4]) for x in Yh])
+                        perm_r = [1, 0, 2, 3]
+                        perm_c = [1, 0, 2, 3, 4]
+                    Yl = tf.transpose(Yl, perm=perm_r, name='Yl')
+                    Yh = tuple(
+                        [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
+                         for i, x in enumerate(Yh)])
 
                     return Yl, Yh
 
@@ -380,7 +382,7 @@ class Transform2d(Transform2dNumPy):
                 return self._inverse_ops(pyramid, gain_mask)
         else:
             raise ValueError(
-                '''Unknown pyramid provided to inverse transform''')
+                'Unknown pyramid provided to inverse transform')
 
     def inverse_channels(self, Yl, Yh, gain_mask=None, data_format="nhwc"):
         '''
@@ -484,7 +486,7 @@ class Transform2d(Transform2dNumPy):
             s = P.X.get_shape().as_list()
             X = tf.reshape(P.X, [-1, num_channels, s[1], s[2]])
             if data_format == "nhwc":
-                X = tf.transpose(X, [0, 2, 3, 1])
+                X = tf.transpose(X, [0, 2, 3, 1], name='X')
             return X
 
     def _forward_ops(self, X, nlevels=3, include_scale=False,
@@ -774,9 +776,6 @@ class Transform2d(Transform2dNumPy):
                      current_level - 1])
 
             # Do even Qshift filters on columns.
-            no_decimate = False
-            this_size = Yh[current_level - 1].get_shape().as_list()
-            next_size = Yh[current_level - 2].get_shape().as_list()
             y1 = colifilt(Z, g0b, g0a) + colifilt(lh, g1b, g1a)
 
             if len(self.qshift) >= 12:

@@ -49,7 +49,8 @@ def test_simple():
 
 @skip_if_no_tf
 def test_specific_wavelet():
-    Yl, Yh = dtwavexfm2(mandrill, biort=biort('antonini'), qshift=qshift('qshift_06'))
+    Yl, Yh = dtwavexfm2(mandrill, biort=biort('antonini'),
+                        qshift=qshift('qshift_06'))
 
 
 @skip_if_no_tf
@@ -67,7 +68,6 @@ def test_3d():
 @skip_if_no_tf
 def test_simple_w_scale():
     Yl, Yh, Yscale = dtwavexfm2(mandrill, include_scale=True)
-
     assert len(Yscale) > 0
     for x in Yscale:
         assert x is not None
@@ -109,7 +109,7 @@ def test_rot_symm_modified():
     # not that they work
     Yl, Yh, Yscale = dtwavexfm2(mandrill, biort='near_sym_b_bp',
                                 qshift='qshift_b_bp', include_scale=True)
-    Z = dtwaveifm2(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
+    dtwaveifm2(Yl, Yh, biort='near_sym_b_bp', qshift='qshift_b_bp')
 
 
 @skip_if_no_tf
@@ -164,7 +164,8 @@ def test_float32_input():
 
 @skip_if_no_tf
 def test_eval_fwd():
-    y = pyramid_ops.eval_fwd(mandrill)
+    # Test it runs without error
+    pyramid_ops.eval_fwd(mandrill)
 
 
 @skip_if_no_tf

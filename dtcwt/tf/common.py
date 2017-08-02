@@ -1,12 +1,5 @@
 from __future__ import absolute_import
 
-import numpy as np
-import logging
-
-from dtcwt.coeffs import biort as _biort, qshift as _qshift
-from dtcwt.defaults import DEFAULT_BIORT, DEFAULT_QSHIFT
-from dtcwt.utils import asfarray
-
 from dtcwt.numpy import Pyramid as Pyramid_np
 
 try:
@@ -14,6 +7,7 @@ try:
 except ImportError:
     # The lack of tensorflow will be caught by the low-level routines.
     pass
+
 
 class Pyramid_tf(object):
     """A tensorflow representation of a transform domain signal.
@@ -66,9 +60,9 @@ class Pyramid_tf(object):
             close_after = True
 
         try:
-            y = sess.run(self.lowpass_op, {self.X : data})
+            y = sess.run(self.lowpass_op, {self.X: data})
         except ValueError:
-            y = sess.run(self.lowpass_op, {self.X : [data]})[0]
+            y = sess.run(self.lowpass_op, {self.X: [data]})[0]
 
         if close_after:
             sess.close()
@@ -79,18 +73,23 @@ class Pyramid_tf(object):
         if self.highpasses_ops is None:
             return None
 
+        # Only close sessions if we had to create them
+        close_after = False
         if sess is None:
             sess = tf.Session(graph=self.graph)
+            close_after = True
 
-        with sess:
-            try:
-                y = tuple(
-                        [sess.run(layer_hp, {self.X : data})
-                        for layer_hp in self.highpasses_ops])
-            except ValueError:
-                y = tuple(
-                        [sess.run(layer_hp, {self.X : [data]})[0]
-                        for layer_hp in self.highpasses_ops])
+        try:
+            y = tuple(
+                [sess.run(layer_hp, {self.X: data})
+                 for layer_hp in self.highpasses_ops])
+        except ValueError:
+            y = tuple(
+                [sess.run(layer_hp, {self.X: [data]})[0]
+                 for layer_hp in self.highpasses_ops])
+
+        if close_after:
+            sess.close()
         return y
 
     def _get_scales(self, data, sess=None):
@@ -104,12 +103,12 @@ class Pyramid_tf(object):
 
         try:
             y = tuple(
-                    sess.run(layer_scale, {self.X : data})
-                    for layer_scale in self.scales_ops)
+                sess.run(layer_scale, {self.X: data})
+                for layer_scale in self.scales_ops)
         except ValueError:
             y = tuple(
-                    sess.run(layer_scale, {self.X : [data]})[0]
-                    for layer_scale in self.scales_ops)
+                sess.run(layer_scale, {self.X: [data]})[0]
+                for layer_scale in self.scales_ops)
 
         if close_after:
             sess.close()
@@ -129,33 +128,31 @@ class Pyramid_tf(object):
             # multiple layers of Yh
             data = [Yl, *list(Yh)]
             placeholders = [self.lowpass_op, *list(self.highpasses_ops)]
-            X = sess.run(self.X, {i : d for i,d in zip(placeholders,data)})
+            X = sess.run(self.X, {i: d for i,d in zip(placeholders,data)})
         except ValueError:
             data = [Yl, *list(Yh)]
             placeholders = [self.lowpass_op, *list(self.highpasses_ops)]
-            X = sess.run(self.X, {i : [d] for i,d in zip(placeholders,data)})[0]
+            X = sess.run(self.X, {i: [d] for i,d in zip(placeholders,data)})[0]
 
         if close_after:
             sess.close()
 
         return X
 
-
     def apply_reshaping(self, fn):
         """
         A helper function to apply a tensor transformation on all of the
         elements in the pyramid. E.g. reshape all of them in the same way.
 
-        :param fn: function to apply to each of the lowpass_op, highpasses_ops and
-            scale_ops tensors
+        :param fn: function to apply to each of the lowpass_op, highpasses_ops
+            and scale_ops tensors
         """
         self.lowpass_op = fn(self.lowpass_op)
         self.highpasses_ops = tuple(
-                    [fn(h_scale) for h_scale in self.highpasses_ops])
-        if not self.scales_ops is None:
+            [fn(h_scale) for h_scale in self.highpasses_ops])
+        if self.scales_ops is not None:
             self.scales_ops = tuple(
-                    [fn(s_scale) for s_scale in self.scales_ops])
-
+                [fn(s_scale) for s_scale in self.scales_ops])
 
     def eval_fwd(self, X, sess=None):
         """
@@ -185,15 +182,15 @@ class Pyramid_tf(object):
         :param Yl: A numpy array of shape [<batch>, h/(2**scale), w/(2**scale)],
             where (h,w) was the size of the input image.
         :param Yh: A tuple or list of the highpass coefficients. Each entry in
-            the tuple or list represents the scale the coefficients belong to. The
-            size of the coefficients must match the outputs of the forward
-            transform. I.e. Yh[0] should have shape [<batch>, 6, h/2, w/2], where the
-            input image had shape (h, w). <batch> should be the same across all
-            scales, and should match the size of the Yl first dimension.
+            the tuple or list represents the scale the coefficients belong to.
+            The size of the coefficients must match the outputs of the forward
+            transform. I.e. Yh[0] should have shape [<batch>, 6, h/2, w/2],
+            where the input image had shape (h, w). <batch> should be the same
+            across all scales, and should match the size of the Yl first
+            dimension.
         :param sess: Tensorflow session to use. If none is provided a temporary
             session will be used.
 
         :returns: A numpy array of the inverted data.
         """
         return self._get_X(Yl, Yh, sess)
-

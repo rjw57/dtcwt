@@ -1,6 +1,7 @@
 """
-A backend which uses NumPy to perform the filtering. This backend should always
-be available.
+Provide low-level Tensorflow accelerated operations. This backend requires that
+Tensorflow be installed. Works best with a GPU but still offers good
+improvements with a CPU.
 
 """
 

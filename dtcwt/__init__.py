@@ -38,6 +38,12 @@ _AVAILABLE_BACKENDS = {
         'Transform3d': dtcwt.numpy.Transform3d,
         'Pyramid': dtcwt.opencl.Pyramid,
     },
+    'tf': {
+        'Transform1d': dtcwt.numpy.Transform1d,
+        'Transform2d': dtcwt.tf.Transform2d,
+        'Transform3d': dtcwt.numpy.Transform3d,
+        'Pyramid': dtcwt.tf.Pyramid,
+    },
 }
 
 def _update_from_current_backend():

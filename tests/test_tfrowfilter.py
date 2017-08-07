@@ -56,7 +56,7 @@ def test_biort():
 @skip_if_no_tf
 def test_even_size_batch():
     h = tf.constant([-1,1], dtype=tf.float32)
-    zero_t = tf.zeros([1, *mandrill.shape], tf.float32)
+    zero_t = tf.zeros((1,) + mandrill.shape, tf.float32)
     y_op = rowfilter(zero_t, h)
     assert y_op.get_shape()[1:] == (mandrill.shape[0], mandrill.shape[1]+1)
     with tf.Session() as sess:

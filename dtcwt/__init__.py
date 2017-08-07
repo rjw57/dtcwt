@@ -19,6 +19,7 @@ from dtcwt._version import __version__
 
 import dtcwt.numpy
 import dtcwt.opencl
+import dtcwt.tf
 
 # An array of dictionaries. Each dictionary stores the top-level module
 # variables for that backend.
@@ -42,7 +43,7 @@ _AVAILABLE_BACKENDS = {
         'Transform1d': dtcwt.numpy.Transform1d,
         'Transform2d': dtcwt.tf.Transform2d,
         'Transform3d': dtcwt.numpy.Transform3d,
-        'Pyramid': dtcwt.tf.Pyramid,
+        'Pyramid': dtcwt.numpy.Pyramid,
     },
 }
 

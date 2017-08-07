@@ -356,7 +356,7 @@ class Transform2d(Transform2dNumPy):
                 Lo_ph = tf.placeholder(
                     tf.float32, [None, Yl.shape[0], Yl.shape[1]])
                 Hi_ph = tuple(
-                    tf.placeholder(tf.complex64, [None, *level.shape])
+                    tf.placeholder(tf.complex64, (None,) + level.shape)
                     for level in Yh)
                 p_in = Pyramid_tf(None, Lo_ph, Hi_ph)
                 size = '{}x{}_up_{}'.format(Yl.shape[0], Yl.shape[1], nlevels)

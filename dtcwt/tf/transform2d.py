@@ -210,9 +210,11 @@ class Transform2d(Transform2dNumPy):
             default), then data is in the form [batch, channels, h, w]. If the
             format is "nhwc", then the data is in the form [batch, h, w, c].
 
-        :returns: A tuple of (Yl, Yh, Yscale). The order of output axes
-            will match the input axes (i.e. the position of the channel
-            dimension). I.e. (note that the spatial sizes will change)
+        :returns: tuple
+            A tuple of (Yl, Yh) or (Yl, Yh, Yscale) if include_scale was true.
+            The order of output axes will match the input axes (i.e. the
+            position of the channel dimension). I.e. (note that the spatial
+            sizes will change)
             Yl: [batch, c, h, w] OR [batch, h, w, c]
             Yh: [batch, c, h, w, 6] OR [batch, h, w, c, 6]
             Yscale: [batch, c, h, w, 6] OR [batch, h, w, c, 6]

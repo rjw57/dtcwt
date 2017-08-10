@@ -126,12 +126,12 @@ class Pyramid_tf(object):
         try:
             # Use dictionary comprehension to feed in our Yl and our
             # multiple layers of Yh
-            data = [Yl, *list(Yh)]
-            placeholders = [self.lowpass_op, *list(self.highpasses_ops)]
+            data = [Yl,] + list(Yh)
+            placeholders = [self.lowpass_op, ] + list(self.highpasses_ops)
             X = sess.run(self.X, {i: d for i,d in zip(placeholders,data)})
         except ValueError:
-            data = [Yl, *list(Yh)]
-            placeholders = [self.lowpass_op, *list(self.highpasses_ops)]
+            data = [Yl,] + list(Yh)
+            placeholders = [self.lowpass_op, ] + list(self.highpasses_ops)
             X = sess.run(self.X, {i: [d] for i,d in zip(placeholders,data)})[0]
 
         if close_after:

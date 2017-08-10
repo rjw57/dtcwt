@@ -74,3 +74,12 @@ OpenCL
 .. automodule:: dtcwt.opencl.lowlevel
     :members:
 
+Tensorflow
+''''''''''
+
+.. automodule:: dtcwt.tf
+    :members:
+    :inherited-members:
+
+.. automodule:: dtcwt.tf.lowlevel
+    :members:

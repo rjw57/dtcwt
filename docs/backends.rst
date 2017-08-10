@@ -1,10 +1,11 @@
 Multiple Backend Support
 ========================
 
-The ``dtcwt`` library currently provides two backends for computing the wavelet
-transform: a `NumPy <http://www.numpy.org/>`_ based implementation and an OpenCL
+The ``dtcwt`` library currently provides three backends for computing the wavelet
+transform: a `NumPy <http://www.numpy.org/>`_ based implementation, an OpenCL
 implementation which uses the `PyOpenCL <http://mathema.tician.de/software/pyopencl/>`_
-bindings for Python.
+bindings for Python, and a Tensorflow implementation which uses the `Tensorflow
+<https://www.tensorflow.org>`_ bindings for Python.
 
 NumPy
 '''''
@@ -26,27 +27,51 @@ may not be full-featured.
 OpenCL support depends on the `PyOpenCL
 <http://mathema.tician.de/software/pyopencl/>`_ package being installed and an
 OpenCL implementation being installed on your machine. Attempting to use an
-OpenCL backen without both of these being present will result in a runtime (but
+OpenCL backend without both of these being present will result in a runtime (but
 not import-time) exception.
+
+Tensorflow
+''''''''''
+
+If you want to take advantage of having a GPU on your machine, 
+some transforms and algorithms have been implemented with a Tensorflow backend.
+This backend, if present will provide an identical API to the NumPy backend.
+NumPy-based input may be passed in to a tensorflow backend, in which case it
+will be converted to a tensorflow variable, the transform performed, and then
+converted back to a NumPy variable afterwards.
+
+Tensorflow support depends on the `Tensorflow
+<https://www.tensorflow.org/install/>`_ python package being installed in the
+current python environment, as well as the necessary CUDA + CUDNN libraries
+installed). Attempting to use a Tensorflow backend without the python package
+available will result in a runtime (but not import-time) exception. Attempting
+to use the Tensorflow backend without the CUDA and CUDNN libraries properly
+installed and linked will result in the Tensorflow backend being used, but
+operations will be run on the CPU rather than the GPU.
+
+If you do not have a GPU, some speedup was still seen for using Tensorflow with
+the CPU vs the plain NumPy backend. 
 
 Which backend should I use?
 '''''''''''''''''''''''''''
 
-The top-level transform routines, such as :py:class`dtcwt.Transform2d`, will
+The top-level transform routines, such as :py:class:`dtcwt.Transform2d`, will
 automatically use the NumPy backend. If you are not primarily focussed on
 speed, this is the correct choice since the NumPy backend has the fullest
 feature support, is the best tested and behaves correctly given single- and
 double-precision input.
 
 If you care about speed and need only single-precision calculations, the OpenCL
-backend can provide significant speed-up. On the author's system, the 2D
-transform sees around a times 10 speed improvement.
+or Tensorflow backends can provide significant speed-up. 
+On the author's system, the 2D transform sees around a times 10 speed
+improvement for the OpenCL backend, and a 8-10 times speed up for the Tensorflow
+backend.
 
 Using a backend
 '''''''''''''''
 
-The NumPy and OpenCL backends live in the :py:mod:`dtcwt.numpy`
-and :py:mod:`dtcwt.opencl` modules respectively. Both provide
+The NumPy, OpenCL and Tensorflow backends live in the :py:mod:`dtcwt.numpy`,
+:py:mod:`dtcwt.opencl`, and :py:mod:`dtcwt.tf` modules respectively. All provide
 implementations of some subset of the DTCWT library functionality.
 
 Access to the 2D transform is via a :py:class:`dtcwt.Transform2d` instance. For
@@ -74,8 +99,15 @@ switch to the OpenCL backend
     dtcwt.push_backend('opencl')
     # ... Transform2d, etc now use OpenCL ...
 
-As is suggested by the name, changing the backend manipulates a stack behind
-the scenes and so one can temporarily switch backend using
+and to switch to the Tensorflow backend
+
+.. code-block:: python
+    
+    dtcwt.push_backend('tf')
+    # ... Transform2d, etc now use Tensorflow ...
+
+As is suggested by the name, changing the backend manipulates a stack behind the
+scenes and so one can temporarily switch backend using
 :py:func:`dtcwt.push_backend` and :py:func:`dtcwt.pop_backend`
 
 .. code-block:: python

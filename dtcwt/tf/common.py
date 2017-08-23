@@ -42,12 +42,17 @@ class Pyramid_tf(object):
         *Yh* to the tensorflow session. Assumes that the object was returned
         from the Trasnform2d().inverse() method.
     """
-    def __init__(self, X, lowpass, highpasses, scales=None,
-                 graph=tf.get_default_graph()):
+    def __init__(self, X, lowpass, highpasses, scales=None, graph=None):
         self.X = X
         self.lowpass_op = lowpass
         self.highpasses_ops = highpasses
         self.scales_ops = scales
+        if graph is None:
+            try:
+                # This could fail if we don't have tensorflow
+                graph = tf.get_default_graph()
+            except NameError:
+                pass
         self.graph = graph
 
     def _get_lowpass(self, data, sess=None):

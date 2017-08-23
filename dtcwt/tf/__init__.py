@@ -6,7 +6,7 @@ improvements with a CPU.
 """
 
 from .common import Pyramid_tf
-from .transform2d import Transform2d, dtwavexfm2, dtwaveifm2
+from .transform2d import Transform2d
 
 __all__ = [
     'Pyramid',

@@ -174,9 +174,9 @@ def test_multiple_inputs():
     y3 = pyramid_ops.eval_fwd([mandrill, mandrill, mandrill])
     assert y3.lowpass.shape == (3,) + y.lowpass.shape
     for hi3, hi in zip(y3.highpasses, y.highpasses):
-        assert hi3.shape == (3, *hi.shape)
+        assert hi3.shape == (3,) + hi.shape
     for s3, s in zip(y3.scales, y.scales):
-        assert s3.shape == (3, *s.shape)
+        assert s3.shape == (3,) + s.shape
 
 
 @skip_if_no_tf

@@ -191,7 +191,7 @@ class Transform2d(Transform2dNumPy):
 
             return p_tf
 
-    def forward_channels(self, X, nlevels=3, include_scale=False,
+    def forward_channels(self, X, nlevels=3, # include_scale=True,
                          data_format="nhwc", undecimated=False,
                          max_dec_scale=1):
         '''
@@ -211,7 +211,7 @@ class Transform2d(Transform2dNumPy):
             format is "nhwc", then the data is in the form [batch, h, w, c].
 
         :returns: tuple
-            A tuple of (Yl, Yh) or (Yl, Yh, Yscale) if include_scale was true.
+            A tuple of (Yl, Yh, Yscale).
             The order of output axes will match the input axes (i.e. the
             position of the channel dimension). I.e. (note that the spatial
             sizes will change)
@@ -233,6 +233,9 @@ class Transform2d(Transform2dNumPy):
         .. codeauthor:: Nick Kingsbury, Cambridge University, Sept 2001
         .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
         '''
+        # include_scale used to be a parameter, but removed for ease
+        include_scale = True
+
         data_format = data_format.lower()
         if data_format != "nchw" and data_format != "nhwc":
             raise ValueError('The data format must be either "ncwh" or ' +
@@ -248,68 +251,130 @@ class Transform2d(Transform2dNumPy):
                     It must be of shape [batch, channels, height, width]
                     (batch can be None).'''.format(X_shape))
 
-            original_size = X.get_shape().as_list()[1:-1]
-            size = '{}x{}'.format(original_size[0], original_size[1])
-            name = 'dtcwt_fwd_{}'.format(size)
-            with tf.name_scope(name):
-                # Put the channel axis first
-                if data_format == "nhwc":
-                    X = tf.transpose(X, perm=[3, 0, 1, 2])
+            with tf.variable_scope('ch_to_batch'):
+                s = X.get_shape().as_list()[1:]
+                size = '{}x{}'.format(s[0], s[1])
+                name = 'dtcwt_fwd_{}'.format(size)
+                # Move all of the channels into the batch dimension for the
+                # input.  This may involve transposing, depending on the data
+                # format
+                if data_format == 'nhwc':
+                    nch = s[2]
+                    X = tf.transpose(X, perm=[0, 3, 1, 2])
+                    X = tf.reshape(X, [-1, s[0], s[1]])
                 else:
-                    X = tf.transpose(X, perm=[1, 0, 2, 3])
+                    nch = s[0]
+                    X = tf.reshape(X, [-1, s[1], s[2]])
 
-                f = lambda x: self._forward_ops(x, nlevels, include_scale,
-                                                return_tuple=True,
-                                                undecimated=undecimated,
-                                                max_dec_scale=max_dec_scale)
+            with tf.variable_scope(name):
+                Yl, Yh, Yscale = self._forward_ops(
+                    X, nlevels, include_scale, return_tuple=True,
+                    undecimated=undecimated, max_dec_scale=max_dec_scale)
 
-                # Calculate the dtcwt for each of the channels independently
-                # This will return tensors of shape:
-                #   Yl: A tensor of shape [c, batch, h', w']
-                #   Yh: list of length nlevels, each of shape
-                #       [c, batch, h'', w'', 6]
-                #   Yscale: list of length nlevels, each of shape
-                #       [c, batch, h''', w''']
+            # Put the channels back into their correct positions
+            with tf.variable_scope('batch_to_ch'):
+                # Reshape Yl
+                s = Yl.get_shape().as_list()[1:]
+                Yl = tf.reshape(Yl, [-1, nch, s[0], s[1]], name='Yl_reshape')
+                if data_format == 'nhwc':
+                    Yl = tf.transpose(Yl, [0, 2, 3, 1], name='Yl_ch_to_end')
+
+                    #  Yh = tuple(
+                        #  [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
+                         #  for i, x in enumerate(Yh)])
+                    #  Yscale = tuple(
+                        #  [tf.transpose(x, perm=perm_r, name='Yscale_'+str(i+1))
+                         #  for i, x in enumerate(Yscale)])
+                # Reshape Yh
+                with tf.variable_scope('Yh'):
+                    Yh_new = [None,] * nlevels
+                    for i in range(nlevels):
+                        s = Yh[i].get_shape().as_list()[1:]
+                        Yh_new[i] = tf.reshape(
+                            Yh[i], [-1, nch, s[0], s[1], s[2]],
+                            name='scale{}_reshape'.format(i))
+                        if data_format == 'nhwc':
+                            Yh_new[i] = tf.transpose(
+                                Yh_new[i], [0, 2, 3, 1, 4],
+                                name='scale{}_ch_to_end'.format(i))
+                    Yh = tuple(Yh_new)
+
+                # Reshape Yscale
                 if include_scale:
-                    # (lowpass, highpasses, scales)
-                    shape = (tf.float32,
-                             tuple(tf.complex64 for k in range(nlevels)),
-                             tuple(tf.float32 for k in range(nlevels)))
-                    Yl, Yh, Yscale = tf.map_fn(f, X, dtype=shape)
-                    # Transpose the tensors to put the channel after the batch
-                    if data_format == "nhwc":
-                        perm_r = [1, 2, 3, 0]
-                        perm_c = [1, 2, 3, 0, 4]
-                    else:
-                        perm_r = [1, 0, 2, 3]
-                        perm_c = [1, 0, 2, 3, 4]
-                    Yl = tf.transpose(Yl, perm=perm_r, name='Yl')
-                    Yh = tuple(
-                        [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
-                         for i, x in enumerate(Yh)])
-                    Yscale = tuple(
-                        [tf.transpose(x, perm=perm_r, name='Yscale_'+str(i+1))
-                         for i, x in enumerate(Yscale)])
-
+                    with tf.variable_scope('Yscale'):
+                        Yscale_new = [None,] * nlevels
+                        for i in range(nlevels):
+                            s = Yscale[i].get_shape().as_list()[1:]
+                            Yscale_new[i] = tf.reshape(
+                                Yscale[i], [-1, nch, s[0], s[1]],
+                                name='scale{}_reshape'.format(i))
+                            if data_format == 'nhwc':
+                                Yscale_new[i] = tf.transpose(
+                                    Yscale_new[i], [0, 2, 3, 1],
+                                    name='scale{}_ch_to_end'.format(i))
+                        Yscale = tuple(Yscale_new)
                     return Yl, Yh, Yscale
-
                 else:
-                    shape = (tf.float32,
-                             tuple(tf.complex64 for k in range(nlevels)))
-                    Yl, Yh = tf.map_fn(f, X, dtype=shape)
-                    # Transpose the tensors to put the channel after the batch
-                    if data_format == "nhwc":
-                        perm_r = [1, 2, 3, 0]
-                        perm_c = [1, 2, 3, 0, 4]
-                    else:
-                        perm_r = [1, 0, 2, 3]
-                        perm_c = [1, 0, 2, 3, 4]
-                    Yl = tf.transpose(Yl, perm=perm_r, name='Yl')
-                    Yh = tuple(
-                        [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
-                         for i, x in enumerate(Yh)])
-
                     return Yl, Yh
+
+                #  # Put the channel axis first
+                #  if data_format == "nhwc":
+                    #  X = tf.transpose(X, perm=[3, 0, 1, 2])
+                #  else:
+                    #  X = tf.transpose(X, perm=[1, 0, 2, 3])
+
+                #  f = lambda x: self._forward_ops(x, nlevels, include_scale,
+                                                #  return_tuple=True,
+                                                #  undecimated=undecimated,
+                                                #  max_dec_scale=max_dec_scale)
+
+                #  # Calculate the dtcwt for each of the channels independently
+                #  # This will return tensors of shape:
+                #  #   Yl: A tensor of shape [c, batch, h', w']
+                #  #   Yh: list of length nlevels, each of shape
+                #  #       [c, batch, h'', w'', 6]
+                #  #   Yscale: list of length nlevels, each of shape
+                #  #       [c, batch, h''', w''']
+                #  if include_scale:
+                    #  # (lowpass, highpasses, scales)
+                    #  shape = (tf.float32,
+                             #  tuple(tf.complex64 for k in range(nlevels)),
+                             #  tuple(tf.float32 for k in range(nlevels)))
+                    #  Yl, Yh, Yscale = tf.map_fn(f, X, dtype=shape)
+                    #  # Transpose the tensors to put the channel after the batch
+                    #  if data_format == "nhwc":
+                        #  perm_r = [1, 2, 3, 0]
+                        #  perm_c = [1, 2, 3, 0, 4]
+                    #  else:
+                        #  perm_r = [1, 0, 2, 3]
+                        #  perm_c = [1, 0, 2, 3, 4]
+                    #  Yl = tf.transpose(Yl, perm=perm_r, name='Yl')
+                    #  Yh = tuple(
+                        #  [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
+                         #  for i, x in enumerate(Yh)])
+                    #  Yscale = tuple(
+                        #  [tf.transpose(x, perm=perm_r, name='Yscale_'+str(i+1))
+                         #  for i, x in enumerate(Yscale)])
+
+                    #  return Yl, Yh, Yscale
+
+                #  else:
+                    #  shape = (tf.float32,
+                             #  tuple(tf.complex64 for k in range(nlevels)))
+                    #  Yl, Yh = tf.map_fn(f, X, dtype=shape)
+                    #  # Transpose the tensors to put the channel after the batch
+                    #  if data_format == "nhwc":
+                        #  perm_r = [1, 2, 3, 0]
+                        #  perm_c = [1, 2, 3, 0, 4]
+                    #  else:
+                        #  perm_r = [1, 0, 2, 3]
+                        #  perm_c = [1, 0, 2, 3, 4]
+                    #  Yl = tf.transpose(Yl, perm=perm_r, name='Yl')
+                    #  Yh = tuple(
+                        #  [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
+                         #  for i, x in enumerate(Yh)])
+
+                    #  return Yl, Yh
 
     def inverse(self, pyramid, gain_mask=None):
         '''
@@ -453,37 +518,38 @@ class Transform2d(Transform2dNumPy):
 
         # Move all of the channels into the batch dimension for the lowpass
         # input. This may involve transposing, depending on the data format
-        s = Yl.get_shape().as_list()
-        num_channels = s[channel_ax]
-        nlevels = len(Yh)
-        if data_format == "nhwc":
-            size = '{}x{}_up_{}'.format(s[1], s[2], nlevels)
-            Yl_new = tf.transpose(Yl, [0, 3, 1, 2])
-            Yl_new = tf.reshape(Yl_new, [-1, s[1], s[2]])
-        else:
-            size = '{}x{}_up_{}'.format(s[2], s[3], nlevels)
-            Yl_new = tf.reshape(Yl, [-1, s[2], s[3]])
-
-        # Move all of the channels into the batch dimension for the highpass
-        # input. This may involve transposing, depending on the data format
-        Yh_new = []
-        for scale in Yh:
-            s = scale.get_shape().as_list()
-            if s[channel_ax] != num_channels:
-                raise ValueError(
-                    '''The number of channels has to be consistent for all
-                    inputs across the channel axis {}. You fed in Yl: {}
-                    and Yh: {}'''.format(channel_ax, Yl, Yh))
+        with tf.variable_scope('ch_to_batch'):
+            s = Yl.get_shape().as_list()
+            num_channels = s[channel_ax]
+            nlevels = len(Yh)
             if data_format == "nhwc":
-                scale = tf.transpose(scale, [0, 3, 1, 2, 4])
-                Yh_new.append(tf.reshape(scale, [-1, s[1], s[2], s[4]]))
+                size = '{}x{}_up_{}'.format(s[1], s[2], nlevels)
+                Yl_new = tf.transpose(Yl, [0, 3, 1, 2])
+                Yl_new = tf.reshape(Yl_new, [-1, s[1], s[2]])
             else:
-                Yh_new.append(tf.reshape(scale, [-1, s[2], s[3], s[4]]))
+                size = '{}x{}_up_{}'.format(s[2], s[3], nlevels)
+                Yl_new = tf.reshape(Yl, [-1, s[2], s[3]])
 
-        pyramid = Pyramid_tf(None, Yl_new, Yh_new)
+            # Move all of the channels into the batch dimension for the highpass
+            # input. This may involve transposing, depending on the data format
+            Yh_new = []
+            for scale in Yh:
+                s = scale.get_shape().as_list()
+                if s[channel_ax] != num_channels:
+                    raise ValueError(
+                        '''The number of channels has to be consistent for all
+                        inputs across the channel axis {}. You fed in Yl: {}
+                        and Yh: {}'''.format(channel_ax, Yl, Yh))
+                if data_format == "nhwc":
+                    scale = tf.transpose(scale, [0, 3, 1, 2, 4])
+                    Yh_new.append(tf.reshape(scale, [-1, s[1], s[2], s[4]]))
+                else:
+                    Yh_new.append(tf.reshape(scale, [-1, s[2], s[3], s[4]]))
+
+            pyramid = Pyramid_tf(None, Yl_new, Yh_new)
 
         name = 'dtcwt_inv_{}_{}channels'.format(size, num_channels)
-        with tf.name_scope(name):
+        with tf.variable_scope(name):
             P = self._inverse_ops(pyramid, gain_mask)
             s = P.X.get_shape().as_list()
             X = tf.reshape(P.X, [-1, num_channels, s[1], s[2]])
@@ -701,9 +767,9 @@ class Transform2d(Transform2dNumPy):
                 return Pyramid_tf(X_in, Yl, tuple(Yh), tuple(Yscale))
         else:
             if return_tuple:
-                return Yl, tuple(Yh)
+                return Yl, tuple(Yh), None
             else:
-                return Pyramid_tf(X_in, Yl, tuple(Yh))
+                return Pyramid_tf(X_in, Yl, tuple(Yh), None)
 
     def _inverse_ops(self, pyramid, gain_mask=None):
         """Perform an *n*-level dual-tree complex wavelet (DTCWT) 2D

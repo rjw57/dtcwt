@@ -288,7 +288,7 @@ def test_results_match_endtoend(test_input, biort, qshift):
 @skip_if_no_tf
 @pytest.mark.parametrize("data_format", [
     ("nhwc"),
-    ("nchw")
+    ("nchw"),
 ])
 def test_forward_channels(data_format):
     batch = 5
@@ -307,7 +307,7 @@ def test_forward_channels(data_format):
     f_tf = Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
     start = time.time()
     Yl, Yh, Yscale = f_tf.forward_channels(
-        in_p, nlevels=nlevels, include_scale=True, data_format=data_format)
+        in_p, nlevels=nlevels, data_format=data_format)
     Yl, Yh, Yscale = sess.run([Yl, Yh, Yscale], {in_p: ims})
     print("That took {:.2f}s".format(time.time() - start))
 

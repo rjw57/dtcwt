@@ -178,7 +178,7 @@ def test_batch_input_tuple(nlevels, include_scale, batch_size):
     (4,10),
     (3,6)
 ])
-def test_multichannel(nlevels, include_scale, channels):
+def test_multichannel(nlevels, channels):
     in_ = tf.placeholder(tf.float32, [None, 512, 512, channels])
     t = Transform2d()
     Yl, Yh, Yscale = t.forward_channels(in_, nlevels)

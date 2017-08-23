@@ -22,9 +22,10 @@ def setup():
     # Import the tensorflow modules
     tf = import_module('tensorflow')
     dtcwt_tf = import_module('dtcwt.tf')
+    dtcwt_tf_xfm2 = import_module('dtcwt.tf.transform2d')
     Transform2d = getattr(dtcwt_tf, 'Transform2d')
-    dtwavexfm2 = getattr(dtcwt_tf, 'dtwavexfm2')
-    dtwaveifm2 = getattr(dtcwt_tf, 'dtwaveifm2')
+    dtwavexfm2 = getattr(dtcwt_tf_xfm2, 'dtwavexfm2')
+    dtwaveifm2 = getattr(dtcwt_tf_xfm2, 'dtwaveifm2')
 
     mandrill = datasets.mandrill()
     in_p = tf.placeholder(tf.float32, [None, 512, 512])
@@ -358,14 +359,14 @@ def test_inverse_channels(data_format):
         ims = np.random.randn(batch, 100, 100, c)
         in_p = tf.placeholder(tf.float32, [None, 100, 100, c])
         f_tf = Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
-        Yl, Yh = f_tf.forward_channels(
-            in_p, nlevels=nlevels, include_scale=False, data_format=data_format)
+        Yl, Yh, _ = f_tf.forward_channels(
+            in_p, nlevels=nlevels, data_format=data_format)
     else:
         ims = np.random.randn(batch, c, 100, 100)
         in_p = tf.placeholder(tf.float32, [None, c, 100, 100])
         f_tf = Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
-        Yl, Yh = f_tf.forward_channels(
-            in_p, nlevels=nlevels, include_scale=False, data_format=data_format)
+        Yl, Yh, _ = f_tf.forward_channels(
+            in_p, nlevels=nlevels, data_format=data_format)
 
     # Call the inverse_channels function
     start = time.time()

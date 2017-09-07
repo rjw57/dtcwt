@@ -191,7 +191,7 @@ class Transform2d(Transform2dNumPy):
 
             return p_tf
 
-    def forward_channels(self, X, nlevels=3, # include_scale=True,
+    def forward_channels(self, X, nlevels=3,  # include_scale=True,
                          data_format="nhwc", undecimated=False,
                          max_dec_scale=1):
         '''
@@ -279,12 +279,6 @@ class Transform2d(Transform2dNumPy):
                 if data_format == 'nhwc':
                     Yl = tf.transpose(Yl, [0, 2, 3, 1], name='Yl_ch_to_end')
 
-                    #  Yh = tuple(
-                        #  [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
-                         #  for i, x in enumerate(Yh)])
-                    #  Yscale = tuple(
-                        #  [tf.transpose(x, perm=perm_r, name='Yscale_'+str(i+1))
-                         #  for i, x in enumerate(Yscale)])
                 # Reshape Yh
                 with tf.variable_scope('Yh'):
                     Yh_new = [None,] * nlevels
@@ -316,65 +310,6 @@ class Transform2d(Transform2dNumPy):
                     return Yl, Yh, Yscale
                 else:
                     return Yl, Yh
-
-                #  # Put the channel axis first
-                #  if data_format == "nhwc":
-                    #  X = tf.transpose(X, perm=[3, 0, 1, 2])
-                #  else:
-                    #  X = tf.transpose(X, perm=[1, 0, 2, 3])
-
-                #  f = lambda x: self._forward_ops(x, nlevels, include_scale,
-                                                #  return_tuple=True,
-                                                #  undecimated=undecimated,
-                                                #  max_dec_scale=max_dec_scale)
-
-                #  # Calculate the dtcwt for each of the channels independently
-                #  # This will return tensors of shape:
-                #  #   Yl: A tensor of shape [c, batch, h', w']
-                #  #   Yh: list of length nlevels, each of shape
-                #  #       [c, batch, h'', w'', 6]
-                #  #   Yscale: list of length nlevels, each of shape
-                #  #       [c, batch, h''', w''']
-                #  if include_scale:
-                    #  # (lowpass, highpasses, scales)
-                    #  shape = (tf.float32,
-                             #  tuple(tf.complex64 for k in range(nlevels)),
-                             #  tuple(tf.float32 for k in range(nlevels)))
-                    #  Yl, Yh, Yscale = tf.map_fn(f, X, dtype=shape)
-                    #  # Transpose the tensors to put the channel after the batch
-                    #  if data_format == "nhwc":
-                        #  perm_r = [1, 2, 3, 0]
-                        #  perm_c = [1, 2, 3, 0, 4]
-                    #  else:
-                        #  perm_r = [1, 0, 2, 3]
-                        #  perm_c = [1, 0, 2, 3, 4]
-                    #  Yl = tf.transpose(Yl, perm=perm_r, name='Yl')
-                    #  Yh = tuple(
-                        #  [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
-                         #  for i, x in enumerate(Yh)])
-                    #  Yscale = tuple(
-                        #  [tf.transpose(x, perm=perm_r, name='Yscale_'+str(i+1))
-                         #  for i, x in enumerate(Yscale)])
-
-                    #  return Yl, Yh, Yscale
-
-                #  else:
-                    #  shape = (tf.float32,
-                             #  tuple(tf.complex64 for k in range(nlevels)))
-                    #  Yl, Yh = tf.map_fn(f, X, dtype=shape)
-                    #  # Transpose the tensors to put the channel after the batch
-                    #  if data_format == "nhwc":
-                        #  perm_r = [1, 2, 3, 0]
-                        #  perm_c = [1, 2, 3, 0, 4]
-                    #  else:
-                        #  perm_r = [1, 0, 2, 3]
-                        #  perm_c = [1, 0, 2, 3, 4]
-                    #  Yl = tf.transpose(Yl, perm=perm_r, name='Yl')
-                    #  Yh = tuple(
-                        #  [tf.transpose(x, perm=perm_c, name='Yh_'+str(i+1))
-                         #  for i, x in enumerate(Yh)])
-
-                    #  return Yl, Yh
 
     def inverse(self, pyramid, gain_mask=None):
         '''

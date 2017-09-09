@@ -5,7 +5,7 @@ improvements with a CPU.
 
 """
 
-from .common import Pyramid_tf
+from .common import Pyramid
 from .transform2d import Transform2d
 
 __all__ = [

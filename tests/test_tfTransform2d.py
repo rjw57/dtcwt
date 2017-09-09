@@ -7,6 +7,7 @@ import numpy as np
 from importlib import import_module
 from dtcwt.numpy import Transform2d as Transform2d_np
 from dtcwt.coeffs import biort, qshift
+from dtcwt.utils import unpack
 import tests.datasets as datasets
 from scipy import stats
 from .util import skip_if_no_tf
@@ -18,19 +19,20 @@ PRECISION_DECIMAL = 5
 @skip_if_no_tf
 def setup():
     global mandrill, in_p, pyramid_ops
-    global tf, Transform2d, dtwavexfm2, dtwaveifm2
+    global tf, Transform2d, dtwavexfm2, dtwaveifm2, Pyramid_tf
+    global np_dtypes, tf_dtypes
     # Import the tensorflow modules
     tf = import_module('tensorflow')
     dtcwt_tf = import_module('dtcwt.tf')
     dtcwt_tf_xfm2 = import_module('dtcwt.tf.transform2d')
     Transform2d = getattr(dtcwt_tf, 'Transform2d')
+    Pyramid_tf = getattr(dtcwt_tf, 'Pyramid')
     dtwavexfm2 = getattr(dtcwt_tf_xfm2, 'dtwavexfm2')
     dtwaveifm2 = getattr(dtcwt_tf_xfm2, 'dtwaveifm2')
+    np_dtypes = getattr(dtcwt_tf_xfm2, 'np_dtypes')
+    tf_dtypes = getattr(dtcwt_tf_xfm2, 'tf_dtypes')
 
     mandrill = datasets.mandrill()
-    in_p = tf.placeholder(tf.float32, [None, 512, 512])
-    f = Transform2d()
-    pyramid_ops = f.forward(in_p, include_scale=True)
     # Make sure we run tests on cpu rather than gpus
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
@@ -164,20 +166,164 @@ def test_float32_input():
 
 
 @skip_if_no_tf
-def test_eval_fwd():
-    # Test it runs without error
-    pyramid_ops.eval_fwd(mandrill)
+def test_numpy_in():
+    X = np.random.randn(100,100)
+    f = Transform2d()
+    p = f.forward(X)
+    f1 = Transform2d_np()
+    p1 = f1.forward(X)
+    np.testing.assert_array_almost_equal(
+        p.lowpass, p1.lowpass, decimal=PRECISION_DECIMAL)
+    for x,y in zip(p.highpasses, p1.highpasses):
+        np.testing.assert_array_almost_equal(x,y,decimal=PRECISION_DECIMAL)
+
+    X = np.random.randn(100,100)
+    p = f.forward(X, include_scale=True)
+    p1 = f1.forward(X, include_scale=True)
+    np.testing.assert_array_almost_equal(
+        p.lowpass, p1.lowpass, decimal=PRECISION_DECIMAL)
+    for x,y in zip(p.highpasses, p1.highpasses):
+        np.testing.assert_array_almost_equal(x,y,decimal=PRECISION_DECIMAL)
+    for x,y in zip(p.scales, p1.scales):
+        np.testing.assert_array_almost_equal(x,y,decimal=PRECISION_DECIMAL)
 
 
 @skip_if_no_tf
-def test_multiple_inputs():
-    y = pyramid_ops.eval_fwd(mandrill)
-    y3 = pyramid_ops.eval_fwd([mandrill, mandrill, mandrill])
-    assert y3.lowpass.shape == (3,) + y.lowpass.shape
-    for hi3, hi in zip(y3.highpasses, y.highpasses):
-        assert hi3.shape == (3,) + hi.shape
-    for s3, s in zip(y3.scales, y.scales):
-        assert s3.shape == (3,) + s.shape
+def test_numpy_in_batch():
+    X = np.random.randn(5,100,100)
+    f = Transform2d()
+    p = f.forward(X, include_scale=True)
+    f1 = Transform2d_np()
+    for i in range(5):
+        p1 = f1.forward(X[i], include_scale=True)
+        np.testing.assert_array_almost_equal(
+            p.lowpass[i], p1.lowpass, decimal=PRECISION_DECIMAL)
+        for x,y in zip(p.highpasses, p1.highpasses):
+            np.testing.assert_array_almost_equal(
+                x[i], y, decimal=PRECISION_DECIMAL)
+        for x,y in zip(p.scales, p1.scales):
+            np.testing.assert_array_almost_equal(
+                x[i], y, decimal=PRECISION_DECIMAL)
+
+
+@skip_if_no_tf
+def test_numpy_batch_ch():
+    X = np.random.randn(5,100,100,4)
+    f = Transform2d()
+    p = f.forward_channels(X, include_scale=True)
+    f1 = Transform2d_np()
+    for i in range(5):
+        for j in range(4):
+            p1 = f1.forward(X[i,:,:,j], include_scale=True)
+
+            np.testing.assert_array_almost_equal(
+                p.lowpass[i,:,:,j], p1.lowpass, decimal=PRECISION_DECIMAL)
+            for x,y in zip(p.highpasses, p1.highpasses):
+                np.testing.assert_array_almost_equal(
+                    x[i,:,:,j], y, decimal=PRECISION_DECIMAL)
+            for x,y in zip(p.scales, p1.scales):
+                np.testing.assert_array_almost_equal(
+                    x[i,:,:,j], y, decimal=PRECISION_DECIMAL)
+
+
+# Test end to end with numpy inputs
+@skip_if_no_tf
+def test_2d_input():
+    f = Transform2d()
+    X = np.random.randn(100,100)
+    p = f.forward(X)
+    x = f.inverse(p)
+    np.testing.assert_array_almost_equal(X,x,decimal=PRECISION_DECIMAL)
+
+
+@skip_if_no_tf
+def test_3d_input():
+    f = Transform2d()
+    X = np.random.randn(5,100,100)
+    p = f.forward(X)
+    x = f.inverse(p)
+    np.testing.assert_array_almost_equal(X,x,decimal=PRECISION_DECIMAL)
+
+
+@skip_if_no_tf
+def test_4d_input():
+    f = Transform2d()
+    X = np.random.randn(5,100,100,4)
+    p = f.forward_channels(X)
+    x = f.inverse_channels(p)
+    np.testing.assert_array_almost_equal(X,x,decimal=PRECISION_DECIMAL)
+
+
+# Test end to end with tf inputs
+@skip_if_no_tf
+def test_2d_input_tf():
+    xfm = Transform2d()
+    X = np.random.randn(100,100)
+    X_p = tf.placeholder(tf.float32, [100,100])
+    p = xfm.forward(X_p)
+    x = xfm.inverse(p)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        np.testing.assert_array_almost_equal(
+            X, sess.run(x, {X_p:X}), decimal=PRECISION_DECIMAL)
+
+    X_p = tf.placeholder(tf.float32, [None, 100,100])
+    p = xfm.forward(X_p)
+    x = xfm.inverse(p)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        np.testing.assert_array_almost_equal(
+            X, sess.run(x, {X_p:[X]})[0], decimal=PRECISION_DECIMAL)
+
+
+# Test end to end with tf inputs
+@skip_if_no_tf
+def test_3d_input_tf():
+    xfm = Transform2d()
+    X = np.random.randn(5,100,100)
+    X_p = tf.placeholder(tf.float32, [None,100,100])
+    p = xfm.forward(X_p)
+    x = xfm.inverse(p)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        np.testing.assert_array_almost_equal(
+            X, sess.run(x, {X_p:X}), decimal=PRECISION_DECIMAL)
+
+
+@skip_if_no_tf
+def test_4d_input_tf():
+    xfm = Transform2d()
+    X = np.random.randn(5,100,100,5)
+    X_p = tf.placeholder(tf.float32, [None,100,100,5])
+    p = xfm.forward_channels(X_p)
+    x = xfm.inverse_channels(p)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        np.testing.assert_array_almost_equal(
+            X, sess.run(x, {X_p:X}), decimal=PRECISION_DECIMAL)
+
+
+@skip_if_no_tf
+def test_return_type():
+    xfm = Transform2d()
+    X = np.random.randn(100,100)
+    p = xfm.forward(X)
+    x = xfm.inverse(p)
+    assert x.dtype in np_dtypes
+    X = tf.placeholder(tf.float32, [100,100])
+    p = xfm.forward(X)
+    x = xfm.inverse(p)
+    assert x.dtype in tf_dtypes
+    xfm = Transform2d()
+    X = np.random.randn(5,100,100,4)
+    p = xfm.forward_channels(X)
+    x = xfm.inverse_channels(p)
+    assert x.dtype in np_dtypes
+    xfm = Transform2d()
+    X = tf.placeholder(tf.float32, [None, 100,100,4])
+    p = xfm.forward_channels(X)
+    x = xfm.inverse_channels(p)
+    assert x.dtype in tf_dtypes
 
 
 @skip_if_no_tf
@@ -196,9 +342,8 @@ def test_results_match(test_input, biort, qshift):
     f_np = Transform2d_np(biort=biort,qshift=qshift)
     p_np = f_np.forward(im, include_scale=True)
 
-    in_p = tf.placeholder(tf.float32, [None, im.shape[0], im.shape[1]])
     f_tf = Transform2d(biort=biort,qshift=qshift)
-    p_tf = f_tf.forward(in_p, include_scale=True).eval_fwd(im)
+    p_tf = f_tf.forward(im, include_scale=True)
 
     np.testing.assert_array_almost_equal(
         p_np.lowpass, p_tf.lowpass, decimal=PRECISION_DECIMAL)
@@ -226,13 +371,11 @@ def test_results_match_inverse(test_input,biort,qshift):
 
     # Use a zero input and the fwd transform to get the shape of
     # the pyramid easily
-    in_ = tf.zeros([1, im.shape[0], im.shape[1]])
     f_tf = Transform2d(biort=biort, qshift=qshift)
-    p_tf = f_tf.forward(in_, nlevels=4, include_scale=True)
+    p_tf = f_tf.forward(im, nlevels=4, include_scale=True)
 
     # Create ops for the inverse transform
-    pi_tf = f_tf.inverse(p_tf)
-    X_tf = pi_tf.eval_inv(p_np.lowpass, p_np.highpasses)
+    X_tf = f_tf.inverse(p_tf)
 
     np.testing.assert_array_almost_equal(
         X_np, X_tf, decimal=PRECISION_DECIMAL)
@@ -278,9 +421,9 @@ def test_results_match_endtoend(test_input, biort, qshift):
     in_p = tf.placeholder(tf.float32, [None, im.shape[0], im.shape[1]])
     f_tf = Transform2d(biort=biort, qshift=qshift)
     p_tf = f_tf.forward(in_p, nlevels=4, include_scale=True)
-    pi_tf = f_tf.inverse(p_tf)
+    X = f_tf.inverse(p_tf)
     with tf.Session() as sess:
-        X_tf = sess.run(pi_tf.X, feed_dict={in_p: [im]})[0]
+        X_tf = sess.run(X, feed_dict={in_p: [im]})[0]
 
     np.testing.assert_array_almost_equal(
         X_np, X_tf, decimal=PRECISION_DECIMAL)
@@ -307,8 +450,10 @@ def test_forward_channels(data_format):
     # Transform a set of images with forward_channels
     f_tf = Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
     start = time.time()
-    Yl, Yh, Yscale = f_tf.forward_channels(
-        in_p, nlevels=nlevels, data_format=data_format)
+    Yl, Yh, Yscale = unpack(
+        f_tf.forward_channels(in_p, nlevels=nlevels, data_format=data_format,
+                              include_scale=True), 'tf')
+
     Yl, Yh, Yscale = sess.run([Yl, Yh, Yscale], {in_p: ims})
     print("That took {:.2f}s".format(time.time() - start))
 
@@ -322,24 +467,24 @@ def test_forward_channels(data_format):
                                           p_tf.scales_ops],
                                          {in_p2: ims[:,:,:,i]})
             np.testing.assert_array_almost_equal(
-                Yl[:,:,:,i], Yl1, decimal=4)
+                Yl[:,:,:,i], Yl1, decimal=PRECISION_DECIMAL)
             for j in range(nlevels):
                 np.testing.assert_array_almost_equal(
-                    Yh[j][:,:,:,i,:], Yh1[j], decimal=4)
+                    Yh[j][:,:,:,i,:], Yh1[j], decimal=PRECISION_DECIMAL)
                 np.testing.assert_array_almost_equal(
-                    Yscale[j][:,:,:,i], Yscale1[j], decimal=4)
+                    Yscale[j][:,:,:,i], Yscale1[j], decimal=PRECISION_DECIMAL)
         else:
             Yl1, Yh1, Yscale1 = sess.run([p_tf.lowpass_op,
                                           p_tf.highpasses_ops,
                                           p_tf.scales_ops],
                                          {in_p2: ims[:,i]})
             np.testing.assert_array_almost_equal(
-                Yl[:,i], Yl1, decimal=4)
+                Yl[:,i], Yl1, decimal=PRECISION_DECIMAL)
             for j in range(nlevels):
                 np.testing.assert_array_almost_equal(
-                    Yh[j][:,i], Yh1[j], decimal=4)
+                    Yh[j][:,i], Yh1[j], decimal=PRECISION_DECIMAL)
                 np.testing.assert_array_almost_equal(
-                    Yscale[j][:,i], Yscale1[j], decimal=4)
+                    Yscale[j][:,i], Yscale1[j], decimal=PRECISION_DECIMAL)
     sess.close()
 
 
@@ -359,25 +504,26 @@ def test_inverse_channels(data_format):
         ims = np.random.randn(batch, 100, 100, c)
         in_p = tf.placeholder(tf.float32, [None, 100, 100, c])
         f_tf = Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
-        Yl, Yh, _ = f_tf.forward_channels(
-            in_p, nlevels=nlevels, data_format=data_format)
+        Yl, Yh = unpack(
+            f_tf.forward_channels(in_p, nlevels=nlevels,
+                                  data_format=data_format), 'tf')
     else:
         ims = np.random.randn(batch, c, 100, 100)
         in_p = tf.placeholder(tf.float32, [None, c, 100, 100])
         f_tf = Transform2d(biort='near_sym_b_bp', qshift='qshift_b_bp')
-        Yl, Yh, _ = f_tf.forward_channels(
-            in_p, nlevels=nlevels, data_format=data_format)
+        Yl, Yh = unpack(f_tf.forward_channels(
+            in_p, nlevels=nlevels, data_format=data_format), 'tf')
 
     # Call the inverse_channels function
     start = time.time()
-    X = f_tf.inverse_channels(Yl, Yh, data_format=data_format)
+    X = f_tf.inverse_channels(Pyramid_tf(Yl, Yh), data_format=data_format)
     X, Yl, Yh = sess.run([X, Yl, Yh], {in_p: ims})
     print("That took {:.2f}s".format(time.time() - start))
 
     # Now do it channel by channel
     in_p2 = tf.zeros((batch, 100, 100), tf.float32)
     p_tf = f_tf.forward(in_p2, nlevels=nlevels, include_scale=False)
-    p_tf = f_tf.inverse(p_tf)
+    X_t = f_tf.inverse(p_tf)
     for i in range(c):
         Yh1 = []
         if data_format == "nhwc":
@@ -390,12 +536,15 @@ def test_inverse_channels(data_format):
                 Yh1.append(Yh[j][:,i])
 
         # Use the eval_inv function to feed the data into the right variables
-        X1 = p_tf.eval_inv(Yl1, Yh1, sess)
+        sess.run(tf.global_variables_initializer())
+        X1 = sess.run(X_t, {p_tf.lowpass_op: Yl1, p_tf.highpasses_ops: Yh1})
 
         if data_format == "nhwc":
-            np.testing.assert_array_almost_equal(X[:,:,:,i], X1, decimal=4)
+            np.testing.assert_array_almost_equal(
+                X[:,:,:,i], X1, decimal=PRECISION_DECIMAL)
         else:
-            np.testing.assert_array_almost_equal(X[:,i], X1, decimal=4)
+            np.testing.assert_array_almost_equal(
+                X[:,i], X1, decimal=PRECISION_DECIMAL)
 
     sess.close()
 

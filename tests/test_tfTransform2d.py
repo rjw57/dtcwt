@@ -189,41 +189,76 @@ def test_numpy_in():
 
 
 @skip_if_no_tf
-def test_numpy_in_batch():
-    X = np.random.randn(5,100,100)
+@pytest.mark.parametrize("data_format", [
+    ("nhw"), ("chw"), ("hwn"), ("hwc")
+])
+def test_numpy_in_batch(data_format):
+    if data_format == "nhw" or data_format == "chw":
+        X = np.random.randn(5,100,100)
+    else:
+        X = np.random.randn(100,100,5)
+
     f = Transform2d()
-    p = f.forward(X, include_scale=True)
+    p = f.forward_channels(X, data_format=data_format, include_scale=True)
     f1 = Transform2d_np()
     for i in range(5):
-        p1 = f1.forward(X[i], include_scale=True)
-        np.testing.assert_array_almost_equal(
-            p.lowpass[i], p1.lowpass, decimal=PRECISION_DECIMAL)
-        for x,y in zip(p.highpasses, p1.highpasses):
+        if data_format == "nhw" or data_format == "chw":
+            p1 = f1.forward(X[i], include_scale=True)
             np.testing.assert_array_almost_equal(
-                x[i], y, decimal=PRECISION_DECIMAL)
-        for x,y in zip(p.scales, p1.scales):
+                p.lowpass[i], p1.lowpass, decimal=PRECISION_DECIMAL)
+            for x,y in zip(p.highpasses, p1.highpasses):
+                np.testing.assert_array_almost_equal(
+                    x[i], y, decimal=PRECISION_DECIMAL)
+            for x,y in zip(p.scales, p1.scales):
+                np.testing.assert_array_almost_equal(
+                    x[i], y, decimal=PRECISION_DECIMAL)
+        else:
+            p1 = f1.forward(X[:,:,i], include_scale=True)
             np.testing.assert_array_almost_equal(
-                x[i], y, decimal=PRECISION_DECIMAL)
+                p.lowpass[:,:,i], p1.lowpass, decimal=PRECISION_DECIMAL)
+            for x,y in zip(p.highpasses, p1.highpasses):
+                np.testing.assert_array_almost_equal(
+                    x[:,:,i], y, decimal=PRECISION_DECIMAL)
+            for x,y in zip(p.scales, p1.scales):
+                np.testing.assert_array_almost_equal(
+                    x[:,:,i], y, decimal=PRECISION_DECIMAL)
 
 
 @skip_if_no_tf
-def test_numpy_batch_ch():
-    X = np.random.randn(5,100,100,4)
+@pytest.mark.parametrize("data_format", [
+    ("nhwc"), ("nchw")
+])
+def test_numpy_batch_ch(data_format):
+    if data_format == "nhwc":
+        X = np.random.randn(5,100,100,4)
+    else:
+        X = np.random.randn(5,4,100,100)
+
     f = Transform2d()
-    p = f.forward_channels(X, include_scale=True)
+    p = f.forward_channels(X, data_format=data_format, include_scale=True)
     f1 = Transform2d_np()
     for i in range(5):
         for j in range(4):
-            p1 = f1.forward(X[i,:,:,j], include_scale=True)
-
-            np.testing.assert_array_almost_equal(
-                p.lowpass[i,:,:,j], p1.lowpass, decimal=PRECISION_DECIMAL)
-            for x,y in zip(p.highpasses, p1.highpasses):
+            if data_format == "nhwc":
+                p1 = f1.forward(X[i,:,:,j], include_scale=True)
                 np.testing.assert_array_almost_equal(
-                    x[i,:,:,j], y, decimal=PRECISION_DECIMAL)
-            for x,y in zip(p.scales, p1.scales):
+                    p.lowpass[i,:,:,j], p1.lowpass, decimal=PRECISION_DECIMAL)
+                for x,y in zip(p.highpasses, p1.highpasses):
+                    np.testing.assert_array_almost_equal(
+                        x[i,:,:,j], y, decimal=PRECISION_DECIMAL)
+                for x,y in zip(p.scales, p1.scales):
+                    np.testing.assert_array_almost_equal(
+                        x[i,:,:,j], y, decimal=PRECISION_DECIMAL)
+            else:
+                p1 = f1.forward(X[i,j], include_scale=True)
                 np.testing.assert_array_almost_equal(
-                    x[i,:,:,j], y, decimal=PRECISION_DECIMAL)
+                    p.lowpass[i,j], p1.lowpass, decimal=PRECISION_DECIMAL)
+                for x,y in zip(p.highpasses, p1.highpasses):
+                    np.testing.assert_array_almost_equal(
+                        x[i,j], y, decimal=PRECISION_DECIMAL)
+                for x,y in zip(p.scales, p1.scales):
+                    np.testing.assert_array_almost_equal(
+                        x[i,j], y, decimal=PRECISION_DECIMAL)
 
 
 # Test end to end with numpy inputs
@@ -237,26 +272,39 @@ def test_2d_input():
 
 
 @skip_if_no_tf
-def test_3d_input():
+@pytest.mark.parametrize("data_format", [
+    ("nhw"), ("hwn")
+])
+def test_3d_input(data_format):
     f = Transform2d()
-    X = np.random.randn(5,100,100)
-    p = f.forward(X)
-    x = f.inverse(p)
+    if data_format == "nhw":
+        X = np.random.randn(5,100,100)
+    else:
+        X = np.random.randn(100,100,5)
+
+    p = f.forward_channels(X,data_format=data_format)
+    x = f.inverse_channels(p,data_format=data_format)
     np.testing.assert_array_almost_equal(X,x,decimal=PRECISION_DECIMAL)
 
 
 @skip_if_no_tf
-def test_4d_input():
+@pytest.mark.parametrize("data_format", [
+    ("nhwc"), ("nchw")
+])
+def test_4d_input(data_format):
     f = Transform2d()
-    X = np.random.randn(5,100,100,4)
-    p = f.forward_channels(X)
-    x = f.inverse_channels(p)
+    if data_format == "nhwc":
+        X = np.random.randn(5,100,100,4)
+    else:
+        X = np.random.randn(5,4,100,100)
+    p = f.forward_channels(X,data_format=data_format)
+    x = f.inverse_channels(p,data_format=data_format)
     np.testing.assert_array_almost_equal(X,x,decimal=PRECISION_DECIMAL)
 
 
 # Test end to end with tf inputs
 @skip_if_no_tf
-def test_2d_input_tf():
+def test_2d_input_ph():
     xfm = Transform2d()
     X = np.random.randn(100,100)
     X_p = tf.placeholder(tf.float32, [100,100])
@@ -268,8 +316,8 @@ def test_2d_input_tf():
             X, sess.run(x, {X_p:X}), decimal=PRECISION_DECIMAL)
 
     X_p = tf.placeholder(tf.float32, [None, 100,100])
-    p = xfm.forward(X_p)
-    x = xfm.inverse(p)
+    p = xfm.forward_channels(X_p,data_format="nhw")
+    x = xfm.inverse_channels(p,data_format="nhw")
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         np.testing.assert_array_almost_equal(
@@ -278,12 +326,12 @@ def test_2d_input_tf():
 
 # Test end to end with tf inputs
 @skip_if_no_tf
-def test_3d_input_tf():
+def test_3d_input_ph():
     xfm = Transform2d()
     X = np.random.randn(5,100,100)
     X_p = tf.placeholder(tf.float32, [None,100,100])
-    p = xfm.forward(X_p)
-    x = xfm.inverse(p)
+    p = xfm.forward_channels(X_p,data_format="nhw")
+    x = xfm.inverse_channels(p,data_format="nhw")
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         np.testing.assert_array_almost_equal(
@@ -291,12 +339,12 @@ def test_3d_input_tf():
 
 
 @skip_if_no_tf
-def test_4d_input_tf():
+def test_4d_input_ph():
     xfm = Transform2d()
-    X = np.random.randn(5,100,100,5)
-    X_p = tf.placeholder(tf.float32, [None,100,100,5])
-    p = xfm.forward_channels(X_p)
-    x = xfm.inverse_channels(p)
+    X = np.random.randn(5,100,100,4)
+    X_p = tf.placeholder(tf.float32, [None,100,100,4])
+    p = xfm.forward_channels(X_p,data_format="nhwc")
+    x = xfm.inverse_channels(p,data_format="nhwc")
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         np.testing.assert_array_almost_equal(
@@ -316,13 +364,13 @@ def test_return_type():
     assert x.dtype in tf_dtypes
     xfm = Transform2d()
     X = np.random.randn(5,100,100,4)
-    p = xfm.forward_channels(X)
-    x = xfm.inverse_channels(p)
+    p = xfm.forward_channels(X,data_format="nhwc")
+    x = xfm.inverse_channels(p,data_format="nhwc")
     assert x.dtype in np_dtypes
     xfm = Transform2d()
     X = tf.placeholder(tf.float32, [None, 100,100,4])
-    p = xfm.forward_channels(X)
-    x = xfm.inverse_channels(p)
+    p = xfm.forward_channels(X,data_format="nhwc")
+    x = xfm.inverse_channels(p,data_format="nhwc")
     assert x.dtype in tf_dtypes
 
 
@@ -418,12 +466,12 @@ def test_results_match_endtoend(test_input, biort, qshift):
     p_np = f_np.forward(im, nlevels=4, include_scale=True)
     X_np = f_np.inverse(p_np)
 
-    in_p = tf.placeholder(tf.float32, [None, im.shape[0], im.shape[1]])
+    in_p = tf.placeholder(tf.float32, [im.shape[0], im.shape[1]])
     f_tf = Transform2d(biort=biort, qshift=qshift)
     p_tf = f_tf.forward(in_p, nlevels=4, include_scale=True)
     X = f_tf.inverse(p_tf)
     with tf.Session() as sess:
-        X_tf = sess.run(X, feed_dict={in_p: [im]})[0]
+        X_tf = sess.run(X, feed_dict={in_p: im})
 
     np.testing.assert_array_almost_equal(
         X_np, X_tf, decimal=PRECISION_DECIMAL)
@@ -459,7 +507,8 @@ def test_forward_channels(data_format):
 
     # Now do it channel by channel
     in_p2 = tf.placeholder(tf.float32, [None, 100, 100])
-    p_tf = f_tf.forward(in_p2, nlevels=nlevels, include_scale=True)
+    p_tf = f_tf.forward_channels(in_p2, data_format="nhw", nlevels=nlevels,
+                                 include_scale=True)
     for i in range(c):
         if data_format == "nhwc":
             Yl1, Yh1, Yscale1 = sess.run([p_tf.lowpass_op,
@@ -522,8 +571,9 @@ def test_inverse_channels(data_format):
 
     # Now do it channel by channel
     in_p2 = tf.zeros((batch, 100, 100), tf.float32)
-    p_tf = f_tf.forward(in_p2, nlevels=nlevels, include_scale=False)
-    X_t = f_tf.inverse(p_tf)
+    p_tf = f_tf.forward_channels(in_p2, nlevels=nlevels, data_format="nhw",
+                                 include_scale=False)
+    X_t = f_tf.inverse_channels(p_tf,data_format="nhw")
     for i in range(c):
         Yh1 = []
         if data_format == "nhwc":

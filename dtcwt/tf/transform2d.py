@@ -180,23 +180,14 @@ class Transform2d(object):
                              'Inputs should be a numpy or tf array')
 
         X_shape = tuple(X.get_shape().as_list())
-        extended = False
         if len(X_shape) == 2:
             # Need to make it a batch for tensorflow
             X = tf.expand_dims(X, axis=0)
-            extended = True
-        elif len(X_shape) == 3:
-            if X_shape[2] == 3 and X_shape[1] != 3:
-                warnings.warn('It looks like you may have entered an RGB ' +
-                              'image of shape ' + str(X_shape) + '. The ' +
-                              'tf backend can handle batches of images, ' +
-                              'but needs the batch to be the zeroth ' +
-                              'dimension.')
-        elif len(X_shape) > 3:
+        elif len(X_shape) >= 3:
             raise ValueError(
                 'The entered variable has too many ' +
                 'dimensions - ' + str(X_shape) + '. For batches of ' +
-                'images with multiple channels (i.e. 4 dimensions), ' +
+                'images with multiple channels (i.e. 3 or 4 dimensions), ' +
                 'please either enter each channel separately, or use ' +
                 'the forward_channels method.')
 
@@ -207,18 +198,17 @@ class Transform2d(object):
         with tf.name_scope(name):
             Yl, Yh, Yscale = self._forward_ops(X, nlevels)
 
-        if extended:
-            Yl = Yl[0]
-            Yh = tuple(x[0] for x in Yh)
-            Yscale = tuple(x[0] for x in Yscale)
+        Yl = Yl[0]
+        Yh = tuple(x[0] for x in Yh)
+        Yscale = tuple(x[0] for x in Yscale)
 
         if include_scale:
             return Pyramid(Yl, Yh, Yscale, numpy)
         else:
             return Pyramid(Yl, Yh, None, numpy)
 
-    def forward_channels(self, X, nlevels=3, include_scale=False,
-                         data_format="nhwc"):
+    def forward_channels(self, X, data_format, nlevels=3,
+                         include_scale=False):
         """ Perform a forward transform on an image with multiple channels.
 
         Will perform the DTCWT independently on each channel.
@@ -229,13 +219,31 @@ class Transform2d(object):
         :param bool include_scale: Whether or not to return the lowpass results
             at each scale of the transform, or only at the highest scale (as is
             custom for multiresolution analysis)
-        :param str data_format: An optional string of the form "nchw" or "nhwc",
-            specifying the data format of the input. If format is "nchw" (the
-            default), then data is in the form [batch, channels, h, w]. If the
-            format is "nhwc", then the data is in the form [batch, h, w, c].
+        :param str data_format: An optional string of the form:
+            "nhw" (or "chw"), "hwn" (or "hwc"), "nchw" or "nhwc". Note that for
+            these strings, 'n' is used to indicate where the batch dimension is,
+            'c' is used to indicate where the image channels are, 'h' is used to
+            indicate where the row dimension is, and 'c' is used to indicate
+            where the columns are. If the data_format is::
+
+                * "nhw" - the input will be interpreted as a batch of 2D images,
+                  with the batch dimension as the first.
+                * "chw" - will function exactly the same as "nhw" but it offered
+                  to indicate the input is a 2D image with channels.
+                * "hwn" - the input will be interpreted as a batch of 2D images
+                  with the batch dimension as the last.
+                * "hwc" - will function exatly the same as "hwc" but is offered
+                  to indicate the input is a 2D image with channels.
+                * "nchw" - the input is a batch of images with channel dimension
+                  as the second dimension. Batch dimension is first.
+                * "nhwc" - the input is a batch of images with channel dimension
+                  as the last dimension. Batch dimension is first.
 
         :returns: Yl - the lowpass output and the final scale.
-        :returns: Yh - the highpass outputs.
+        :returns: Yh - the highpass outputs. Regardless of the data_format of
+            the input, the Yh output will have 1 dimension more, holding the 6
+            orientations of the dtcwt coefficients. This will always be the last
+            dimension.
         :returns: Yscale - the lowpass output at intermediate scales.
 
         .. codeauthor:: Fergal Cotter <fbc23@cam.ac.uk>, Feb 2017
@@ -244,9 +252,12 @@ class Transform2d(object):
         .. codeauthor:: Cian Shaffrey, Cambridge University, Sept 2001
         """
         data_format = data_format.lower()
-        if data_format != "nchw" and data_format != "nhwc":
-            raise ValueError('The data format must be either "ncwh" or ' +
-                             '"nhwc", not {}'.format(data_format))
+        formats_3d = ("nhw", "chw", "hwn", "hwc")
+        formats_4d = ("nchw", "nhwc")
+        formats = formats_3d + formats_4d
+        if data_format not in formats:
+            raise ValueError('The data format must be one of: {}'.
+                             format(formats))
 
         try:
             dtype = X.dtype
@@ -266,72 +277,99 @@ class Transform2d(object):
                              'Inputs should be a numpy or tf array.')
 
         X_shape = X.get_shape().as_list()
-        if len(X_shape) != 4:
+        if not ((len(X_shape) == 3 and data_format in formats_3d) or
+                (len(X_shape) == 4 and data_format in formats_4d)):
             raise ValueError(
                 'The entered variable has incorrect shape - ' +
-                str(X_shape) + '.  It must have 4 dimensions. For 2 or 3 ' +
-                'dimensioned input, use the forward method.')
+                str(X_shape) + ' for the specified data_format ' +
+                data_format + '.')
 
-        # Move all of the channels into the batch dimension for the
-        # input.  This may involve transposing, depending on the data
-        # format
-        with tf.variable_scope('ch_to_batch'):
-            s = X.get_shape().as_list()[1:]
+        # Reshape the inputs to all be 3d inputs of shape (batch, h, w)
+        if data_format in formats_4d:
+            # Move all of the channels into the batch dimension for the
+            # input.  This may involve transposing, depending on the data
+            # format
+            with tf.variable_scope('ch_to_batch'):
+                s = X.get_shape().as_list()[1:]
+                size = '{}x{}'.format(s[0], s[1])
+                name = 'dtcwt_fwd_{}'.format(size)
+                if data_format == 'nhwc':
+                    nch = s[2]
+                    X = tf.transpose(X, perm=[0, 3, 1, 2])
+                    X = tf.reshape(X, [-1, s[0], s[1]])
+                else:
+                    nch = s[0]
+                    X = tf.reshape(X, [-1, s[1], s[2]])
+        elif data_format == "hwn" or data_format == "hwc":
+            s = X.get_shape().as_list()[:2]
             size = '{}x{}'.format(s[0], s[1])
             name = 'dtcwt_fwd_{}'.format(size)
-            if data_format == 'nhwc':
-                nch = s[2]
-                X = tf.transpose(X, perm=[0, 3, 1, 2])
-                X = tf.reshape(X, [-1, s[0], s[1]])
-            else:
-                nch = s[0]
-                X = tf.reshape(X, [-1, s[1], s[2]])
+            with tf.variable_scope('ch_to_start'):
+                X = tf.transpose(X, perm=[2,0,1])
+        else:
+            s = X.get_shape().as_list()[1:3]
+            size = '{}x{}'.format(s[0], s[1])
+            name = 'dtcwt_fwd_{}'.format(size)
 
         # Do the dtcwt, now with a 3 dimensional input
         with tf.variable_scope(name):
             Yl, Yh, Yscale = self._forward_ops(X, nlevels)
 
-        # Put the channels back into their correct positions
-        with tf.variable_scope('batch_to_ch'):
-            # Reshape Yl
-            s = Yl.get_shape().as_list()[1:]
-            Yl = tf.reshape(Yl, [-1, nch, s[0], s[1]], name='Yl_reshape')
-            if data_format == 'nhwc':
-                Yl = tf.transpose(Yl, [0, 2, 3, 1], name='Yl_ch_to_end')
+        # Reshape it all again to match the input
+        if data_format in formats_4d:
+            # Put the channels back into their correct positions
+            with tf.variable_scope('batch_to_ch'):
+                # Reshape Yl
+                s = Yl.get_shape().as_list()[1:]
+                Yl = tf.reshape(Yl, [-1, nch, s[0], s[1]], name='Yl_reshape')
+                if data_format == 'nhwc':
+                    Yl = tf.transpose(Yl, [0, 2, 3, 1], name='Yl_ch_to_end')
 
-            # Reshape Yh
-            with tf.variable_scope('Yh'):
-                Yh_new = [None,] * nlevels
-                for i in range(nlevels):
-                    s = Yh[i].get_shape().as_list()[1:]
-                    Yh_new[i] = tf.reshape(
-                        Yh[i], [-1, nch, s[0], s[1], s[2]],
-                        name='scale{}_reshape'.format(i))
-                    if data_format == 'nhwc':
-                        Yh_new[i] = tf.transpose(
-                            Yh_new[i], [0, 2, 3, 1, 4],
-                            name='scale{}_ch_to_end'.format(i))
-                Yh = tuple(Yh_new)
-
-            # Reshape Yscale
-            if include_scale:
-                with tf.variable_scope('Yscale'):
-                    Yscale_new = [None,] * nlevels
+                # Reshape Yh
+                with tf.variable_scope('Yh'):
+                    Yh_new = [None,] * nlevels
                     for i in range(nlevels):
-                        s = Yscale[i].get_shape().as_list()[1:]
-                        Yscale_new[i] = tf.reshape(
-                            Yscale[i], [-1, nch, s[0], s[1]],
+                        s = Yh[i].get_shape().as_list()[1:]
+                        Yh_new[i] = tf.reshape(
+                            Yh[i], [-1, nch, s[0], s[1], s[2]],
                             name='scale{}_reshape'.format(i))
                         if data_format == 'nhwc':
-                            Yscale_new[i] = tf.transpose(
-                                Yscale_new[i], [0, 2, 3, 1],
+                            Yh_new[i] = tf.transpose(
+                                Yh_new[i], [0, 2, 3, 1, 4],
                                 name='scale{}_ch_to_end'.format(i))
-                    Yscale = tuple(Yscale_new)
+                    Yh = tuple(Yh_new)
 
-            if include_scale:
-                return Pyramid(Yl, Yh, Yscale, numpy)
-            else:
-                return Pyramid(Yl, Yh, None, numpy)
+                # Reshape Yscale
+                if include_scale:
+                    with tf.variable_scope('Yscale'):
+                        Yscale_new = [None,] * nlevels
+                        for i in range(nlevels):
+                            s = Yscale[i].get_shape().as_list()[1:]
+                            Yscale_new[i] = tf.reshape(
+                                Yscale[i], [-1, nch, s[0], s[1]],
+                                name='scale{}_reshape'.format(i))
+                            if data_format == 'nhwc':
+                                Yscale_new[i] = tf.transpose(
+                                    Yscale_new[i], [0, 2, 3, 1],
+                                    name='scale{}_ch_to_end'.format(i))
+                        Yscale = tuple(Yscale_new)
+
+        elif data_format == "hwn" or data_format == "hwc":
+            with tf.variable_scope('ch_to_end'):
+                Yl = tf.transpose(Yl, perm=[1,2,0], name='Yl')
+                Yh = tuple(
+                    tf.transpose(x, [1, 2, 0, 3], name='Yh{}'.format(i))
+                    for i,x in enumerate(Yh))
+                if include_scale:
+                    Yscale = tuple(
+                        tf.transpose(x, [1, 2, 0], name='Yscale{}'.format(i))
+                        for i,x in enumerate(Yscale))
+
+        # Return the pyramid
+        if include_scale:
+            return Pyramid(Yl, Yh, Yscale, numpy)
+        else:
+            return Pyramid(Yl, Yh, None, numpy)
 
     def inverse(self, pyramid, gain_mask=None):
         """ Perform an inverse transform on an image.
@@ -386,17 +424,15 @@ class Transform2d(object):
                 'Unknown pyramid provided to inverse transform')
 
         # Need to make sure it has at least 3 dimensions for tensorflow
-        extended = False
         Yl_shape = tuple(Yl.get_shape().as_list())
         if len(Yl_shape) == 2:
             Yl = tf.expand_dims(Yl, axis=0)
             Yh = tuple(tf.expand_dims(x, axis=0) for x in Yh)
-            extended = True
-        elif len(Yl_shape) == 4:
+        elif len(Yl_shape) >= 3:
             raise ValueError(
                 'The entered variables have too many ' +
                 'dimensions - ' + str(Yl_shape) + '. For batches of ' +
-                'images with multiple channels (i.e. 4 dimensions), ' +
+                'images with multiple channels (i.e. 3 or 4 dimensions), ' +
                 'please either enter each channel separately, or use ' +
                 'the inverse_channels method.')
 
@@ -408,9 +444,8 @@ class Transform2d(object):
         with tf.name_scope(name):
             X = self._inverse_ops(Yl, Yh, gain_mask)
 
-        # Return data in a shape the user was expecting
-        if extended:
-            X = X[0]
+        # Chop off the first dimension
+        X = X[0]
 
         if numpy:
             with tf.Session() as sess:
@@ -419,7 +454,7 @@ class Transform2d(object):
 
         return X
 
-    def inverse_channels(self, pyramid, gain_mask=None, data_format="nhwc"):
+    def inverse_channels(self, pyramid, data_format, gain_mask=None):
         """
         Perform an inverse transform on an image with multiple channels.
 
@@ -428,14 +463,28 @@ class Transform2d(object):
 
         :param pyramid: A :py:class:`dtcwt.tf.Pyramid` like class holding
             the transform domain representation to invert
+        :param str data_format: An optional string of the form:
+            "nhw" (or "chw"), "hwn" (or "hwc"), "nchw" or "nhwc". Note that for
+            these strings, 'n' is used to indicate where the batch dimension is,
+            'c' is used to indicate where the image channels are, 'h' is used to
+            indicate where the row dimension is, and 'c' is used to indicate
+            where the columns are. If the data_format is::
+
+                * "nhw" - the input will be interpreted as a batch of 2D images,
+                  with the batch dimension as the first.
+                * "chw" - will function exactly the same as "nhw" but it offered
+                  to indicate the input is a 2D image with channels.
+                * "hwn" - the input will be interpreted as a batch of 2D images
+                  with the batch dimension as the last.
+                * "hwc" - will function exatly the same as "hwc" but is offered
+                  to indicate the input is a 2D image with channels.
+                * "nchw" - the input is a batch of images with channel dimension
+                  as the second dimension. Batch dimension is first.
+                * "nhwc" - the input is a batch of images with channel dimension
+                  as the last dimension. Batch dimension is first.
+
         :param gain_mask: Gain to be applied to each subband. Should have shape
             [6, nlevels].
-        :param data_format: An optional string of the form "nchw" or "nhwc",
-            specifying the data format of the input. If format is "nchw" (the
-            default), then data are in the form [batch, channels, h, w] for Yl
-            and [batch, channels, h, w, 6] for Yh. If the format is "nhwc", then
-            the data are in the form [batch, h, w, c] for Yl and
-            [batch, h, w, c, 6] for Yh.
 
         :returns: A tf.Variable, X, compatible with the reconstruction.
 
@@ -451,13 +500,12 @@ class Transform2d(object):
         """
         # Input checking
         data_format = data_format.lower()
-        if data_format != "nchw" and data_format != "nhwc":
-            raise ValueError('The data format must be either "ncwh" or ' +
-                             '"nhwc", not {}'.format(data_format))
-        if data_format == "nhwc":
-            channel_ax = 3
-        else:
-            channel_ax = 1
+        formats_3d = ("nhw", "chw", "hwn", "hwc")
+        formats_4d = ("nchw", "nhwc")
+        formats = formats_3d + formats_4d
+        if data_format not in formats:
+            raise ValueError('The data format must be one of: {}'.
+                             format(formats))
 
         # A tensorflow object was provided
         numpy = False
@@ -479,53 +527,85 @@ class Transform2d(object):
             raise ValueError(
                 'Unknown pyramid provided to inverse transform')
 
-        # Check the shape was 4D
+        # Check the shape was correct
         Yl_shape = Yl.get_shape().as_list()
-        if len(Yl_shape) != 4:
+        if not ((len(Yl_shape) == 3 and data_format in formats_3d) or
+                (len(Yl_shape) == 4 and data_format in formats_4d)):
             raise ValueError(
-                """The entered lowpass variable has incorrect dimensions {}.
-                for data_format of {}.""".format(Yl_shape, data_format))
+                'The entered variable has incorrect shape - ' +
+                str(Yl_shape) + ' for the specified data_format ' +
+                data_format + '.')
 
-        # Move all of the channels into the batch dimension for the lowpass
-        # input. This may involve transposing, depending on the data format
-        with tf.variable_scope('ch_to_batch'):
-            s = Yl.get_shape().as_list()
-            num_channels = s[channel_ax]
-            nlevels = len(Yh)
+        # Reshape the inputs to all be 3d inputs of shape (batch, h, w)
+        if data_format in formats_4d:
             if data_format == "nhwc":
-                size = '{}x{}_up_{}'.format(s[1], s[2], nlevels)
-                Yl_new = tf.transpose(Yl, [0, 3, 1, 2])
-                Yl_new = tf.reshape(Yl_new, [-1, s[1], s[2]])
+                channel_ax = 3
             else:
-                size = '{}x{}_up_{}'.format(s[2], s[3], nlevels)
-                Yl_new = tf.reshape(Yl, [-1, s[2], s[3]])
-
-            # Move all of the channels into the batch dimension for the highpass
+                channel_ax = 1
+            # Move all of the channels into the batch dimension for the lowpass
             # input. This may involve transposing, depending on the data format
-            Yh_new = []
-            for scale in Yh:
-                s = scale.get_shape().as_list()
-                if s[channel_ax] != num_channels:
-                    raise ValueError(
-                        """The number of channels has to be consistent for all
-                        inputs across the channel axis {}. You fed in Yl: {}
-                        and Yh: {}""".format(channel_ax, Yl, Yh))
+            with tf.variable_scope('ch_to_batch'):
+                s = Yl.get_shape().as_list()
+                num_channels = s[channel_ax]
+                nlevels = len(Yh)
                 if data_format == "nhwc":
-                    scale = tf.transpose(scale, [0, 3, 1, 2, 4])
-                    Yh_new.append(tf.reshape(scale, [-1, s[1], s[2], s[4]]))
+                    size = '{}x{}_up_{}'.format(s[1], s[2], nlevels)
+                    Yl = tf.transpose(Yl, [0, 3, 1, 2])
+                    Yl = tf.reshape(Yl, [-1, s[1], s[2]])
                 else:
-                    Yh_new.append(tf.reshape(scale, [-1, s[2], s[3], s[4]]))
+                    size = '{}x{}_up_{}'.format(s[2], s[3], nlevels)
+                    Yl = tf.reshape(Yl, [-1, s[2], s[3]])
 
+                # Move all of the channels into the batch dimension for the highpass
+                # input. This may involve transposing, depending on the data format
+                Yh_new = []
+                for scale in Yh:
+                    s = scale.get_shape().as_list()
+                    if s[channel_ax] != num_channels:
+                        raise ValueError(
+                            """The number of channels has to be consistent for all
+                            inputs across the channel axis {}. You fed in Yl: {}
+                            and Yh: {}""".format(channel_ax, Yl, Yh))
+                    if data_format == "nhwc":
+                        scale = tf.transpose(scale, [0, 3, 1, 2, 4])
+                        Yh_new.append(tf.reshape(scale, [-1, s[1], s[2], s[4]]))
+                    else:
+                        Yh_new.append(tf.reshape(scale, [-1, s[2], s[3], s[4]]))
+                Yh = Yh_new
+
+        elif data_format == "hwn" or data_format == "hwc":
+            s = Yl.get_shape().as_list()
+            num_channels = s[2]
+            size = '{}x{}'.format(s[0], s[1])
+            with tf.variable_scope('ch_to_start'):
+                Yl = tf.transpose(Yl, perm=[2,0,1], name='Yl')
+                Yh = tuple(
+                    tf.transpose(x, [2, 0, 1, 3], name='Yh{}'.format(i))
+                    for i,x in enumerate(Yh))
+
+        else:
+            s = Yl.get_shape().as_list()
+            size = '{}x{}'.format(s[1], s[2])
+            num_channels = s[0]
+
+        # Do the inverse dtcwt, now with the same shape input
         name = 'dtcwt_inv_{}_{}channels'.format(size, num_channels)
         with tf.variable_scope(name):
-            X = self._inverse_ops(Yl_new, Yh_new, gain_mask)
+            X = self._inverse_ops(Yl, Yh, gain_mask)
 
-        with tf.variable_scope('batch_to_ch'):
-            s = X.get_shape().as_list()
-            X = tf.reshape(X, [-1, num_channels, s[1], s[2]])
-            if data_format == "nhwc":
-                X = tf.transpose(X, [0, 2, 3, 1], name='X')
+        # Reshape the output to match the input shape.
+        if data_format in formats_4d:
+            with tf.variable_scope('batch_to_ch'):
+                s = X.get_shape().as_list()
+                X = tf.reshape(X, [-1, num_channels, s[1], s[2]])
+                if data_format == "nhwc":
+                    X = tf.transpose(X, [0, 2, 3, 1], name='X')
+        else:
+            if data_format == "hwn" or data_format == "hwc":
+                with tf.variable_scope('ch_to_end'):
+                    X = tf.transpose(X, [1, 2, 0], name="X")
 
+        # If the user expects numpy back, evaluate the data.
         if numpy:
             with tf.Session() as sess:
                 sess.run(tf.global_variables_initializer())

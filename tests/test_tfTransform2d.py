@@ -30,6 +30,9 @@ def setup():
     compat = import_module('dtcwt.compat')
     dtwavexfm2 = getattr(compat, 'dtwavexfm2')
     dtwaveifm2 = getattr(compat, 'dtwaveifm2')
+    import dtcwt.tf.transform2d as transform2d
+    np_dtypes = getattr(transform2d, 'np_dtypes')
+    tf_dtypes = getattr(transform2d, 'tf_dtypes')
 
     mandrill = datasets.mandrill()
     # Make sure we run tests on cpu rather than gpus

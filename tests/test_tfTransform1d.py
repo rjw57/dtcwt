@@ -8,8 +8,8 @@ from importlib import import_module
 from dtcwt.numpy import Transform1d as Transform1d_np
 from dtcwt.coeffs import biort, qshift
 import tests.datasets as datasets
-from scipy import stats
 from .util import skip_if_no_tf
+from scipy import stats
 from dtcwt.compat import dtwavexfm, dtwaveifm
 import dtcwt
 
@@ -21,7 +21,7 @@ TOLERANCE = 1e-6
 def setup():
     global mandrill, in_p, pyramid_ops
     global tf, Transform1d, dtwavexfm2, dtwaveifm2, Pyramid_tf
-    global np_dtypes, tf_dtypes
+    global np_dtypes, tf_dtypes, stats
     # Import the tensorflow modules
     tf = import_module('tensorflow')
     dtcwt_tf = import_module('dtcwt.tf')

@@ -8,6 +8,7 @@ from importlib import import_module
 from dtcwt.numpy import Transform2d as Transform2d_np
 from dtcwt.coeffs import biort, qshift
 from dtcwt.utils import unpack
+from scipy import stats
 import tests.datasets as datasets
 from .util import skip_if_no_tf
 import time
@@ -20,12 +21,11 @@ def setup():
     # Import some tf only dependencies
     global mandrill, in_p, pyramid_ops
     global tf, Transform2d, dtwavexfm2, dtwaveifm2, Pyramid_tf
-    global np_dtypes, tf_dtypes, stats
+    global np_dtypes, tf_dtypes
     # Import the tensorflow modules
     tf = import_module('tensorflow')
     dtcwt_tf = import_module('dtcwt.tf')
     dtcwt_tf_xfm2 = import_module('dtcwt.tf.transform2d')
-    stats = import_module('scipy.stats')
     Transform2d = getattr(dtcwt_tf, 'Transform2d')
     Pyramid_tf = getattr(dtcwt_tf, 'Pyramid')
     dtwavexfm2 = getattr(dtcwt_tf_xfm2, 'dtwavexfm2')

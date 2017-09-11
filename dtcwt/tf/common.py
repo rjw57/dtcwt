@@ -10,21 +10,26 @@ except ImportError:
 class Pyramid(object):
     """A tensorflow representation of a transform domain signal.
 
-    Backends are free to implement any class which respects this interface for
-    storing transform-domain signals, so long as the attributes have the
-    correct names and are tensorflow tensors (or placeholders).
-    The inverse transform may accept a backend-specific version of this class
-    but should always accept any class which corresponds to this interface.
+    An interface-compatible version of
+    :py:class:`dtcwt.Pyramid` where the initialiser
+    arguments are assumed to be :py:class:`tf.Variable` instances.
+
+    The attributes defined in :py:class:`dtcwt.Pyramid`
+    are implemented via properties. The original tf arrays may be accessed
+    via the ``..._op(s)`` attributes.
 
     .. py:attribute:: lowpass_op
+
         A tensorflow tensor that can be evaluated in a session to return
         the coarsest scale lowpass signal for the input, X.
 
     .. py:attribute:: highpasses_op
+
         A tuple of tensorflow tensors, where each element is the complex
         subband coefficients for corresponding scales finest to coarsest.
 
-    .. py:attribute:: scales
+    .. py:attribute:: scales_ops
+
         *(optional)* A tuple where each element is a tensorflow tensor
         containing the lowpass signal for corresponding scales finest to
         coarsest. This is not required for the inverse and may be *None*.

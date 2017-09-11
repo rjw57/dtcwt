@@ -40,10 +40,10 @@ _AVAILABLE_BACKENDS = {
         'Pyramid': dtcwt.opencl.Pyramid,
     },
     'tf': {
-        'Transform1d': dtcwt.numpy.Transform1d,
+        'Transform1d': dtcwt.tf.Transform1d,
         'Transform2d': dtcwt.tf.Transform2d,
         'Transform3d': dtcwt.numpy.Transform3d,
-        'Pyramid': dtcwt.numpy.Pyramid,
+        'Pyramid': dtcwt.tf.Pyramid,
     },
 }
 

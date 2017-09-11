@@ -6,9 +6,11 @@ improvements with a CPU.
 """
 
 from .common import Pyramid
+from .transform1d import Transform1d
 from .transform2d import Transform2d
 
 __all__ = [
     'Pyramid',
+    'Transform1d',
     'Transform2d',
 ]

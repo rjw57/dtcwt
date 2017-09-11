@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import numpy as np
 import logging
-import warnings
 
 from six.moves import xrange
 
@@ -38,23 +37,6 @@ np_dtypes = frozenset(
 )
 
 
-def dtwavexfm2(X, nlevels=3, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT,
-               include_scale=False):
-    t = Transform2d(biort=biort, qshift=qshift)
-    r = t.forward(X, nlevels=nlevels, include_scale=include_scale)
-    if include_scale:
-        return r.lowpass, r.highpasses, r.scales
-    else:
-        return r.lowpass, r.highpasses
-
-
-def dtwaveifm2(Yl, Yh, biort=DEFAULT_BIORT, qshift=DEFAULT_QSHIFT,
-               gain_mask=None):
-    t = Transform2d(biort=biort, qshift=qshift)
-    r = t.inverse(Pyramid_np(Yl, Yh), gain_mask=gain_mask)
-    return r
-
-
 class Transform2d(object):
     """
     An implementation of the 2D DT-CWT via Tensorflow.
@@ -72,13 +54,30 @@ class Transform2d(object):
         g1o). In the *qshift* case, this should be (h0a, h0b, g0a, g0b, h1a,
         h1b, g1a, g1b).
 
-    Creating an object of this class loads the necessary filters onto the
-    tensorflow graph. A subsequent call to :py:func:`Transform2d.forward` with
-    an image (or placeholder) will create a forward transform for an input of
-    the image's size. You can evaluate the resulting ops several times feeding
-    different images into the placeholder *assuming* they have the same
-    resolution. For a different resolution image, call the
-    :py:func:`Transform2d.forward` function again.
+    .. note::
+
+        Calling the methods in this class with different inputs will slightly
+        vary the results. If you call the
+        :py:meth:`~dtcwt.tf.Transform2d.forward` or
+        :py:meth:`~dtcwt.tf.Transform2d.forward_channels` methods with a numpy
+        array, they load this array into a :py:class:`tf.Variable` and create
+        the graph. Subsequent calls to :py:attr:`dtcwt.tf.Pyramid.lowpass` or
+        other attributes in the pyramid will create a session and evaluate these
+        parameters.  If the above methods are called with a tensorflow variable
+        or placeholder, these will be used to create the graph. As such, to
+        evaluate the results, you will need to look at the
+        :py:attr:`dtcwt.tf.Pyramid.lowpass_op` attribute (calling the `lowpass`
+        attribute will try to evaluate the graph with no initialized variables
+        and likely result in a runtime error).
+
+        The behaviour is similar for the inverse methods, except these return an
+        array, rather than a Pyramid style class. If a
+        :py:class:`dtcwt.tf.Pyramid` was created by calling the forward methods
+        with a numpy array, providing this pyramid to the inverse methods will
+        return a numpy array. If however a :py:class:`dtcwt.tf.Pyramid` was
+        created by calling the forward methods with a tensorflow variable, the
+        result from calling the inverse methods will also be a tensorflow
+        variable.
 
     .. codeauthor:: Fergal Cotter <fbc23@cam.ac.uk>, Feb 2017
     .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
@@ -97,43 +96,13 @@ class Transform2d(object):
             self.qshift = _qshift(qshift)
         except TypeError:
             self.qshift = qshift
-        # Use our own graph when the user calls forward with numpy arrays
-        self.np_graph = tf.Graph()
-        self.forward_graphs = {}
-        self.inverse_graphs = {}
-
-    def _find_forward_graph(self, shape):
-        """ See if we can reuse an old graph for the forward transform """
-        find_key = '{}x{}'.format(shape[0], shape[1])
-        for key, val in self.forward_graphs.items():
-            if find_key == key:
-                return val
-        return None
-
-    def _add_forward_graph(self, p_ops, shape):
-        """ Keep record of the pyramid so we can use it later if need be """
-        find_key = '{}x{}'.format(shape[0], shape[1])
-        self.forward_graphs[find_key] = p_ops
-
-    def _find_inverse_graph(self, Lo_shape, nlevels):
-        """ See if we can reuse an old graph for the inverse transform """
-        find_key = '{}x{}'.format(Lo_shape[0], Lo_shape[1])
-        for key, val in self.forward_graphs.items():
-            if find_key == key:
-                return val
-        return None
-
-    def _add_inverse_graph(self, p_ops, Lo_shape, nlevels):
-        """ Keep record of the pyramid so we can use it later if need be """
-        find_key = '{}x{} up {}'.format(Lo_shape[0], Lo_shape[1], nlevels)
-        self.inverse_graphs[find_key] = p_ops
 
     def forward(self, X, nlevels=3, include_scale=False):
-        """
-        Perform a forward transform on an image.
+        """ Perform a forward transform on an image.
 
         Can provide the forward transform with either an np array (naive
-        usage), or a tensorflow variable or placeholder (designed usage).
+        usage), or a tensorflow variable or placeholder (designed usage). To
+        transform batches of images, use the :py:meth:`forward_channels` method.
 
         :param ndarray X: Input image which you wish to transform. Can be a
             numpy array, tensorflow Variable or tensorflow placeholder. See
@@ -144,7 +113,7 @@ class Transform2d(object):
             at each scale of the transform, or only at the highest scale (as is
             custom for multi-resolution analysis)
 
-        :returns: A :py:class:`Pyramid` like object
+        :returns: A :py:class:`dtcwt.tf.Pyramid` object
 
         .. note::
 
@@ -195,7 +164,7 @@ class Transform2d(object):
         original_size = X_shape[1:]
         size = '{}x{}'.format(original_size[0], original_size[1])
         name = 'dtcwt_fwd_{}'.format(size)
-        with tf.name_scope(name):
+        with tf.variable_scope(name):
             Yl, Yh, Yscale = self._forward_ops(X, nlevels)
 
         Yl = Yl[0]
@@ -224,27 +193,22 @@ class Transform2d(object):
             these strings, 'n' is used to indicate where the batch dimension is,
             'c' is used to indicate where the image channels are, 'h' is used to
             indicate where the row dimension is, and 'c' is used to indicate
-            where the columns are. If the data_format is::
+            where the columns are. If the data_format is:
 
-                * "nhw" - the input will be interpreted as a batch of 2D images,
+                - "nhw" : the input will be interpreted as a batch of 2D images,
                   with the batch dimension as the first.
-                * "chw" - will function exactly the same as "nhw" but it offered
+                - "chw" : will function exactly the same as "nhw" but is offered
                   to indicate the input is a 2D image with channels.
-                * "hwn" - the input will be interpreted as a batch of 2D images
+                - "hwn" : the input will be interpreted as a batch of 2D images
                   with the batch dimension as the last.
-                * "hwc" - will function exatly the same as "hwc" but is offered
+                - "hwc" : will function exatly the same as "hwc" but is offered
                   to indicate the input is a 2D image with channels.
-                * "nchw" - the input is a batch of images with channel dimension
+                - "nchw" : the input is a batch of images with channel dimension
                   as the second dimension. Batch dimension is first.
-                * "nhwc" - the input is a batch of images with channel dimension
+                - "nhwc" : the input is a batch of images with channel dimension
                   as the last dimension. Batch dimension is first.
 
-        :returns: Yl - the lowpass output and the final scale.
-        :returns: Yh - the highpass outputs. Regardless of the data_format of
-            the input, the Yh output will have 1 dimension more, holding the 6
-            orientations of the dtcwt coefficients. This will always be the last
-            dimension.
-        :returns: Yscale - the lowpass output at intermediate scales.
+        :returns: A :py:class:`dtcwt.tf.Pyramid` object
 
         .. codeauthor:: Fergal Cotter <fbc23@cam.ac.uk>, Feb 2017
         .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
@@ -382,8 +346,9 @@ class Transform2d(object):
         :param gain_mask: Gain to be applied to each sub-band. Should have shape
             (6, nlevels) or be None.
 
-        :returns: Either a tf.Variable or a numpy array compatible with the
-            reconstruction.
+        :returns: An array , X, compatible with the reconstruction. Will be a tf
+            Variable if the Pyramid was made with tf inputs, otherwise a numpy
+            array.
 
         .. note::
 
@@ -441,7 +406,7 @@ class Transform2d(object):
         nlevels = len(Yh)
         size = '{}x{}_up_{}'.format(s[0], s[1], nlevels)
         name = 'dtcwt_inv_{}'.format(size)
-        with tf.name_scope(name):
+        with tf.variable_scope(name):
             X = self._inverse_ops(Yl, Yh, gain_mask)
 
         # Chop off the first dimension
@@ -459,7 +424,12 @@ class Transform2d(object):
         Perform an inverse transform on an image with multiple channels.
 
         Must provide with a tensorflow variable or placeholder (unlike the more
-        general :py:method:`Transform2d.inverse`).
+        general :py:meth:`~dtcwt.tf.Transform2d.inverse`).
+
+        This is designed to work after calling the
+        :py:meth:`~dtcwt.tf.Transform2d.forward_channels` method. You must use
+        the same data_format for the inverse_channels as the one used for the
+        forward_channels (unless you have explicitly reshaped the output).
 
         :param pyramid: A :py:class:`dtcwt.tf.Pyramid` like class holding
             the transform domain representation to invert
@@ -486,7 +456,10 @@ class Transform2d(object):
         :param gain_mask: Gain to be applied to each subband. Should have shape
             [6, nlevels].
 
-        :returns: A tf.Variable, X, compatible with the reconstruction.
+        :returns: An array , X, compatible with the reconstruction. Will be a tf
+            Variable if the Pyramid was made with tf inputs, otherwise a numpy
+            array.
+
 
         The (*d*, *l*)-th element of *gain_mask* is gain for subband with
         direction *d* at level *l*. If gain_mask[d,l] == 0, no computation is
@@ -556,8 +529,9 @@ class Transform2d(object):
                     size = '{}x{}_up_{}'.format(s[2], s[3], nlevels)
                     Yl = tf.reshape(Yl, [-1, s[2], s[3]])
 
-                # Move all of the channels into the batch dimension for the highpass
-                # input. This may involve transposing, depending on the data format
+                # Move all of the channels into the batch dimension for the
+                # highpass input. This may involve transposing, depending on the
+                # data format
                 Yh_new = []
                 for scale in Yh:
                     s = scale.get_shape().as_list()

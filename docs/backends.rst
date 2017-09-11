@@ -1,11 +1,12 @@
 Multiple Backend Support
 ========================
 
+
 The ``dtcwt`` library currently provides three backends for computing the wavelet
 transform: a `NumPy <http://www.numpy.org/>`_ based implementation, an OpenCL
 implementation which uses the `PyOpenCL <http://mathema.tician.de/software/pyopencl/>`_
-bindings for Python, and a Tensorflow implementation which uses the `Tensorflow
-<https://www.tensorflow.org>`_ bindings for Python.
+bindings for Python, and a Tensorflow implementation which uses the 
+`Tensorflow <https://www.tensorflow.org>`_ bindings for Python.
 
 NumPy
 '''''
@@ -35,13 +36,20 @@ Tensorflow
 
 If you want to take advantage of having a GPU on your machine, 
 some transforms and algorithms have been implemented with a Tensorflow backend.
-This backend, if present will provide an identical API to the NumPy backend.
-NumPy-based input may be passed in to a tensorflow backend, in which case it
+This backend will provide an identical API to the NumPy backend.
+I.e. NumPy-based input may be passed to a tensorflow backend in the same manner
+as it was passed to the NumPy backend. In which case it
 will be converted to a tensorflow variable, the transform performed, and then
-converted back to a NumPy variable afterwards.
+converted back to a NumPy variable afterwards. This conversion between types can
+be avoided if a tensorflow variable is passed to the dtcwt Transforms.
 
-Tensorflow support depends on the `Tensorflow
-<https://www.tensorflow.org/install/>`_ python package being installed in the
+The real speedup gained from using GPUs is obtained by parallel processing. For
+this reason, when using the tensorflow backend, the Transforms can accept
+batches of images. To do this, see the `forward_channels` and `inverse_channels`
+methods. More information is in the :ref:`tensorflowbackend` section.
+
+Tensorflow support depends on the 
+`Tensorflow <https://www.tensorflow.org/install/>`_ python package being installed in the
 current python environment, as well as the necessary CUDA + CUDNN libraries
 installed). Attempting to use a Tensorflow backend without the python package
 available will result in a runtime (but not import-time) exception. Attempting
@@ -49,8 +57,9 @@ to use the Tensorflow backend without the CUDA and CUDNN libraries properly
 installed and linked will result in the Tensorflow backend being used, but
 operations will be run on the CPU rather than the GPU.
 
-If you do not have a GPU, some speedup was still seen for using Tensorflow with
-the CPU vs the plain NumPy backend. 
+If you do not have a GPU, some speedup can still be seen for using Tensorflow with
+the CPU vs the plain NumPy backend, as tensorflow will naturally use multiple
+processors.  
 
 Which backend should I use?
 '''''''''''''''''''''''''''
@@ -97,6 +106,7 @@ switch to the OpenCL backend
 .. code-block:: python
 
     dtcwt.push_backend('opencl')
+    xfm = Transform2d()
     # ... Transform2d, etc now use OpenCL ...
 
 and to switch to the Tensorflow backend
@@ -104,6 +114,7 @@ and to switch to the Tensorflow backend
 .. code-block:: python
     
     dtcwt.push_backend('tf')
+    xfm = Transform2d()
     # ... Transform2d, etc now use Tensorflow ...
 
 As is suggested by the name, changing the backend manipulates a stack behind the

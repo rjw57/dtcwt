@@ -216,9 +216,8 @@ def coldfilt(X, ha, hb, no_decimate=False):
 
     Both filters should be even length, and h should be approx linear
     phase with a quarter sample (i.e. an :math:`e^{j \pi/4}`) advance from
-    its mid pt (i.e. :math:`|h(m/2)| > |h(m/2 + 1)|`).
+    its mid pt (i.e. :math:`|h(m/2)| > |h(m/2 + 1)|`)::
 
-    .. code-block:: text
                           ext        top edge                     bottom edge       ext
         Level 1:        !               |               !               |               !
         odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b
@@ -299,9 +298,8 @@ def rowdfilt(X, ha, hb, no_decimate=False):
 
     Both filters should be even length, and h should be approx linear
     phase with a quarter sample advance from its mid pt (i.e. :math:`|h(m/2)| >
-    |h(m/2 + 1)|`).
+    |h(m/2 + 1)|`)::
 
-    .. code-block:: text
                           ext        top edge                     bottom edge       ext
         Level 1:        !               |               !               |               !
         odd filt on .    b   b   b   b   a   a   a   a   a   a   a   a   b   b   b   b

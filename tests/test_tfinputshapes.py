@@ -4,18 +4,18 @@ import pytest
 from importlib import import_module
 
 from .util import skip_if_no_tf
+from dtcwt.utils import unpack
+import dtcwt
+import dtcwt.compat
+
 PRECISION_DECIMAL = 5
 
 
 @skip_if_no_tf
-def test_setup():
-    global tf, Transform2d, dtwavexfm2, dtwaveifm2
+def setup():
+    global tf
     tf = import_module('tensorflow')
-    dtcwt_tf = import_module('dtcwt.tf')
-    dtcwt_tf_xfm2 = import_module('dtcwt.tf.transform2d')
-    Transform2d = getattr(dtcwt_tf, 'Transform2d')
-    dtwavexfm2 = getattr(dtcwt_tf_xfm2, 'dtwavexfm2')
-    dtwaveifm2 = getattr(dtcwt_tf_xfm2, 'dtwaveifm2')
+    dtcwt.push_backend('tf')
 
     # Make sure we run tests on cpu rather than gpus
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -28,47 +28,11 @@ def test_setup():
     (4,False),
     (3,True)
 ])
-def test_2d_input(nlevels, include_scale):
+def test_scales(nlevels, include_scale):
     in_ = tf.placeholder(tf.float32, [512, 512])
-    t = Transform2d()
-    # Calling forward with a 2d input will throw a warning
+    t = dtcwt.Transform2d()
+
     p = t.forward(in_, nlevels, include_scale)
-
-    # At level 1, the lowpass output will be the same size as the input. At
-    # levels above that, it will be half the size per level
-    extent = 512 * 2**(-(nlevels-1))
-    assert p.lowpass_op.get_shape().as_list() == [1, extent, extent]
-    assert p.lowpass_op.dtype == tf.float32
-
-    for i in range(nlevels):
-        extent = 512 * 2**(-(i+1))
-        assert (p.highpasses_ops[i].get_shape().as_list() ==
-                [1, extent, extent, 6])
-        assert (p.highpasses_ops[i].dtype ==
-                tf.complex64)
-        if include_scale:
-            assert (p.scales_ops[i].get_shape().as_list() ==
-                    [1, 2*extent, 2*extent])
-            assert p.scales_ops[i].dtype == tf.float32
-
-
-@skip_if_no_tf
-@pytest.mark.parametrize("nlevels, include_scale", [
-    (2,False),
-    (2,True),
-    (4,False),
-    (3,True)
-])
-def test_apply_reshaping(nlevels, include_scale):
-    # Test the reshaping function of the Pyramid_tf class. This should apply
-    # the same tf op to all of its operations. A good example would be to
-    # remove the batch dimension from each op.
-    in_ = tf.placeholder(tf.float32, [512, 512])
-    t = Transform2d()
-    # Calling forward with a 2d input will throw a warning
-    p = t.forward(in_, nlevels, include_scale)
-    f = lambda x: tf.squeeze(x, squeeze_dims=0)
-    p.apply_reshaping(f)
 
     # At level 1, the lowpass output will be the same size as the input. At
     # levels above that, it will be half the size per level
@@ -78,10 +42,13 @@ def test_apply_reshaping(nlevels, include_scale):
 
     for i in range(nlevels):
         extent = 512 * 2**(-(i+1))
-        assert p.highpasses_ops[i].get_shape().as_list() == [extent, extent, 6]
-        assert p.highpasses_ops[i].dtype == tf.complex64
+        assert (p.highpasses_ops[i].get_shape().as_list() ==
+                [extent, extent, 6])
+        assert (p.highpasses_ops[i].dtype ==
+                tf.complex64)
         if include_scale:
-            assert p.scales_ops[i].get_shape().as_list() == [2*extent, 2*extent]
+            assert (p.scales_ops[i].get_shape().as_list() ==
+                    [2*extent, 2*extent])
             assert p.scales_ops[i].dtype == tf.float32
 
 
@@ -94,22 +61,24 @@ def test_apply_reshaping(nlevels, include_scale):
 ])
 def test_2d_input_tuple(nlevels, include_scale):
     in_ = tf.placeholder(tf.float32, [512, 512])
-    t = Transform2d()
-    # Calling forward with a 2d input will throw a warning
-    Yl, Yh, Yscale = t.forward(in_, nlevels, include_scale, return_tuple=True)
+    t = dtcwt.Transform2d()
+    if include_scale:
+        Yl, Yh, Yscale = unpack(t.forward(in_, nlevels, include_scale), 'tf')
+    else:
+        Yl, Yh = unpack(t.forward(in_, nlevels, include_scale), 'tf')
 
     # At level 1, the lowpass output will be the same size as the input. At
     # levels above that, it will be half the size per level
     extent = 512 * 2**(-(nlevels-1))
-    assert Yl.get_shape().as_list() == [1, extent, extent]
+    assert Yl.get_shape().as_list() == [extent, extent]
     assert Yl.dtype == tf.float32
 
     for i in range(nlevels):
         extent = 512 * 2**(-(i+1))
-        assert Yh[i].get_shape().as_list() == [1, extent, extent, 6]
+        assert Yh[i].get_shape().as_list() == [extent, extent, 6]
         assert Yh[i].dtype == tf.complex64
         if include_scale:
-            assert Yscale[i].get_shape().as_list() == [1, 2*extent, 2*extent]
+            assert Yscale[i].get_shape().as_list() == [2*extent, 2*extent]
             assert Yscale[i].dtype == tf.float32
 
 
@@ -122,8 +91,8 @@ def test_2d_input_tuple(nlevels, include_scale):
 ])
 def test_batch_input(nlevels, include_scale, batch_size):
     in_ = tf.placeholder(tf.float32, [batch_size, 512, 512])
-    t = Transform2d()
-    p = t.forward(in_, nlevels, include_scale)
+    t = dtcwt.Transform2d()
+    p = t.forward_channels(in_, "nhw", nlevels, include_scale)
 
     # At level 1, the lowpass output will be the same size as the input. At
     # levels above that, it will be half the size per level
@@ -151,9 +120,14 @@ def test_batch_input(nlevels, include_scale, batch_size):
 ])
 def test_batch_input_tuple(nlevels, include_scale, batch_size):
     in_ = tf.placeholder(tf.float32, [batch_size, 512, 512])
-    t = Transform2d()
+    t = dtcwt.Transform2d()
 
-    Yl, Yh, Yscale = t.forward(in_, nlevels, include_scale, return_tuple=True)
+    if include_scale:
+        Yl, Yh, Yscale = unpack(
+            t.forward_channels(in_, "nhw", nlevels, include_scale), "tf")
+    else:
+        Yl, Yh = unpack(
+            t.forward_channels(in_, "nhw", nlevels, include_scale), "tf")
 
     # At level 1, the lowpass output will be the same size as the input. At
     # levels above that, it will be half the size per level
@@ -180,9 +154,9 @@ def test_batch_input_tuple(nlevels, include_scale, batch_size):
 ])
 def test_multichannel(nlevels, channels):
     in_ = tf.placeholder(tf.float32, [None, 512, 512, channels])
-    t = Transform2d()
-    Yl, Yh, Yscale = t.forward_channels(in_, nlevels)
-
+    t = dtcwt.Transform2d()
+    Yl, Yh, Yscale = unpack(
+        t.forward_channels(in_, "nhwc", nlevels, include_scale=True), "tf")
     # At level 1, the lowpass output will be the same size as the input. At
     # levels above that, it will be half the size per level
     extent = 512 * 2**(-(nlevels-1))

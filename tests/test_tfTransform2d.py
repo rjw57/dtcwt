@@ -5,6 +5,7 @@ from pytest import raises
 
 import numpy as np
 from importlib import import_module
+import dtcwt
 from dtcwt.numpy import Transform2d as Transform2d_np
 from dtcwt.coeffs import biort, qshift
 from dtcwt.utils import unpack
@@ -19,19 +20,16 @@ PRECISION_DECIMAL = 5
 @skip_if_no_tf
 def setup():
     # Import some tf only dependencies
-    global mandrill, in_p, pyramid_ops
-    global tf, Transform2d, dtwavexfm2, dtwaveifm2, Pyramid_tf
-    global np_dtypes, tf_dtypes
+    global mandrill, Transform2d, Pyramid
+    global tf, np_dtypes, tf_dtypes, dtwavexfm2, dtwaveifm2
     # Import the tensorflow modules
     tf = import_module('tensorflow')
-    dtcwt_tf = import_module('dtcwt.tf')
-    dtcwt_tf_xfm2 = import_module('dtcwt.tf.transform2d')
-    Transform2d = getattr(dtcwt_tf, 'Transform2d')
-    Pyramid_tf = getattr(dtcwt_tf, 'Pyramid')
-    dtwavexfm2 = getattr(dtcwt_tf_xfm2, 'dtwavexfm2')
-    dtwaveifm2 = getattr(dtcwt_tf_xfm2, 'dtwaveifm2')
-    np_dtypes = getattr(dtcwt_tf_xfm2, 'np_dtypes')
-    tf_dtypes = getattr(dtcwt_tf_xfm2, 'tf_dtypes')
+    dtcwt.push_backend('tf')
+    Transform2d = getattr(dtcwt, 'Transform2d')
+    Pyramid = getattr(dtcwt, 'Pyramid')
+    compat = import_module('dtcwt.compat')
+    dtwavexfm2 = getattr(compat, 'dtwavexfm2')
+    dtwaveifm2 = getattr(compat, 'dtwaveifm2')
 
     mandrill = datasets.mandrill()
     # Make sure we run tests on cpu rather than gpus
@@ -566,7 +564,7 @@ def test_inverse_channels(data_format):
 
     # Call the inverse_channels function
     start = time.time()
-    X = f_tf.inverse_channels(Pyramid_tf(Yl, Yh), data_format=data_format)
+    X = f_tf.inverse_channels(Pyramid(Yl, Yh), data_format=data_format)
     X, Yl, Yh = sess.run([X, Yl, Yh], {in_p: ims})
     print("That took {:.2f}s".format(time.time() - start))
 

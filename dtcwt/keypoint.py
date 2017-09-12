@@ -94,12 +94,12 @@ def find_keypoints(highpass_highpasses, method=None,
 
     # Find keypoint energy map for each level
     kp_energies = []
-    for subband in highpass_highpasses:
+    for scale, subband in enumerate(highpass_highpasses):
         if upsample_highpasses is not None:
             subband = upsample_highpass(subband, upsample_highpasses)
 
         if method == 'fauqueur':
-            kp_energies.append(_keypoint_energy_fauqueur(subband, alpha, beta))
+            kp_energies.append(_keypoint_energy_fauqueur(subband, alpha, beta, scale))
         elif method == 'bendale':
             kp_energies.append(_keypoint_energy_bendale(subband))
         elif method == 'kingsbury':
@@ -143,8 +143,8 @@ def find_keypoints(highpass_highpasses, method=None,
     # Return keypoints
     return kps
 
-def _keypoint_energy_fauqueur(subband, alpha, beta):
-    return alpha * np.power(np.maximum(0, np.product(np.abs(subband), axis=2)), beta)
+def _keypoint_energy_fauqueur(subband, alpha, beta, scale):
+    return (alpha**(scale+1)) * np.power(np.maximum(0, np.product(np.abs(subband), axis=2)), beta)
 
 def _keypoint_energy_bendale(subband):
     return np.min(np.abs(subband), axis=2)
@@ -217,10 +217,10 @@ def _kp_energy_maxima(X, threshold=None, refine=True):
 
     # This will be used to store the refined positions
     lm_refined_rows, lm_refined_cols = [], []
-            
+
     # Find local maxima
     lm_rows, lm_cols = np.nonzero(maxima == X)
-    
+
     if refine:
         # Taylor series of I(x) around x_0 is I(x) ~= I(x_o) + dI/dx x + dI^2/dx^2 x^2 + ...
         # maximum is at differential is zero or:
@@ -230,11 +230,11 @@ def _kp_energy_maxima(X, threshold=None, refine=True):
         dXdy, dXdx = np.gradient(X)
         dX2dxdy, dX2dx2 = np.gradient(dXdx)
         dX2dy2, dX2dydx = np.gradient(dXdy)
-        
+
         a_im = np.dstack((
            dX2dx2, dX2dy2, dX2dxdy, dXdx, dXdy, X,
         ))
-    
+
     # Calculate a vectors for each neighbourhood
     for r, c in zip(lm_rows, lm_cols):
         if refine:
@@ -242,12 +242,12 @@ def _kp_energy_maxima(X, threshold=None, refine=True):
             A = np.array(((2*a[0], a[2], a[3]), (a[2], 2*a[1], a[4])))
             v = _nullspace(A)[:,0]
             v /= v[2]
-            
+
             # Only accept fittings where maximum is within half of a pixel of
             # the maximum pixel's centre.
             if np.any(np.abs(v[:2]) > 0.5):
                 continue
-        
+
             x, y = v[:2]
             lm_values.append(a[0]*x*x + a[1]*y*y + a[2]*x*y + a[3]*x + a[4]*y + a[5])
         else:
@@ -256,5 +256,5 @@ def _kp_energy_maxima(X, threshold=None, refine=True):
 
         lm_refined_rows.append(r+y)
         lm_refined_cols.append(c+x)
-    
+
     return np.array(lm_refined_rows), np.array(lm_refined_cols), np.array(lm_values)

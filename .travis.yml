@@ -11,8 +11,6 @@ before_install:
 env:
     - TOX_ENV=py3
     - TOX_ENV=py27
-    - TOX_ENV=py3-opencl
-    - TOX_ENV=py27-opencl
     - TOX_ENV=py27-tf
     - TOX_ENV=py3-tf
     - TOX_ENV=docs

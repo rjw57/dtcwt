@@ -74,8 +74,10 @@ class Transform2d(object):
         original_size = X.shape
 
         if len(X.shape) >= 3:
-            raise ValueError('The entered image is {0}, please enter each image slice separately.'.
-                    format('x'.join(list(str(s) for s in X.shape))))
+            raise ValueError('The entered image is {0}, which is invalid '.
+                             format('x'.join(list(str(s) for s in X.shape))) +
+                             'for the 2D transform in a numpy backend. ' +
+                             'Please enter each image slice separately.')
 
         # The next few lines of code check to see if the image is odd in size, if so an extra ...
         # row/column will be added to the bottom/right of the image
@@ -150,9 +152,9 @@ class Transform2d(object):
             Yh[level][:,:,0:6:5] = q2c(coldfilt(Hi,h0b,h0a).T)  # Horizontal
             Yh[level][:,:,2:4:1] = q2c(coldfilt(Lo,h1b,h1a).T)  # Vertical
             if len(self.qshift) >= 12:
-                Yh[level][:,:,1:5:3] = q2c(coldfilt(Ba,h2b,h2a).T)  # Diagonal   
+                Yh[level][:,:,1:5:3] = q2c(coldfilt(Ba,h2b,h2a).T)  # Diagonal
             else:
-                Yh[level][:,:,1:5:3] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal   
+                Yh[level][:,:,1:5:3] = q2c(coldfilt(Hi,h1b,h1a).T)  # Diagonal
 
             if include_scale:
                 Yscale[level] = LoLo
@@ -267,7 +269,7 @@ class Transform2d(object):
 
             if np.any(np.array(Z.shape) != S[:2]):
                 raise ValueError('Sizes of highpasses are not valid for DTWAVEIFM2')
-            
+
             current_level = current_level - 1
 
         if current_level == 1:
@@ -300,7 +302,7 @@ def q2c(y):
     """
     Convert from quads in y to complex numbers in z.
     """
-    
+
     j2 = (np.sqrt(0.5) * np.array([1, 1j])).astype(appropriate_complex_type_for(y))
 
     # Arrange pixels from the corners of the quads into
@@ -310,7 +312,7 @@ def q2c(y):
     #  |    |
     #  c----d
 
-    # Combine (a,b) and (d,c) to form two complex subimages. 
+    # Combine (a,b) and (d,c) to form two complex subimages.
     p = y[0::2, 0::2]*j2[0] + y[0::2, 1::2]*j2[1] # p = (a + jb) / sqrt(2)
     q = y[1::2, 1::2]*j2[0] - y[1::2, 0::2]*j2[1] # q = (d - jc) / sqrt(2)
 

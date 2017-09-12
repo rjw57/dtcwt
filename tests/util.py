@@ -3,6 +3,8 @@ import numpy as np
 import pytest
 
 from dtcwt.opencl.lowlevel import _HAVE_CL as HAVE_CL
+#  from dtcwt.utils import _HAVE_TF as HAVE_TF
+from dtcwt.tf.lowlevel import _HAVE_TF as HAVE_TF
 
 from six.moves import xrange
 
@@ -65,4 +67,5 @@ def summarise_cube(M, apron=4):
     )
 
 skip_if_no_cl = pytest.mark.skipif(not HAVE_CL, reason="OpenCL not present")
+skip_if_no_tf = pytest.mark.skipif(not HAVE_TF, reason="Tensorflow not present")
 

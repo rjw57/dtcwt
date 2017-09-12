@@ -94,6 +94,8 @@ Changes
 0.12.0
 ''''''
 
+* A new TensorFlow backend written by [@fbcotter](https://github.com/fbcotter).
+
 0.11.0
 ''''''
 

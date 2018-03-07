@@ -32,11 +32,11 @@ scale_method = 'lanczos'
 
 def scale_direct(im):
     """Scale image directly."""
-    return dtcwt.sampling.scale(im, (im.shape[0]*scale, im.shape[1]*scale), scale_method)
+    return dtcwt.sampling.rescale(im, (im.shape[0]*scale, im.shape[1]*scale), scale_method)
 
 def scale_highpass(im):
     """Scale image assuming it to be wavelet highpass coefficients."""
-    return dtcwt.sampling.scale_highpass(im, (im.shape[0]*scale, im.shape[1]*scale), scale_method)
+    return dtcwt.sampling.rescale_highpass(im, (im.shape[0]*scale, im.shape[1]*scale), scale_method)
 
 # Rescale mandrill directly using default (Lanczos) sampling
 mandrill_direct = scale_direct(mandrill)

@@ -12,15 +12,15 @@ transforms and their inverse in Python.
     :target: https://coveralls.io/r/rjw57/dtcwt?branch=master
     :alt: Coverage
 
-.. image:: https://pypip.in/license/dtcwt/badge.png
+.. image:: https://img.shields.io/pypi/l/dtcwt.svg
     :target: https://pypi.python.org/pypi/dtcwt/
     :alt: License
 
-.. image:: https://pypip.in/v/dtcwt/badge.png
+.. image:: https://img.shields.io/pypi/v/dtcwt.svg
     :target: https://pypi.python.org/pypi/dtcwt/
     :alt: Latest Version
 
-.. image:: https://pypip.in/d/dtcwt/badge.png
+.. image:: https://img.shields.io/pypi/dm/dtcwt.svg
     :target: https://pypi.python.org/pypi//dtcwt/
     :alt: Downloads
 

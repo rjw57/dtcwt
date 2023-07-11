@@ -123,7 +123,7 @@ def test_simple_level_4_recon_ext_mode_4():
 def test_integer_input():
     # Check that an integer input is correctly coerced into a floating point
     # array
-    Yl, Yh = dtwavexfm3(np.ones((4,4,4), dtype=np.int))
+    Yl, Yh = dtwavexfm3(np.ones((4,4,4), dtype=np.int64))
     assert np.any(Yl != 0)
 
 def test_integer_perfect_recon():

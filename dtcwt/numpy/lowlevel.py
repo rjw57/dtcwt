@@ -71,7 +71,7 @@ def colfilter(X, h):
 
     # Symmetrically extend with repeat of end samples.
     # Use 'reflect' so r < m2 works OK.
-    xe = reflect(np.arange(-m2, r+m2, dtype=np.int), -0.5, r-0.5)
+    xe = reflect(np.arange(-m2, r+m2, dtype=np.int64), -0.5, r-0.5)
 
     # Perform filtering on the columns of the extended matrix X(xe,:), keeping
     # only the 'valid' output samples, so Y is the same size as X if m is odd.
@@ -206,7 +206,7 @@ def colifilt(X, ha, hb):
         # m/2 is even, so set up t to start on d samples.
         # Set up vector for symmetric extension of X with repeated end samples.
         # Use 'reflect' so r < m2 works OK.
-        xe = reflect(np.arange(-m2, r+m2, dtype=np.int), -0.5, r-0.5)
+        xe = reflect(np.arange(-m2, r+m2, dtype=np.int64), -0.5, r-0.5)
 
         t = np.arange(3, r+m, 2)
         if np.sum(ha*hb) > 0:
@@ -233,7 +233,7 @@ def colifilt(X, ha, hb):
         # m/2 is odd, so set up t to start on b samples.
         # Set up vector for symmetric extension of X with repeated end samples.
         # Use 'reflect' so r < m2 works OK.
-        xe = reflect(np.arange(-m2, r+m2, dtype=np.int), -0.5, r-0.5)
+        xe = reflect(np.arange(-m2, r+m2, dtype=np.int64), -0.5, r-0.5)
 
         t = np.arange(2, r+m-1, 2)
         if np.sum(ha*hb) > 0:

@@ -83,16 +83,30 @@ Compiled documentation may be found in ``build/docs/html/``.
 Provenance
 ``````````
 
+Developed by Rich Wareham, Cambridge University, 2013-2018.
+
 Based on the Dual-Tree Complex Wavelet Transform Pack for MATLAB by Nick
 Kingsbury, Cambridge University. The original README can be found in
 ORIGINAL_README.txt.  This file outlines the conditions of use of the original
 MATLAB toolbox.
 
+Adapted for NumPy 1.20+ in 2024 by Vincent Lostanlen and Xiran Zhang, CNRS,
+with permission_ from Rich Wareham.
+
+.. _permission: https://github.com/rjw57/dtcwt/pull/144#issuecomment-1952804258
+
 Changes
 ```````
 
+0.13.0
+''''''
+
+* Add support for NumPy 1.20+ (and thus Python 3.7+).
+
 0.12.0
 ''''''
+
+* TensorFlow backend by Fergal Cotter (@fbcotter).
 
 0.11.0
 ''''''

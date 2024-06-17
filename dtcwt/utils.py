@@ -102,7 +102,7 @@ def asfarray(X):
 
     """
     X = np.asanyarray(X)
-    return np.asfarray(X, dtype=X.dtype)
+    return np.asarray(X, dtype=X.dtype)
 
 def appropriate_complex_type_for(X):
     """Return an appropriate complex data type depending on the type of X. If X

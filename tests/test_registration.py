@@ -8,7 +8,7 @@ from dtcwt.registration import *
 
 import tests.datasets as datasets
 
-def setup():
+def setup_module():
     global f1, f2
     f1, f2 = datasets.regframes('traffic')
 

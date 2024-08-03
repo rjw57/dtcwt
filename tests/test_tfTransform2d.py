@@ -18,7 +18,7 @@ PRECISION_DECIMAL = 5
 
 
 @skip_if_no_tf
-def setup():
+def setup_module():
     # Import some tf only dependencies
     global mandrill, Transform2d, Pyramid
     global tf, np_dtypes, tf_dtypes, dtwavexfm2, dtwaveifm2

@@ -7,7 +7,7 @@ import tests.datasets as datasets
 
 TOLERANCE = 1e-12
 
-def setup():
+def setup_module():
     global mandrill, mandrill_crop
     mandrill = datasets.mandrill().astype(np.float64)
     mandrill_crop = mandrill[:233, :301]

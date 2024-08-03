@@ -49,7 +49,7 @@ def assert_almost_equal_to_summary_cube(a, summary, *args, **kwargs):
 def assert_percentile_almost_equal_to_summary_cube(a, summary, *args, **kwargs):
     assert_percentile_almost_equal(summarise_cube(a), summary, *args, **kwargs)
 
-def setup():
+def setup_module():
     global mandrill
     mandrill = datasets.mandrill()
 

@@ -12,7 +12,7 @@ PRECISION_DECIMAL = 5
 
 
 @skip_if_no_tf
-def setup():
+def setup_module():
     global tf
     tf = import_module('tensorflow')
     dtcwt.push_backend('tf')

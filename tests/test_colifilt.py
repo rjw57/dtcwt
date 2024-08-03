@@ -7,7 +7,7 @@ from pytest import raises
 
 import tests.datasets as datasets
 
-def setup():
+def setup_module():
     global mandrill
     mandrill = datasets.mandrill()
 

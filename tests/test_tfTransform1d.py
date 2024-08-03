@@ -18,7 +18,7 @@ TOLERANCE = 1e-6
 
 
 @skip_if_no_tf
-def setup():
+def setup_module():
     global mandrill, in_p, pyramid_ops
     global tf, Transform1d, dtwavexfm2, dtwaveifm2, Pyramid_tf
     global np_dtypes, tf_dtypes, stats

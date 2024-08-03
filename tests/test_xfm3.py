@@ -8,7 +8,7 @@ GRID_SIZE=32
 SPHERE_RAD=0.4 * GRID_SIZE
 TOLERANCE = 1e-12
 
-def setup():
+def setup_module():
     global ellipsoid
 
     grid = slice(-(GRID_SIZE>>1), (GRID_SIZE>>1))

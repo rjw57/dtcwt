@@ -2,7 +2,7 @@ import numpy as np
 
 from dtcwt.utils import reflect
 
-def setup():
+def setup_module():
     global ramp, reflected
 
     # Create a simple linear ramp and reflect it

@@ -10,7 +10,7 @@ from pytest import raises
 from .util import assert_almost_equal, skip_if_no_cl
 import tests.datasets as datasets
 
-def setup():
+def setup_module():
     global mandrill
     mandrill = datasets.mandrill()
 

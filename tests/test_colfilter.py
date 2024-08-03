@@ -6,7 +6,7 @@ from dtcwt.numpy.lowlevel import colfilter
 
 import tests.datasets as datasets
 
-def setup():
+def setup_module():
     global mandrill
     mandrill = datasets.mandrill()
 

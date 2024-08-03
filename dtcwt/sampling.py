@@ -35,8 +35,8 @@ DTHETA_DY_2D = np.array((_W0, _W0, _W1, -_W1, -_W0, -_W0))
 
 def _sample_clipped(im, xs, ys):
     """Truncated and symmetric sampling."""
-    sym_xs = reflect(xs, -0.5, im.shape[1]-0.5).astype(np.int)
-    sym_ys = reflect(ys, -0.5, im.shape[0]-0.5).astype(np.int)
+    sym_xs = reflect(xs, -0.5, im.shape[1]-0.5).astype(np.int64)
+    sym_ys = reflect(ys, -0.5, im.shape[0]-0.5).astype(np.int64)
     return im[sym_ys, sym_xs, ...]
 
 def _sample_nearest(im, xs, ys):
@@ -328,7 +328,7 @@ def _upsample_columns(X, method=None):
     
     # Convolve
     for di, l_a, l_b in zip(sample_offsets, l_as, l_bs):
-        columns = reflect(int_columns + di, -0.5, M-0.5).astype(np.int)
+        columns = reflect(int_columns + di, -0.5, M-0.5).astype(np.int64)
         
         output[:,0::2,...] += l_a * X[:,columns,...]
         output[:,1::2,...] += l_b * X[:,columns,...]

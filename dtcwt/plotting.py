@@ -12,7 +12,7 @@ __all__ = (
     'overlay_quiver',
 )
 
-def overlay_quiver(image, vectorField, level, offset):
+def overlay_quiver(image, vectorField, level, offset, scaleOverride=None):
     """Overlays nicely coloured quiver plot of complex coefficients over original full-size image,
     providing a useful phase visualisation.
 
@@ -50,7 +50,6 @@ def overlay_quiver(image, vectorField, level, offset):
     """
     # Make sure imshow() uses the full range of greyscale values
     imshow(image, cmap=cm.gray, clim=(0,255))
-    hold(True)
 
     # Set up the grid for the quiver plot
     g1 = np.kron(np.arange(0, vectorField[:,:,0].shape[0]).T, np.ones((1,vectorField[:,:,0].shape[1])))
@@ -58,15 +57,16 @@ def overlay_quiver(image, vectorField, level, offset):
 
     # Choose a coloUrmap
     cmap = cm.spectral
-    scalefactor = np.max(np.max(np.max(np.max(np.abs(vectorField)))))
-    vectorField[-1,-1,:] = scalefactor
+    if scaleOverride is None:
+        scalefactor = np.max(np.max(np.max(np.max(np.abs(vectorField)))))
+        vectorField[-1,-1,:] = scalefactor
+    else:
+        scalefactor = scaleOverride
 
     for sb in range(0, vectorField.shape[2]):
-        hold(True)
         thiscolour = cmap(sb / float(vectorField.shape[2])) # Select colour for this subband
         hq = quiver(g2*(2**level) + offset*(2**level), g1*(2**level) + offset*(2**level), np.real(vectorField[:,:,sb]), \
         np.imag(vectorField[:,:,sb]), color=thiscolour, scale=scalefactor*2**level)
         quiverkey(hq, 1.05, 1.00-0.035*sb, 0, "subband " + np.str(sb), coordinates='axes', color=thiscolour, labelcolor=thiscolour, labelpos='E')
 
-    hold(False)
     return hq
